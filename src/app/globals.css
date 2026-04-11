@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl border border-gray-200 shadow-sm;
+  }
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 active:scale-95 transition-all;
+  }
+  .btn-danger {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 text-xs font-medium rounded-lg border border-red-200 hover:bg-red-100 active:scale-95 transition-all;
+  }
+  .input {
+    @apply w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white;
+  }
+  .label {
+    @apply block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide;
+  }
+  .stat-card {
+    @apply card p-4 sm:p-5 flex flex-col gap-1;
+  }
+  /* Mobile bottom nav */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around z-50 pb-safe;
+  }
+  .bottom-nav-item {
+    @apply flex flex-col items-center gap-0.5 px-3 py-2 text-gray-400 flex-1;
+  }
+  .bottom-nav-item.active {
+    @apply text-blue-600;
+  }
+}
+
+/* Safe area for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+}

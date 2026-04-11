@@ -1,0 +1,456 @@
+"use client";
+import { useEffect, useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { TrendingUp, Users, BookOpen, AlertTriangle, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { formatPHP, formatDate, UNITS } from "@/lib/utils";
+
+const UNIT_COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6"];
+
+function toYMD(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export default function DashboardPage() {
+  const [data, setData] = useState<any>(null);
+  const [units, setUnits] = useState<string[]>(UNITS);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [from, setFrom] = useState(`${new Date().getFullYear()}-01-01`);
+  const [to, setTo] = useState(`${new Date().getFullYear()}-12-31`);
+  const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
+  const [selectedWeeklyUnits, setSelectedWeeklyUnits] = useState<string[]>([]);
+  const [weeklyMetric, setWeeklyMetric] = useState<"revenue" | "guests">("revenue");
+
+  const fetchDashboard = async () => {
+    const isInitialLoad = !data;
+    if (isInitialLoad) setLoading(true);
+    else setRefreshing(true);
+
+    const params = new URLSearchParams({ from, to });
+    params.set("weeklyDate", weeklyDate);
+    if (selectedWeeklyUnits.length > 0) params.set("weeklyUnits", selectedWeeklyUnits.join(","));
+    try {
+      const res = await fetch(`/api/dashboard?${params.toString()}`);
+      const json = await res.json();
+      setData(json);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => { fetchDashboard(); }, [from, to, weeklyDate, selectedWeeklyUnits]);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.units) && d.units.length > 0) setUnits(d.units);
+      })
+      .catch(() => {});
+  }, []);
+
+  const shiftWeek = (days: number) => {
+    const base = new Date(`${weeklyDate}T12:00:00`);
+    if (Number.isNaN(base.getTime())) return;
+    base.setDate(base.getDate() + days);
+    setWeeklyDate(toYMD(base));
+  };
+
+  const toggleWeeklyUnit = (unitCode: string) => {
+    setSelectedWeeklyUnits((prev) => {
+      if (prev.includes(unitCode)) return prev.filter((u) => u !== unitCode);
+      return [...prev, unitCode];
+    });
+  };
+
+  if (loading && !data) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+    </div>
+  );
+
+  const {
+    summary,
+    revenuePerUnit,
+    monthlyRevenue,
+    outstanding,
+    today: todayData,
+    weekly,
+    weeklyAnalysis,
+  } = data;
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Revenue & booking analytics</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {refreshing && (
+            <div className="flex items-center gap-2 text-xs text-gray-500 mr-1">
+              <span className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-blue-600" />
+              Updating...
+            </div>
+          )}
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input w-auto text-xs" />
+          <span className="text-gray-400 text-xs">to</span>
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input w-auto text-xs" />
+        </div>
+      </div>
+
+      {/* TODAY + WEEK quick links */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link href="/today" className="card p-4 hover:shadow-md transition-shadow group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Today&apos;s Guests</span>
+            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-bold text-gray-900">{todayData?.count ?? 0}</div>
+          <div className="text-xs text-gray-400 mt-1">guests active today</div>
+        </Link>
+        <Link href="/today" className="card p-4 hover:shadow-md transition-shadow group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Week Revenue</span>
+            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+          </div>
+          <div className="text-xl sm:text-2xl font-bold text-blue-700">{formatPHP(weekly?.revenue ?? 0)}</div>
+          <div className="text-xs text-gray-400 mt-1">{weekly?.guests ?? 0} guests this week</div>
+        </Link>
+      </div>
+
+      {/* Main summary stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+        <div className="stat-card col-span-2 sm:col-span-1">
+          <div className="flex items-center gap-1.5 text-blue-600 mb-1">
+            <TrendingUp className="w-4 h-4" />
+            <span className="text-xs font-semibold text-gray-500">Total Revenue</span>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatPHP(summary.totalRevenue)}</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-1.5 text-indigo-600 mb-1">
+            <BookOpen className="w-4 h-4" />
+            <span className="text-xs font-semibold text-gray-500">Bookings</span>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{summary.totalBookings}</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-1.5 text-purple-600 mb-1">
+            <Users className="w-4 h-4" />
+            <span className="text-xs font-semibold text-gray-500">Avg/Booking</span>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatPHP(Math.round(summary.avgPerBooking))}</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-1.5 text-green-600 mb-1">
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-xs font-semibold text-gray-500">Fully Paid</span>
+          </div>
+          <p className="text-2xl font-bold text-green-700">{summary.fullyPaid}</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-1.5 text-yellow-600 mb-1">
+            <Clock className="w-4 h-4" />
+            <span className="text-xs font-semibold text-gray-500">Follow-Ups</span>
+          </div>
+          <p className="text-2xl font-bold text-yellow-700">{summary.followUps}</p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-1.5 text-red-600 mb-1">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-xs font-semibold text-gray-500">Conflicts</span>
+          </div>
+          <p className="text-2xl font-bold text-red-700">{summary.conflicts}</p>
+        </div>
+      </div>
+
+      {/* Payment status bar */}
+      <div className="card p-4 sm:p-5">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Payment Status</h2>
+        {summary.totalBookings > 0 ? (
+          <>
+            <div className="flex rounded-full overflow-hidden h-4 sm:h-5 text-xs">
+              {summary.fullyPaid > 0 && (
+                <div className="bg-green-500 flex items-center justify-center text-white font-medium"
+                  style={{ width: `${(summary.fullyPaid / summary.totalBookings) * 100}%` }}>
+                  {summary.fullyPaid > 2 ? summary.fullyPaid : ""}
+                </div>
+              )}
+              {summary.dpPaid > 0 && (
+                <div className="bg-yellow-400 flex items-center justify-center text-yellow-900 font-medium"
+                  style={{ width: `${(summary.dpPaid / summary.totalBookings) * 100}%` }}>
+                  {summary.dpPaid > 2 ? summary.dpPaid : ""}
+                </div>
+              )}
+              {summary.noDP > 0 && (
+                <div className="bg-red-400 flex items-center justify-center text-white font-medium"
+                  style={{ width: `${(summary.noDP / summary.totalBookings) * 100}%` }}>
+                  {summary.noDP > 2 ? summary.noDP : ""}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />Fully Paid: {summary.fullyPaid}</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />DP Paid: {summary.dpPaid}</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />No DP: {summary.noDP}</span>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-gray-400">No bookings in this date range</p>
+        )}
+      </div>
+
+      {/* Weekly revenue per unit */}
+      <div className="card overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Weekly Revenue per Unit</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {new Date(weekly.startDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} –{" "}
+              {new Date(weekly.endDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-bold text-blue-700">{formatPHP(weekly.revenue)}</div>
+            <div className="text-xs text-gray-400">{weekly.guests} guests</div>
+          </div>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {weekly.perUnit.map((u: any, i: number) => {
+            const maxRev = Math.max(...weekly.perUnit.map((x: any) => x.revenue), 1);
+            const pct = Math.round((u.revenue / maxRev) * 100);
+            return (
+              <div key={u.unitCode} className="px-4 sm:px-5 py-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full inline-block" style={{ background: UNIT_COLORS[i] }} />
+                    <span className="text-sm font-medium text-gray-800">{u.unit}</span>
+                    <span className="text-xs text-gray-400">{u.guests} guest{u.guests !== 1 ? "s" : ""}</span>
+                  </div>
+                  <span className="text-sm font-bold text-gray-900">{formatPHP(u.revenue)}</span>
+                </div>
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: UNIT_COLORS[i] }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Weekly analysis (Sun-Sat): multi-unit checkbox scope */}
+      <div className="card p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Weekly Analysis (Sun-Sat)</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {new Date(weeklyAnalysis.startDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} - {" "}
+              {new Date(weeklyAnalysis.endDate).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={() => shiftWeek(-7)} className="btn-secondary text-xs py-1.5">
+              <ChevronLeft className="w-4 h-4" /> Prev Week
+            </button>
+            <input
+              type="date"
+              className="input py-1.5 text-xs w-auto"
+              value={weeklyDate}
+              onChange={(e) => setWeeklyDate(e.target.value)}
+            />
+            <button type="button" onClick={() => shiftWeek(7)} className="btn-secondary text-xs py-1.5">
+              Next Week <ChevronRight className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-medium text-gray-500">Scope</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">
+          <label className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selectedWeeklyUnits.length === 0}
+              onChange={() => setSelectedWeeklyUnits([])}
+            />
+            All Units
+          </label>
+          {units.map((u) => (
+            <label key={u} className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedWeeklyUnits.includes(u)}
+                onChange={() => toggleWeeklyUnit(u)}
+              />
+              Unit {u}
+            </label>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setWeeklyMetric("revenue")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              weeklyMetric === "revenue"
+                ? "bg-blue-600 text-white"
+                : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+            }`}
+          >
+            Revenue
+          </button>
+          <button
+            type="button"
+            onClick={() => setWeeklyMetric("guests")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              weeklyMetric === "guests"
+                ? "bg-emerald-600 text-white"
+                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+            }`}
+          >
+            Guests
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="bg-blue-50 rounded-xl p-3">
+            <p className="text-[11px] uppercase tracking-wide text-blue-700 font-semibold">Revenue ({weeklyAnalysis.label})</p>
+            <p className="text-xl font-bold text-blue-800 mt-0.5">{formatPHP(weeklyAnalysis.revenue)}</p>
+          </div>
+          <div className="bg-emerald-50 rounded-xl p-3">
+            <p className="text-[11px] uppercase tracking-wide text-emerald-700 font-semibold">Guests ({weeklyAnalysis.label})</p>
+            <p className="text-xl font-bold text-emerald-800 mt-0.5">{weeklyAnalysis.guests}</p>
+          </div>
+        </div>
+
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={weeklyAnalysis.days} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+            <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+            <YAxis
+              tick={{ fontSize: 10 }}
+              tickFormatter={(v) =>
+                weeklyMetric === "revenue" ? `${(v / 1000).toFixed(0)}k` : `${v}`
+              }
+            />
+            <Tooltip
+              formatter={(value: number, name: string) => {
+                if (name === "revenue") return formatPHP(value);
+                if (name === "guests") return `${value} guests`;
+                return `${value}`;
+              }}
+              labelFormatter={(label: string, payload: any[]) => {
+                const d = payload?.[0]?.payload?.date;
+                return d ? `${label} (${new Date(d).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})` : label;
+              }}
+            />
+            <Bar
+              dataKey={weeklyMetric}
+              fill={weeklyMetric === "revenue" ? "#3b82f6" : "#059669"}
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Charts — stacked on mobile, side by side on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="card p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Monthly Revenue (₱)</h2>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={monthlyRevenue} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => formatPHP(v)} />
+              <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="card p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Revenue per Unit</h2>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={revenuePerUnit} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+              <XAxis dataKey="unit" tick={{ fontSize: 9 }} tickFormatter={(v) => v.replace("Unit ", "")} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => formatPHP(v)} />
+              <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
+                {revenuePerUnit.map((_: any, i: number) => <Cell key={i} fill={UNIT_COLORS[i % UNIT_COLORS.length]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Per-unit analytics table — scrollable on mobile */}
+      <div className="card overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">Per-Unit Analytics</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+              <tr>
+                {["Unit", "Revenue", "Guests", "Fully Paid", "DP Paid", "No DP"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {revenuePerUnit.map((row: any, i: number) => (
+                <tr key={row.unit} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full inline-block" style={{ background: UNIT_COLORS[i] }} />
+                      {row.unit}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-semibold text-blue-700">{formatPHP(row.revenue)}</td>
+                  <td className="px-4 py-3">{row.guests}</td>
+                  <td className="px-4 py-3 text-green-700">{row.fullyPaid}</td>
+                  <td className="px-4 py-3 text-yellow-700">{row.dpPaid}</td>
+                  <td className="px-4 py-3 text-red-700">{row.noDP}</td>
+                </tr>
+              ))}
+              <tr className="bg-gray-50 font-semibold text-xs border-t-2 border-gray-200">
+                <td className="px-4 py-3">TOTAL</td>
+                <td className="px-4 py-3 text-blue-700">{formatPHP(summary.totalRevenue)}</td>
+                <td className="px-4 py-3">{summary.totalBookings}</td>
+                <td className="px-4 py-3 text-green-700">{summary.fullyPaid}</td>
+                <td className="px-4 py-3 text-yellow-700">{summary.dpPaid}</td>
+                <td className="px-4 py-3 text-red-700">{summary.noDP}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Outstanding balances */}
+      {outstanding.length > 0 && (
+        <div className="card overflow-hidden">
+          <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-yellow-600" />
+            <h2 className="text-sm font-semibold text-gray-700">Outstanding Balances ({outstanding.length})</h2>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {outstanding.map((b: any) => (
+              <div key={b.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{b.guestName}</p>
+                  <p className="text-xs text-gray-400">Unit {b.unit} · {formatDate(b.checkIn)}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-red-600">{formatPHP(b.remainingBalance)}</p>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">{b.paymentStatus}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
