@@ -68,6 +68,7 @@ export const bills = pgTable("bills", {
   billDate: timestamp("bill_date", { mode: "date" }).notNull(),
   dueDate: timestamp("due_date", { mode: "date" }),
   paidDate: timestamp("paid_date", { mode: "date" }),
+  paymentMethod: text("payment_method"), // cash, transfer, gcash, etc.
   status: text("status").notNull().default("pending"), // pending, paid, overdue
   category: text("category"), // utilities, supplies, maintenance, etc.
   notes: text("notes"),
@@ -80,7 +81,8 @@ export const wages = pgTable("wages", {
   employeeName: text("employee_name").notNull(),
   amount: integer("amount").notNull(),
   payDate: timestamp("pay_date", { mode: "date" }).notNull(),
-  period: text("period"), // "April 2026", "2026-04-01 to 2026-04-15", etc.
+  dueDate: timestamp("due_date", { mode: "date" }),
+  paymentMethod: text("payment_method"), // cash, transfer, gcash, etc.
   status: text("status").notNull().default("pending"), // pending, paid
   notes: text("notes"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
@@ -92,6 +94,7 @@ export const expenses = pgTable("expenses", {
   description: text("description").notNull(),
   amount: integer("amount").notNull(),
   expenseDate: timestamp("expense_date", { mode: "date" }).notNull(),
+  dueDate: timestamp("due_date", { mode: "date" }),
   category: text("category"), // supplies, maintenance, utilities, food, etc.
   paymentMethod: text("payment_method"), // cash, check, transfer, etc.
   status: text("status").notNull().default("pending"), // pending, paid

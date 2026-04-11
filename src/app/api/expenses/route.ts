@@ -25,13 +25,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { description, amount, expenseDate, category, paymentMethod, notes } = body;
+    const { description, amount, expenseDate, dueDate, category, paymentMethod, notes } = body;
 
     if (!description || amount === undefined || !expenseDate) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const expenseDateObj = new Date(expenseDate);
+    const dueDateObj = dueDate ? new Date(dueDate) : null;
 
     const inserted = await db
       .insert(expenses)
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
         description,
         amount: Math.round(amount),
         expenseDate: expenseDateObj,
+        dueDate: dueDateObj,
         category,
         paymentMethod,
         notes,

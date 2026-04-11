@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { description, amount, billDate, dueDate, category, notes } = body;
+    const { description, amount, billDate, dueDate, paymentMethod, category, notes } = body;
 
     if (!description || amount === undefined || !billDate) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
         amount: Math.round(amount),
         billDate: billDateObj,
         dueDate: dueDateObj,
+        paymentMethod,
         category,
         notes,
         status: "pending",

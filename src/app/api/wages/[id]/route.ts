@@ -27,9 +27,10 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { employeeName, amount, payDate, period, status, notes, paidDate } = body;
+    const { employeeName, amount, payDate, dueDate, paymentMethod, status, notes, paidDate } = body;
 
     const payDateObj = payDate ? new Date(payDate) : undefined;
+    const dueDateObj = dueDate ? new Date(dueDate) : null;
     const paidDateObj = paidDate ? new Date(paidDate) : null;
 
     const updated = await db
@@ -38,7 +39,8 @@ export async function PUT(
         employeeName,
         amount: amount !== undefined ? Math.round(amount) : undefined,
         payDate: payDateObj,
-        period,
+        dueDate: dueDateObj,
+        paymentMethod,
         status,
         notes,
         updatedAt: new Date(),
