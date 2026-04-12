@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings, unitConfigs } from "@/lib/schema";
 import { gte, lte, and, asc } from "drizzle-orm";
-import { UNITS as DEFAULT_UNITS, toYMD } from "@/lib/utils";
+import { UNITS as DEFAULT_UNITS, getSundayToSaturdayWeek, toYMD } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -61,24 +61,11 @@ export async function GET(req: NextRequest) {
     });
 
     // ── THIS WEEK (Sunday → Saturday) ─────────────────────────────────────
-    const weeklyAnchor = weeklyDateParam
-      ? new Date(`${weeklyDateParam}T12:00:00`)
-      : new Date(`${todayStr}T12:00:00`);
-    const anchor = Number.isNaN(weeklyAnchor.getTime()) ? new Date() : weeklyAnchor;
-
-    const weekStart = new Date(anchor);
-    weekStart.setDate(anchor.getDate() - anchor.getDay());
-    weekStart.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    weekEnd.setHours(23, 59, 59, 999);
-    const weekStartKey = new Date(weekStart);
-    weekStartKey.setHours(12, 0, 0, 0);
-    const weekEndKey = new Date(weekStart);
-    weekEndKey.setDate(weekStart.getDate() + 6);
-    weekEndKey.setHours(12, 0, 0, 0);
-    const weekStartYMD = toYMD(weekStartKey);
-    const weekEndYMD = toYMD(weekEndKey);
+    const week = getSundayToSaturdayWeek(weeklyDateParam || todayStr);
+    const weekStart = week.start;
+    const weekEnd = week.end;
+    const weekStartYMD = week.startDate;
+    const weekEndYMD = week.endDate;
 
     const weekBookings = all.filter((b) => {
       const ci = toYMD(b.checkIn);
@@ -92,7 +79,7 @@ export async function GET(req: NextRequest) {
     const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const weeklyAnalysisDays = WEEKDAY.map((day, i) => {
       const dayDate = new Date(weekStart);
-      dayDate.setDate(weekStart.getDate() + i);
+      dayDate.setUTCDate(weekStart.getUTCDate() + i);
       const dayStr = toYMD(dayDate);
 
       const dayBookings = weekBookingsFiltered.filter((b) => {

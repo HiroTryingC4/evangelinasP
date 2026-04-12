@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { and, eq, gt, lt, ne } from "drizzle-orm";
-import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToPHDate } from "@/lib/utils";
+import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToUTCDate } from "@/lib/utils";
 
 // GET /api/bookings/[id]
 export async function GET(
@@ -39,8 +39,8 @@ export async function PUT(
 
     // Strip "Unit " prefix if sent
     const unitCode = String(body.unit).replace(/^Unit\s*/i, "");
-    const checkInDate = parseYMDToPHDate(body.checkIn);
-    const checkOutDate = parseYMDToPHDate(body.checkOut);
+    const checkInDate = parseYMDToUTCDate(body.checkIn);
+    const checkOutDate = parseYMDToUTCDate(body.checkOut);
 
     // Re-check conflicts on edit, excluding this booking.
     const conflicts = await db
@@ -90,11 +90,11 @@ export async function PUT(
         hoursStayed:      Number(body.hoursStayed) || 0,
         totalFee:         total,
         dpAmount:         dp,
-        dpDate:           body.dpDate       ? parseYMDToPHDate(body.dpDate)  : null,
+        dpDate:           body.dpDate       ? parseYMDToUTCDate(body.dpDate)  : null,
         dpMethod:         body.dpMethod     || null,
         dpReceivedBy:     body.dpReceivedBy || null,
         fpAmount:         fp,
-        fpDate:           body.fpDate       ? parseYMDToPHDate(body.fpDate)  : null,
+        fpDate:           body.fpDate       ? parseYMDToUTCDate(body.fpDate)  : null,
         fpMethod:         body.fpMethod     || null,
         fpReceivedBy:     body.fpReceivedBy || null,
         remainingBalance: calcRemaining(dp, fp, total),

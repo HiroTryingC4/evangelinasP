@@ -11,13 +11,6 @@ export function calcRemaining(dp: number, fp: number, total: number): number {
 
 const PH_TIME_ZONE = "Asia/Manila";
 
-const phDateFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: PH_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
 const phMonthFormatter = new Intl.DateTimeFormat("en-PH", {
   timeZone: PH_TIME_ZONE,
   month: "short",
@@ -30,10 +23,10 @@ export function formatPHP(amount: number): string {
 export function toYMD(date: string | Date | null | undefined): string {
   if (!date) return "";
 
-  const parts = phDateFormatter.formatToParts(new Date(date));
-  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
-  const month = parts.find((part) => part.type === "month")?.value ?? "01";
-  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  const value = new Date(date);
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(value.getUTCDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -78,22 +71,25 @@ export function hasUnitTimeConflict(
 
 export function formatDate(date: string | Date | null): string {
   if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-PH", {
-    timeZone: PH_TIME_ZONE,
-    year: "numeric", month: "short", day: "numeric",
-  });
+  const value = new Date(date);
+  return new Intl.DateTimeFormat("en-PH", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(value);
 }
 
-export function parseYMDToPHDate(value: string | Date): Date {
+export function parseYMDToUTCDate(value: string | Date): Date {
   if (value instanceof Date) {
     return new Date(value.getTime());
   }
 
-  return new Date(`${value}T12:00:00`);
+  return new Date(`${value}T00:00:00Z`);
 }
 
 function toPhNoonDate(date: string | Date): Date {
-  return parseYMDToPHDate(date);
+  return parseYMDToUTCDate(date);
 }
 
 export function formatWeekRange(startDate: string | Date, endDate: string | Date): string {
@@ -117,14 +113,14 @@ export function formatWeekRange(startDate: string | Date, endDate: string | Date
 }
 
 export function getSundayToSaturdayWeek(date: string | Date) {
-  const anchor = toPhNoonDate(date);
+  const anchor = parseYMDToUTCDate(date);
   const weekStart = new Date(anchor);
-  weekStart.setDate(anchor.getDate() - anchor.getDay());
-  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setUTCDate(anchor.getUTCDate() - anchor.getUTCDay());
+  weekStart.setUTCHours(0, 0, 0, 0);
 
   const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  weekEnd.setHours(23, 59, 59, 999);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+  weekEnd.setUTCHours(23, 59, 59, 999);
 
   return {
     start: weekStart,

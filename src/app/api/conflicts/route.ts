@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { and, eq, lt, gt, ne } from "drizzle-orm";
-import { hasUnitTimeConflict, parseYMDToPHDate } from "@/lib/utils";
+import { hasUnitTimeConflict, parseYMDToUTCDate } from "@/lib/utils";
 
 // POST /api/conflicts
 // Body: { unit, checkIn, checkOut, excludeId? }
@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ hasConflict: false, conflicts: [] });
     }
 
-    const checkInDate  = parseYMDToPHDate(checkIn);
-    const checkOutDate = parseYMDToPHDate(checkOut);
+    const checkInDate  = parseYMDToUTCDate(checkIn);
+    const checkOutDate = parseYMDToUTCDate(checkOut);
 
     const conditions = [
       eq(bookings.unit,    unit),
