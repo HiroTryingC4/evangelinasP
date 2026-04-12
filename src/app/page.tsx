@@ -353,14 +353,22 @@ export default function DashboardPage() {
               }
             />
             <Tooltip
-              formatter={(value: number, name: string) => {
-                if (name === "revenue") return formatPHP(value);
-                if (name === "guests") return `${value} guests`;
-                return `${value}`;
-              }}
-              labelFormatter={(label: string, payload: any[]) => {
-                const d = payload?.[0]?.payload?.date;
-                return d ? `${label} (${new Date(d).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})` : label;
+              content={({ active, payload, label }) => {
+                if (!active || !payload || payload.length === 0) return null;
+                const day = payload[0]?.payload;
+                const dateLabel = day?.date
+                  ? new Date(day.date).toLocaleDateString("en-PH", { month: "short", day: "numeric" })
+                  : "";
+
+                return (
+                  <div className="rounded border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                    <p className="text-sm font-medium text-gray-900">
+                      {label}{dateLabel ? ` (${dateLabel})` : ""}
+                    </p>
+                    <p className="text-sm text-blue-600">revenue : {formatPHP(day?.revenue ?? 0)}</p>
+                    <p className="text-sm text-emerald-600">guests : {day?.guests ?? 0}</p>
+                  </div>
+                );
               }}
             />
             <Bar
