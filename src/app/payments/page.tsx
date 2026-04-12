@@ -25,7 +25,7 @@ type PaymentRecord = {
 
 export default function PaymentsPage() {
   const [records, setRecords] = useState<PaymentRecord[]>([]);
-  const [receiverFilter, setReceiverFilter] = useState("");
+  const [receiverFilters, setReceiverFilters] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [balanceFilter, setBalanceFilter] = useState("");
@@ -48,6 +48,13 @@ export default function PaymentsPage() {
     if (Number.isNaN(base.getTime())) return;
     base.setDate(base.getDate() + days);
     setWeeklyDate(toYMD(base));
+  };
+
+  const toggleReceiver = (receiver: string) => {
+    setReceiverFilters((current) => {
+      if (current.includes(receiver)) return current.filter((item) => item !== receiver);
+      return [...current, receiver];
+    });
   };
 
   useEffect(() => {
@@ -73,7 +80,7 @@ export default function PaymentsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return records.filter((record) => {
-      if (receiverFilter && record.receivedBy !== receiverFilter) return false;
+      if (receiverFilters.length > 0 && !receiverFilters.includes(record.receivedBy ?? "")) return false;
       if (typeFilter && record.paymentType !== typeFilter) return false;
       if (statusFilter && record.paymentStatus !== statusFilter) return false;
       if (balanceFilter === "with" && record.remainingBalance <= 0) return false;
@@ -85,7 +92,7 @@ export default function PaymentsPage() {
         (record.receivedBy ?? "").toLowerCase().includes(q)
       );
     });
-  }, [records, receiverFilter, typeFilter, statusFilter, balanceFilter, search]);
+  }, [records, receiverFilters, typeFilter, statusFilter, balanceFilter, search]);
 
   const totals = useMemo(() => {
     const dpCount = filtered.filter((r) => r.paymentType === "DP").length;
@@ -216,18 +223,48 @@ export default function PaymentsPage() {
             <option value="with">With balance</option>
             <option value="settled">Fully settled</option>
           </select>
-          <select className="input" value={receiverFilter} onChange={(e) => setReceiverFilter(e.target.value)}>
-            <option value="">All receivers</option>
-            {receivers.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
           <select className="input" value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value as "week" | "all") }>
             <option value="week">This week</option>
             <option value="all">All records</option>
           </select>
         </div>
       </div>
+
+      {receivers.length > 0 && (
+        <div className="card p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">Received By</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Check one or more people to show only the payments they handled</p>
+            </div>
+            {receiverFilters.length > 0 && (
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:underline"
+                onClick={() => setReceiverFilters([])}
+              >
+                Clear receiver filters
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {receivers.map((name) => (
+              <label
+                key={name}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${receiverFilters.includes(name) ? "border-blue-300 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={receiverFilters.includes(name)}
+                  onChange={() => toggleReceiver(name)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="truncate">{name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="card p-8 text-center text-gray-400">No payment records found</div>
