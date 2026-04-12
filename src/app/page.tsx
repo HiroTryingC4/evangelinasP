@@ -125,8 +125,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Main summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
-        <div className="stat-card col-span-2 sm:col-span-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+        <div className="stat-card">
           <div className="flex items-center gap-1.5 text-blue-600 mb-1">
             <TrendingUp className="w-4 h-4" />
             <span className="text-xs font-semibold text-gray-500">Expected Revenue</span>
@@ -134,6 +134,17 @@ export default function DashboardPage() {
           <p className="text-2xl font-bold text-gray-900">{formatPHP(summary.expectedRevenue ?? summary.totalRevenue)}</p>
           <p className="text-[11px] text-gray-400 mt-1">Projected from booked stays</p>
         </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-1.5 text-emerald-600 mb-1">
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-xs font-semibold text-gray-500">Active Revenue</span>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatPHP(summary.activeRevenue ?? 0)}</p>
+          <p className="text-[11px] text-gray-400 mt-1">Already collected from bookings</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
         <div className="stat-card">
           <div className="flex items-center gap-1.5 text-indigo-600 mb-1">
             <BookOpen className="w-4 h-4" />
