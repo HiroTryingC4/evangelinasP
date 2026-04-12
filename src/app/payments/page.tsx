@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, CreditCard, Users, Search, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { formatPHP, formatDate, STATUS_COLOR, PAYMENT_METHODS } from "@/lib/utils";
+import { formatPHP, formatDate, formatWeekRange, getSundayToSaturdayWeek, STATUS_COLOR, PAYMENT_METHODS } from "@/lib/utils";
 
 type PaymentRecord = {
   id: string;
@@ -142,14 +142,7 @@ export default function PaymentsPage() {
             <p className="text-xs text-gray-400 mt-0.5">
               {scopeFilter === "all"
                 ? "All payment records"
-                : `${new Date(`${weeklyDate}T12:00:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} - ${(() => {
-                    const base = new Date(`${weeklyDate}T12:00:00`);
-                    const start = new Date(base);
-                    start.setDate(base.getDate() - base.getDay());
-                    const end = new Date(start);
-                    end.setDate(start.getDate() + 6);
-                    return end.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
-                  })()}`}
+                : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

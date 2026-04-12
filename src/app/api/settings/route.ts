@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { receiverPersons, unitConfigs } from "@/lib/schema";
 import { STAFF, UNITS } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 function normalizeUnitCode(value: string): string {
   return value.trim().replace(/^Unit\s*/i, "");
 }

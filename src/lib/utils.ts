@@ -18,6 +18,11 @@ const phDateFormatter = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
+const phMonthFormatter = new Intl.DateTimeFormat("en-PH", {
+  timeZone: PH_TIME_ZONE,
+  month: "short",
+});
+
 export function formatPHP(amount: number): string {
   return "₱" + Number(amount).toLocaleString("en-PH");
 }
@@ -33,12 +38,97 @@ export function toYMD(date: string | Date | null | undefined): string {
   return `${year}-${month}-${day}`;
 }
 
+export function parseTimeToMinutes(time: string | null | undefined): number {
+  if (!time) return 0;
+  const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return 0;
+
+  let hours = Number(match[1]) % 12;
+  const minutes = Number(match[2]);
+  if (match[3].toUpperCase() === "PM") hours += 12;
+  return hours * 60 + minutes;
+}
+
+function ymdToDayNumber(ymd: string): number {
+  const [year, month, day] = ymd.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+}
+
+export function toAbsoluteMinutes(date: string | Date, time: string | null | undefined): number {
+  const dayNumber = ymdToDayNumber(toYMD(date));
+  return dayNumber * 1440 + parseTimeToMinutes(time);
+}
+
+export function hasUnitTimeConflict(
+  a: { checkIn: string | Date; checkInTime?: string | null; checkOut: string | Date; checkOutTime?: string | null },
+  b: { checkIn: string | Date; checkInTime?: string | null; checkOut: string | Date; checkOutTime?: string | null },
+  minGapMinutes = 60
+): boolean {
+  const aStart = toAbsoluteMinutes(a.checkIn, a.checkInTime);
+  const aEndRaw = toAbsoluteMinutes(a.checkOut, a.checkOutTime);
+  const bStart = toAbsoluteMinutes(b.checkIn, b.checkInTime);
+  const bEndRaw = toAbsoluteMinutes(b.checkOut, b.checkOutTime);
+
+  const aEnd = Math.max(aStart, aEndRaw);
+  const bEnd = Math.max(bStart, bEndRaw);
+
+  const hasEnoughGap = aEnd + minGapMinutes <= bStart || bEnd + minGapMinutes <= aStart;
+  return !hasEnoughGap;
+}
+
 export function formatDate(date: string | Date | null): string {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("en-PH", {
     timeZone: PH_TIME_ZONE,
     year: "numeric", month: "short", day: "numeric",
   });
+}
+
+function toPhNoonDate(date: string | Date): Date {
+  if (date instanceof Date) {
+    return new Date(date.getTime());
+  }
+
+  return new Date(`${date}T12:00:00`);
+}
+
+export function formatWeekRange(startDate: string | Date, endDate: string | Date): string {
+  const start = toPhNoonDate(startDate);
+  const end = toPhNoonDate(endDate);
+
+  const startMonth = phMonthFormatter.format(start);
+  const endMonth = phMonthFormatter.format(end);
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const sameMonth = sameYear && start.getMonth() === end.getMonth();
+
+  if (sameMonth) {
+    return `${startMonth} ${start.getDate()} - ${end.getDate()}`;
+  }
+
+  if (sameYear) {
+    return `${startMonth} ${start.getDate()} - ${endMonth} ${end.getDate()}`;
+  }
+
+  return `${startMonth} ${start.getDate()}, ${start.getFullYear()} - ${endMonth} ${end.getDate()}, ${end.getFullYear()}`;
+}
+
+export function getSundayToSaturdayWeek(date: string | Date) {
+  const anchor = toPhNoonDate(date);
+  const weekStart = new Date(anchor);
+  weekStart.setDate(anchor.getDate() - anchor.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  return {
+    start: weekStart,
+    end: weekEnd,
+    startDate: toYMD(weekStart),
+    endDate: toYMD(weekEnd),
+    label: formatWeekRange(weekStart, weekEnd),
+  };
 }
 
 export const UNITS = ["1116", "1118", "1245", "1558", "1845"];

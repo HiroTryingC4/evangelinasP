@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
-import { and, eq, lt, gt, ne, sql } from "drizzle-orm";
+import { and, eq, lt, gt, ne } from "drizzle-orm";
+import { hasUnitTimeConflict } from "@/lib/utils";
 
 // POST /api/conflicts
 // Body: { unit, checkIn, checkOut, excludeId? }
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { checkIn, checkOut, excludeId } = body;
+    const { checkIn, checkInTime, checkOut, checkOutTime, excludeId } = body;
 
     // Normalise unit — strip "Unit " prefix
     const unit = String(body.unit).replace(/^Unit\s*/i, "");
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
     const found = await db
       .select({
         id:           bookings.id,
+        unit:         bookings.unit,
         guestName:    bookings.guestName,
         checkIn:      bookings.checkIn,
         checkOut:     bookings.checkOut,
@@ -42,9 +44,22 @@ export async function POST(req: NextRequest) {
       .from(bookings)
       .where(and(...conditions));
 
+    const preciseConflicts = found.filter((existing) =>
+      hasUnitTimeConflict(
+        {
+          checkIn,
+          checkInTime: checkInTime || "2:00 PM",
+          checkOut,
+          checkOutTime: checkOutTime || "12:00 PM",
+        },
+        existing,
+        0
+      )
+    );
+
     return NextResponse.json({
-      hasConflict: found.length > 0,
-      conflicts:   found,
+      hasConflict: preciseConflicts.length > 0,
+      conflicts:   preciseConflicts,
     });
   } catch (e) {
     console.error("[POST /api/conflicts]", e);

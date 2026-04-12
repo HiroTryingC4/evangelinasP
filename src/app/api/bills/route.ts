@@ -3,9 +3,11 @@ import { db } from "@/lib/db";
 import { bills } from "@/lib/schema";
 import { desc, eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const status = searchParams.get("status");
 
     let query: any = db.select().from(bills);

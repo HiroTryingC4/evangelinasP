@@ -100,7 +100,14 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
     fetch("/api/conflicts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ unit: form.unit, checkIn: form.checkIn, checkOut: form.checkOut, excludeId: booking?.id }),
+      body: JSON.stringify({
+        unit: form.unit,
+        checkIn: form.checkIn,
+        checkInTime: form.checkInTime,
+        checkOut: form.checkOut,
+        checkOutTime: form.checkOutTime,
+        excludeId: booking?.id,
+      }),
       signal: ctrl.signal,
     })
       .then((r) => r.json())
@@ -108,7 +115,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
       .catch(() => {})
       .finally(() => setChecking(false));
     return () => ctrl.abort();
-  }, [form.unit, form.checkIn, form.checkOut]);
+  }, [form.unit, form.checkIn, form.checkInTime, form.checkOut, form.checkOutTime]);
 
   const dp      = Number(form.dpAmount)  || 0;
   const fp      = Number(form.fpAmount)  || 0;
@@ -260,7 +267,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
                 <p className="text-sm font-semibold text-red-700">Unit conflict detected!</p>
                 {conflict.map((c: any) => (
                   <p key={c.id} className="text-xs text-red-600 mt-0.5">
-                    {c.guestName} — {new Date(c.checkIn).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })} to {new Date(c.checkOut).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })}
+                    Unit {c.unit} - {c.guestName} ({c.checkInTime} to {c.checkOutTime})
                   </p>
                 ))}
               </div>

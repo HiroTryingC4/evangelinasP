@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Phone, Clock, AlertCircle, CheckCircle, Users, TrendingUp, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { formatPHP, formatDate, STATUS_COLOR, toYMD } from "@/lib/utils";
+import { formatPHP, formatDate, formatWeekRange, STATUS_COLOR, toYMD } from "@/lib/utils";
 
 const UNIT_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   "1116": { bg: "bg-blue-50",   text: "text-blue-800",   dot: "bg-blue-500"   },
@@ -138,8 +138,7 @@ export default function TodayPage() {
               Weekly Revenue by Unit
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {new Date(weekly.startDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} –{" "}
-              {new Date(weekly.endDate).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+              {formatWeekRange(weekly.startDate, weekly.endDate)}
             </p>
           </div>
           <div className="text-right">

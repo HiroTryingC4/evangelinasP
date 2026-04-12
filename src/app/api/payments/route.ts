@@ -3,9 +3,11 @@ import { desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const type = searchParams.get("type");
     const receiver = searchParams.get("receiver");
     const weeklyDateParam = searchParams.get("weeklyDate");

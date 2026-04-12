@@ -4,9 +4,11 @@ import { bookings, unitConfigs } from "@/lib/schema";
 import { gte, lte, and, asc } from "drizzle-orm";
 import { UNITS as DEFAULT_UNITS, toYMD } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
 
     // Date filter defaults to current year
     const year = new Date().getFullYear();

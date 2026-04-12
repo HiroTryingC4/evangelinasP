@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { and, eq, gt, lt, ne } from "drizzle-orm";
-import { calcPaymentStatus, calcRemaining } from "@/lib/utils";
+import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict } from "@/lib/utils";
 
 // GET /api/bookings/[id]
 export async function GET(
@@ -44,7 +44,14 @@ export async function PUT(
 
     // Re-check conflicts on edit, excluding this booking.
     const conflicts = await db
-      .select({ id: bookings.id })
+      .select({
+        id: bookings.id,
+        unit: bookings.unit,
+        checkIn: bookings.checkIn,
+        checkInTime: bookings.checkInTime,
+        checkOut: bookings.checkOut,
+        checkOutTime: bookings.checkOutTime,
+      })
       .from(bookings)
       .where(
         and(
@@ -55,7 +62,20 @@ export async function PUT(
         )
       );
 
-    const hasConflict = conflicts.length > 0 ? "CONFLICT" : "OK";
+    const preciseConflicts = conflicts.filter((existing) =>
+      hasUnitTimeConflict(
+        {
+          checkIn: checkInDate,
+          checkInTime: body.checkInTime || "2:00 PM",
+          checkOut: checkOutDate,
+          checkOutTime: body.checkOutTime || "12:00 PM",
+        },
+        existing,
+        0
+      )
+    );
+
+    const hasConflict = preciseConflicts.length > 0 ? "CONFLICT" : "OK";
 
     const [updated] = await db
       .update(bookings)

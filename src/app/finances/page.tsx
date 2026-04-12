@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trash2, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
-import { formatPHP, formatDate, UNITS } from "@/lib/utils";
+import { formatPHP, formatDate, formatWeekRange, UNITS } from "@/lib/utils";
 
 function toYMD(date: Date): string {
   const y = date.getFullYear();
@@ -293,8 +293,7 @@ export default function FinancesPage() {
           <div>
             <p className="text-xs text-gray-500 uppercase tracking-wide">Weekly Totals</p>
             <p className="text-xs text-gray-400 mt-1">
-              {new Date(weekStart).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} - {" "}
-              {new Date(weekEnd).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+              {formatWeekRange(weekStart, weekEnd)}
             </p>
             <p className="text-[11px] text-gray-400 mt-0.5">Revenue scope below applies to both weekly and monthly net.</p>
           </div>

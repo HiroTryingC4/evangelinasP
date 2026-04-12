@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { TrendingUp, Users, BookOpen, AlertTriangle, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { formatPHP, formatDate, UNITS } from "@/lib/utils";
+import { formatPHP, formatDate, formatWeekRange, UNITS } from "@/lib/utils";
 
 const UNIT_COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6"];
 
@@ -224,8 +224,7 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Weekly Revenue per Unit</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {new Date(weekly.startDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} –{" "}
-              {new Date(weekly.endDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}
+              {formatWeekRange(weekly.startDate, weekly.endDate)}
             </p>
           </div>
           <div className="text-right">
@@ -262,8 +261,7 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Weekly Analysis (Sun-Sat)</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {new Date(weeklyAnalysis.startDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} - {" "}
-              {new Date(weeklyAnalysis.endDate).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+              {formatWeekRange(weeklyAnalysis.startDate, weeklyAnalysis.endDate)}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

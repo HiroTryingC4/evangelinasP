@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { eq, and, lt, gt, asc } from "drizzle-orm";
-import { calcPaymentStatus, calcRemaining, toYMD } from "@/lib/utils";
+import { calcPaymentStatus, calcRemaining, toYMD, hasUnitTimeConflict } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
 
 // GET /api/bookings?unit=1558&status=DP+Paid
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const unit   = searchParams.get("unit");
     const status = searchParams.get("status");
     const view   = searchParams.get("view") || "all";
@@ -52,9 +54,17 @@ export async function POST(req: NextRequest) {
     const checkIn  = new Date(body.checkIn);
     const checkOut = new Date(body.checkOut);
 
-    // Conflict check — same unit, overlapping date range
+    // Pre-filter candidates by date overlap, then perform time-aware conflict check.
     const conflicts = await db
-      .select({ id: bookings.id, guestName: bookings.guestName })
+      .select({
+        id: bookings.id,
+        guestName: bookings.guestName,
+        unit: bookings.unit,
+        checkIn: bookings.checkIn,
+        checkInTime: bookings.checkInTime,
+        checkOut: bookings.checkOut,
+        checkOutTime: bookings.checkOutTime,
+      })
       .from(bookings)
       .where(
         and(
@@ -64,7 +74,20 @@ export async function POST(req: NextRequest) {
         )
       );
 
-    const hasConflict = conflicts.length > 0 ? "CONFLICT" : "OK";
+    const preciseConflicts = conflicts.filter((existing) =>
+      hasUnitTimeConflict(
+        {
+          checkIn,
+          checkInTime: body.checkInTime || "2:00 PM",
+          checkOut,
+          checkOutTime: body.checkOutTime || "12:00 PM",
+        },
+        existing,
+        0
+      )
+    );
+
+    const hasConflict = preciseConflicts.length > 0 ? "CONFLICT" : "OK";
 
     const [newBooking] = await db
       .insert(bookings)
