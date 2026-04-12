@@ -137,10 +137,10 @@ export default function DashboardPage() {
         <div className="stat-card">
           <div className="flex items-center gap-1.5 text-emerald-600 mb-1">
             <CheckCircle className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Active Revenue</span>
+            <span className="text-xs font-semibold text-gray-500">Collected Revenue</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatPHP(summary.activeRevenue ?? 0)}</p>
-          <p className="text-[11px] text-gray-400 mt-1">Already collected from bookings</p>
+          <p className="text-2xl font-bold text-gray-900">{formatPHP(summary.collectedRevenue ?? summary.activeRevenue ?? 0)}</p>
+          <p className="text-[11px] text-gray-400 mt-1">Down payments + full payments received</p>
         </div>
       </div>
 
