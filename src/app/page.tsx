@@ -129,9 +129,10 @@ export default function DashboardPage() {
         <div className="stat-card col-span-2 sm:col-span-1">
           <div className="flex items-center gap-1.5 text-blue-600 mb-1">
             <TrendingUp className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Total Revenue</span>
+            <span className="text-xs font-semibold text-gray-500">Expected Revenue</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatPHP(summary.totalRevenue)}</p>
+          <p className="text-2xl font-bold text-gray-900">{formatPHP(summary.expectedRevenue ?? summary.totalRevenue)}</p>
+          <p className="text-[11px] text-gray-400 mt-1">Projected from booked stays</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-1.5 text-indigo-600 mb-1">

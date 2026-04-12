@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
 
     // ── FILTERED SUMMARY ───────────────────────────────────────────────────
     const totalRevenue   = filtered.reduce((s, b) => s + b.totalFee, 0);
+    const expectedRevenue = totalRevenue;
     const totalBookings  = filtered.length;
     const avgPerBooking  = totalBookings > 0 ? totalRevenue / totalBookings : 0;
     const fullyPaid      = filtered.filter((b) => b.paymentStatus === "Fully Paid").length;
@@ -163,6 +164,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       summary: {
         totalRevenue,
+        expectedRevenue,
         totalBookings,
         avgPerBooking,
         fullyPaid,
