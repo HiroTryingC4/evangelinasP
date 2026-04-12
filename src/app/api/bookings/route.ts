@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { eq, and, lt, gt, asc } from "drizzle-orm";
-import { calcPaymentStatus, calcRemaining } from "@/lib/utils";
+import { calcPaymentStatus, calcRemaining, toYMD } from "@/lib/utils";
 
 // GET /api/bookings?unit=1558&status=DP+Paid
 export async function GET(req: NextRequest) {
@@ -21,15 +21,13 @@ export async function GET(req: NextRequest) {
     if (status) all = all.filter((b) => b.paymentStatus === status);
 
     if (view === "upcoming") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      all = all.filter((b) => new Date(b.checkOut) >= today);
+      const today = toYMD(new Date());
+      all = all.filter((b) => toYMD(b.checkOut) >= today);
     }
 
     if (view === "past") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      all = all.filter((b) => new Date(b.checkOut) < today);
+      const today = toYMD(new Date());
+      all = all.filter((b) => toYMD(b.checkOut) < today);
     }
 
     return NextResponse.json(all);

@@ -3,7 +3,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Filter, Pencil, Trash2, AlertTriangle, CheckCircle, Phone } from "lucide-react";
 import BookingForm from "@/components/BookingForm";
-import { formatPHP, formatDate, STATUS_COLOR, UNITS } from "@/lib/utils";
+import { formatPHP, formatDate, STATUS_COLOR, UNITS, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
 function BookingsContent() {
@@ -82,7 +82,7 @@ function BookingsContent() {
       return timeToMinutes(a.checkInTime) - timeToMinutes(b.checkInTime);
     })
     .reduce((groups, booking) => {
-      const dateKey = new Date(booking.checkIn).toISOString().split("T")[0];
+      const dateKey = toYMD(booking.checkIn);
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(booking);
       return groups;

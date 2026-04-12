@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { X, AlertTriangle, CheckCircle, Loader2, CalendarDays, Clock } from "lucide-react";
-import { UNITS, PAYMENT_METHODS, STAFF, calcPaymentStatus, calcRemaining, formatPHP } from "@/lib/utils";
+import { UNITS, PAYMENT_METHODS, STAFF, calcPaymentStatus, calcRemaining, formatPHP, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
 interface Props {
@@ -64,18 +64,18 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
       guestName:    booking.guestName     ?? "",
       contactNo:    booking.contactNo     ?? "",
       unit:         booking.unit          ?? "1558",
-      checkIn:      booking.checkIn ? new Date(booking.checkIn).toISOString().split("T")[0] : "",
+      checkIn:      booking.checkIn ? toYMD(booking.checkIn) : "",
       checkInTime:  booking.checkInTime   ?? "2:00 PM",
-      checkOut:     booking.checkOut ? new Date(booking.checkOut).toISOString().split("T")[0] : "",
+      checkOut:     booking.checkOut ? toYMD(booking.checkOut) : "",
       checkOutTime: booking.checkOutTime  ?? "12:00 PM",
       hoursStayed:  String(booking.hoursStayed  ?? ""),
       totalFee:     String(booking.totalFee      ?? ""),
       dpAmount:     String(booking.dpAmount      ?? ""),
-      dpDate:       booking.dpDate ? new Date(booking.dpDate).toISOString().split("T")[0] : "",
+      dpDate:       booking.dpDate ? toYMD(booking.dpDate) : "",
       dpMethod:     booking.dpMethod      ?? "GCash",
       dpReceivedBy: booking.dpReceivedBy  ?? "SIR JAMES",
       fpAmount:     String(booking.fpAmount ?? ""),
-      fpDate:       booking.fpDate ? new Date(booking.fpDate).toISOString().split("T")[0] : "",
+      fpDate:       booking.fpDate ? toYMD(booking.fpDate) : "",
       fpMethod:     booking.fpMethod      ?? "GCash",
       fpReceivedBy: booking.fpReceivedBy  ?? "SIR JAMES",
     });
@@ -118,9 +118,9 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
 
   const upcomingUnitBookings = unitBookings
     .filter((b) => {
-      const target = new Date(`${new Date().toISOString().split("T")[0]}T00:00:00`);
-      const checkIn = new Date(b.checkIn);
-      const checkOut = new Date(b.checkOut);
+      const target = toYMD(new Date());
+      const checkIn = toYMD(b.checkIn);
+      const checkOut = toYMD(b.checkOut);
       return checkIn >= target || checkOut >= target;
     })
     .sort((a, b) => {
@@ -132,7 +132,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
     .slice(0, 6);
 
   const formatDay = (date: string | Date) =>
-    new Date(date).toLocaleDateString("en-PH", { month: "short", day: "numeric", weekday: "short" });
+    new Date(date).toLocaleDateString("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric", weekday: "short" });
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -260,7 +260,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
                 <p className="text-sm font-semibold text-red-700">Unit conflict detected!</p>
                 {conflict.map((c: any) => (
                   <p key={c.id} className="text-xs text-red-600 mt-0.5">
-                    {c.guestName} — {new Date(c.checkIn).toLocaleDateString("en-PH")} to {new Date(c.checkOut).toLocaleDateString("en-PH")}
+                    {c.guestName} — {new Date(c.checkIn).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })} to {new Date(c.checkOut).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })}
                   </p>
                 ))}
               </div>

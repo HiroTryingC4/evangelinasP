@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, Clock, Phone, AlertCircle, CheckCircle, Plus } from "lucide-react";
 import Link from "next/link";
-import { formatPHP, formatDate, STATUS_COLOR } from "@/lib/utils";
+import { formatPHP, formatDate, STATUS_COLOR, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
 const UNIT_COLORS: Record<string, string> = {
@@ -20,9 +20,9 @@ const UNIT_BADGE: Record<string, string> = {
   "1845": "bg-purple-50 text-purple-800",
 };
 
-function getDayLabel(dateStr: string) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr + "T00:00:00");
+function getDayLabel(dateStr: string, todayStr: string) {
+  const target = new Date(`${dateStr}T12:00:00`);
+  const today = new Date(`${todayStr}T12:00:00`);
   const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
   if (diff === 0) return "Today";
   if (diff === 1) return "Tomorrow";
@@ -39,19 +39,20 @@ export default function TomorrowPage() {
       .then((d) => { setBookings(d); setLoading(false); });
   }, []);
 
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const todayLabel = today.toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const todayStr = toYMD(new Date());
+  const today = new Date(`${todayStr}T12:00:00`);
+  const todayLabel = today.toLocaleDateString("en-PH", { timeZone: "Asia/Manila", weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
   // Build next 7 days
   const days = Array.from({ length: 8 }, (_, i) => {
     const d = new Date(today); d.setDate(today.getDate() + i);
-    const ds = d.toISOString().split("T")[0];
+    const ds = toYMD(d);
     const dayBookings = bookings.filter((b) => {
-      const ci = new Date(b.checkIn).toISOString().split("T")[0];
-      const co = new Date(b.checkOut).toISOString().split("T")[0];
+      const ci = toYMD(b.checkIn);
+      const co = toYMD(b.checkOut);
       return ci === ds || co === ds;
     });
-    return { dateStr: ds, label: getDayLabel(ds), bookings: dayBookings, index: i };
+    return { dateStr: ds, label: getDayLabel(ds, todayStr), bookings: dayBookings, index: i };
   }).filter((d) => d.bookings.length > 0 || d.index <= 1);
 
   if (loading) return (
@@ -96,8 +97,8 @@ export default function TomorrowPage() {
           ) : (
             <div className="space-y-2">
               {dayBookings.map((b) => {
-                const ci = new Date(b.checkIn).toISOString().split("T")[0];
-                const co = new Date(b.checkOut).toISOString().split("T")[0];
+                const ci = toYMD(b.checkIn);
+                const co = toYMD(b.checkOut);
                 const isIn = ci === dateStr;
                 const isOut = co === dateStr;
                 return (

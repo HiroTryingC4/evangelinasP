@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Phone, Clock, AlertCircle, CheckCircle, Users, TrendingUp, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { formatPHP, formatDate, STATUS_COLOR } from "@/lib/utils";
+import { formatPHP, formatDate, STATUS_COLOR, toYMD } from "@/lib/utils";
 
 const UNIT_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   "1116": { bg: "bg-blue-50",   text: "text-blue-800",   dot: "bg-blue-500"   },
@@ -24,8 +24,10 @@ export default function TodayPage() {
       .catch(() => { setError("Failed to load. Please refresh."); setLoading(false); });
   }, []);
 
-  const today = new Date();
+  const todayStr = toYMD(new Date());
+  const today = new Date(`${todayStr}T12:00:00`);
   const todayLabel = today.toLocaleDateString("en-PH", {
+    timeZone: "Asia/Manila",
     weekday: "long", month: "long", day: "numeric", year: "numeric",
   });
 
@@ -42,14 +44,15 @@ export default function TodayPage() {
 
   const { today: todayData, weekly } = data;
   const guests = todayData?.guests ?? [];
+  const todayKey = todayData?.date ?? toYMD(new Date());
   const checkIns = guests.filter((g: any) => {
-    const ci = new Date(g.checkIn).toISOString().split("T")[0];
-    return ci === todayData.date;
+    const ci = toYMD(g.checkIn);
+    return ci === todayKey;
   });
   const checkOuts = guests.filter((g: any) => {
-    const co = new Date(g.checkOut).toISOString().split("T")[0];
-    const ci = new Date(g.checkIn).toISOString().split("T")[0];
-    return co === todayData.date && ci !== todayData.date;
+    const co = toYMD(g.checkOut);
+    const ci = toYMD(g.checkIn);
+    return co === todayKey && ci !== todayKey;
   });
 
   return (

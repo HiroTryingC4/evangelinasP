@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings, unitConfigs } from "@/lib/schema";
 import { gte, lte, and, asc } from "drizzle-orm";
-import { UNITS as DEFAULT_UNITS } from "@/lib/utils";
+import { UNITS as DEFAULT_UNITS, toYMD } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -50,18 +50,18 @@ export async function GET(req: NextRequest) {
     const all = await db.select().from(bookings);
 
     // ── TODAY ──────────────────────────────────────────────────────────────
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = toYMD(new Date());
 
     const todayGuests = all.filter((b) => {
-      const ci = new Date(b.checkIn).toISOString().split("T")[0];
-      const co = new Date(b.checkOut).toISOString().split("T")[0];
+      const ci = toYMD(b.checkIn);
+      const co = toYMD(b.checkOut);
       return ci === todayStr || co === todayStr;
     });
 
     // ── THIS WEEK (Sunday → Saturday) ─────────────────────────────────────
     const weeklyAnchor = weeklyDateParam
       ? new Date(`${weeklyDateParam}T12:00:00`)
-      : new Date();
+      : new Date(`${todayStr}T12:00:00`);
     const anchor = Number.isNaN(weeklyAnchor.getTime()) ? new Date() : weeklyAnchor;
 
     const weekStart = new Date(anchor);
@@ -72,8 +72,8 @@ export async function GET(req: NextRequest) {
     weekEnd.setHours(23, 59, 59, 999);
 
     const weekBookings = all.filter((b) => {
-      const ci = new Date(b.checkIn);
-      return ci >= weekStart && ci <= weekEnd;
+      const ci = toYMD(b.checkIn);
+      return ci >= toYMD(weekStart) && ci <= toYMD(weekEnd);
     });
 
     const weekBookingsFiltered = hasUnitFilter
@@ -84,10 +84,10 @@ export async function GET(req: NextRequest) {
     const weeklyAnalysisDays = WEEKDAY.map((day, i) => {
       const dayDate = new Date(weekStart);
       dayDate.setDate(weekStart.getDate() + i);
-      const dayStr = dayDate.toISOString().split("T")[0];
+      const dayStr = toYMD(dayDate);
 
       const dayBookings = weekBookingsFiltered.filter((b) => {
-        const ci = new Date(b.checkIn).toISOString().split("T")[0];
+        const ci = toYMD(b.checkIn);
         return ci === dayStr;
       });
 
@@ -195,8 +195,8 @@ export async function GET(req: NextRequest) {
         revenue:   weekBookings.reduce((s, b) => s + b.totalFee, 0),
         guests:    weekBookings.length,
         perUnit:   weeklyPerUnit,
-        startDate: weekStart.toISOString(),
-        endDate:   weekEnd.toISOString(),
+        startDate: toYMD(weekStart),
+        endDate:   toYMD(weekEnd),
       },
       weeklyAnalysis: {
         scope: hasUnitFilter ? "multi" : "all",
@@ -208,8 +208,8 @@ export async function GET(req: NextRequest) {
           : "All Units",
         revenue: weekBookingsFiltered.reduce((s, b) => s + b.totalFee, 0),
         guests: weekBookingsFiltered.length,
-        startDate: weekStart.toISOString(),
-        endDate: weekEnd.toISOString(),
+        startDate: toYMD(weekStart),
+        endDate: toYMD(weekEnd),
         days: weeklyAnalysisDays,
       },
     });

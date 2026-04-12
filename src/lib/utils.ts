@@ -9,13 +9,34 @@ export function calcRemaining(dp: number, fp: number, total: number): number {
   return Math.max(0, total - dp - fp);
 }
 
+const PH_TIME_ZONE = "Asia/Manila";
+
+const phDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: PH_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function formatPHP(amount: number): string {
   return "₱" + Number(amount).toLocaleString("en-PH");
+}
+
+export function toYMD(date: string | Date | null | undefined): string {
+  if (!date) return "";
+
+  const parts = phDateFormatter.formatToParts(new Date(date));
+  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+
+  return `${year}-${month}-${day}`;
 }
 
 export function formatDate(date: string | Date | null): string {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("en-PH", {
+    timeZone: PH_TIME_ZONE,
     year: "numeric", month: "short", day: "numeric",
   });
 }
