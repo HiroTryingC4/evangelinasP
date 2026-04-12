@@ -82,7 +82,7 @@ function BookingsContent() {
       return timeToMinutes(a.checkInTime) - timeToMinutes(b.checkInTime);
     })
     .reduce((groups, booking) => {
-      const dateKey = toYMD(booking.checkIn);
+      const dateKey = booking.checkInDateKey || toYMD(booking.checkIn);
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(booking);
       return groups;

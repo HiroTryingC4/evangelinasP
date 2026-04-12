@@ -4,6 +4,12 @@ import { bookings } from "@/lib/schema";
 import { and, eq, gt, lt, ne } from "drizzle-orm";
 import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToPHDate, toYMD } from "@/lib/utils";
 
+function normalizeDateKey(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  return toYMD(raw);
+}
+
 // GET /api/bookings/[id]
 export async function GET(
   _req: NextRequest,
@@ -41,8 +47,8 @@ export async function PUT(
     const unitCode = String(body.unit).replace(/^Unit\s*/i, "");
     const checkInDate = parseYMDToPHDate(body.checkIn);
     const checkOutDate = parseYMDToPHDate(body.checkOut);
-    const checkInDateKey = toYMD(checkInDate);
-    const checkOutDateKey = toYMD(checkOutDate);
+    const checkInDateKey = normalizeDateKey(body.checkIn);
+    const checkOutDateKey = normalizeDateKey(body.checkOut);
 
     // Re-check conflicts on edit, excluding this booking.
     const conflicts = await db

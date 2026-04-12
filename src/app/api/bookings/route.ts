@@ -4,6 +4,12 @@ import { bookings } from "@/lib/schema";
 import { eq, and, lt, gt, asc } from "drizzle-orm";
 import { calcPaymentStatus, calcRemaining, parseYMDToPHDate, toYMD, hasUnitTimeConflict } from "@/lib/utils";
 
+function normalizeDateKey(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  return toYMD(raw);
+}
+
 export const dynamic = "force-dynamic";
 
 // GET /api/bookings?unit=1558&status=DP+Paid
@@ -53,8 +59,8 @@ export async function POST(req: NextRequest) {
 
     const checkIn  = parseYMDToPHDate(body.checkIn);
     const checkOut = parseYMDToPHDate(body.checkOut);
-    const checkInDateKey = toYMD(checkIn);
-    const checkOutDateKey = toYMD(checkOut);
+    const checkInDateKey = normalizeDateKey(body.checkIn);
+    const checkOutDateKey = normalizeDateKey(body.checkOut);
 
     // Pre-filter candidates by date overlap, then perform time-aware conflict check.
     const conflicts = await db

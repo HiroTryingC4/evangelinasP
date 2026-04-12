@@ -37,12 +37,18 @@ export async function GET(req: NextRequest) {
 
     const hasUnitFilter = selectedUnits.length > 0;
 
-    // All bookings ever; date ranges are applied using date keys.
-    const all = await db.select().from(bookings);
+    // All bookings ever; normalize keys in-memory so legacy/stale fields do not affect totals.
+    const allRaw = await db.select().from(bookings);
+    const all = allRaw.map((b) => ({
+      ...b,
+      normalizedUnit: String(b.unit || "").replace(/^Unit\s*/i, "").trim(),
+      checkInKey: toYMD(b.checkIn),
+      checkOutKey: toYMD(b.checkOut),
+    }));
 
     // All bookings in the selected date range (for the main stats)
     const filtered = all.filter((b) => {
-      const checkInKey = b.checkInDateKey || toYMD(b.checkIn);
+      const checkInKey = b.checkInKey;
       return checkInKey >= from && checkInKey <= to;
     });
 
@@ -50,8 +56,8 @@ export async function GET(req: NextRequest) {
     const todayStr = toYMD(new Date());
 
     const todayGuests = all.filter((b) => {
-      const ci = b.checkInDateKey || toYMD(b.checkIn);
-      const co = b.checkOutDateKey || toYMD(b.checkOut);
+      const ci = b.checkInKey;
+      const co = b.checkOutKey;
       return ci === todayStr || co === todayStr;
     });
 
@@ -63,12 +69,12 @@ export async function GET(req: NextRequest) {
     const weekEndYMD = week.endDate;
 
     const weekBookings = all.filter((b) => {
-      const ci = b.checkInDateKey || toYMD(b.checkIn);
+      const ci = b.checkInKey;
       return ci >= weekStartYMD && ci <= weekEndYMD;
     });
 
     const weekBookingsFiltered = hasUnitFilter
-      ? weekBookings.filter((b) => selectedUnits.includes(b.unit))
+      ? weekBookings.filter((b) => selectedUnits.includes(b.normalizedUnit))
       : weekBookings;
 
     const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -78,7 +84,7 @@ export async function GET(req: NextRequest) {
       const dayStr = toYMD(dayDate);
 
       const dayBookings = weekBookingsFiltered.filter((b) => {
-        const ci = b.checkInDateKey || toYMD(b.checkIn);
+        const ci = b.checkInKey;
         return ci === dayStr;
       });
 
@@ -92,7 +98,7 @@ export async function GET(req: NextRequest) {
     });
 
     const weeklyPerUnit = unitCodes.map((unit) => {
-      const ub = weekBookings.filter((b) => b.unit === unit);
+      const ub = weekBookings.filter((b) => b.normalizedUnit === unit);
       return {
         unit:     `Unit ${unit}`,
         unitCode: unit,
@@ -116,7 +122,7 @@ export async function GET(req: NextRequest) {
 
     // Revenue + guest count per unit (filtered)
     const revenuePerUnit = unitCodes.map((unit) => {
-      const ub = filtered.filter((b) => b.unit === unit);
+      const ub = filtered.filter((b) => b.normalizedUnit === unit);
       return {
         unit:      `Unit ${unit}`,
         unitCode:  unit,
@@ -132,7 +138,7 @@ export async function GET(req: NextRequest) {
     const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const monthlyRevenue = MONTHS.map((month, i) => {
       const mb = filtered.filter((b) => {
-        const key = b.checkInDateKey || toYMD(b.checkIn);
+        const key = b.checkInKey;
         const monthNumber = Number(key.slice(5, 7));
         return monthNumber === i + 1;
       });
