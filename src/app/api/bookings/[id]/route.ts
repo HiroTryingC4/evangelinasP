@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { and, eq, gt, lt, ne } from "drizzle-orm";
-import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToPHDate } from "@/lib/utils";
+import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToPHDate, toYMD } from "@/lib/utils";
 
 // GET /api/bookings/[id]
 export async function GET(
@@ -41,6 +41,8 @@ export async function PUT(
     const unitCode = String(body.unit).replace(/^Unit\s*/i, "");
     const checkInDate = parseYMDToPHDate(body.checkIn);
     const checkOutDate = parseYMDToPHDate(body.checkOut);
+    const checkInDateKey = toYMD(checkInDate);
+    const checkOutDateKey = toYMD(checkOutDate);
 
     // Re-check conflicts on edit, excluding this booking.
     const conflicts = await db
@@ -84,8 +86,10 @@ export async function PUT(
         contactNo:        body.contactNo?.trim() || null,
         unit:             unitCode,
         checkIn:          checkInDate,
+        checkInDateKey,
         checkInTime:      body.checkInTime  || "2:00 PM",
         checkOut:         checkOutDate,
+        checkOutDateKey,
         checkOutTime:     body.checkOutTime || "12:00 PM",
         hoursStayed:      Number(body.hoursStayed) || 0,
         totalFee:         total,

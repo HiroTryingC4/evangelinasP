@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings, unitConfigs } from "@/lib/schema";
-import { gte, lte, and, asc } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 import { UNITS as DEFAULT_UNITS, getSundayToSaturdayWeek, toYMD } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -37,26 +37,21 @@ export async function GET(req: NextRequest) {
 
     const hasUnitFilter = selectedUnits.length > 0;
 
-    const fromDate = new Date(from);
-    fromDate.setHours(0, 0, 0, 0);
-    const toDate = new Date(to);
-    toDate.setHours(23, 59, 59, 999);
-
-    // All bookings in the date range (for the main stats)
-    const filtered = await db
-      .select()
-      .from(bookings)
-      .where(and(gte(bookings.checkIn, fromDate), lte(bookings.checkIn, toDate)));
-
-    // All bookings ever (for today + week sections — not date-filtered)
+    // All bookings ever; date ranges are applied using date keys.
     const all = await db.select().from(bookings);
+
+    // All bookings in the selected date range (for the main stats)
+    const filtered = all.filter((b) => {
+      const checkInKey = b.checkInDateKey || toYMD(b.checkIn);
+      return checkInKey >= from && checkInKey <= to;
+    });
 
     // ── TODAY ──────────────────────────────────────────────────────────────
     const todayStr = toYMD(new Date());
 
     const todayGuests = all.filter((b) => {
-      const ci = toYMD(b.checkIn);
-      const co = toYMD(b.checkOut);
+      const ci = b.checkInDateKey || toYMD(b.checkIn);
+      const co = b.checkOutDateKey || toYMD(b.checkOut);
       return ci === todayStr || co === todayStr;
     });
 
@@ -68,7 +63,7 @@ export async function GET(req: NextRequest) {
     const weekEndYMD = week.endDate;
 
     const weekBookings = all.filter((b) => {
-      const ci = toYMD(b.checkIn);
+      const ci = b.checkInDateKey || toYMD(b.checkIn);
       return ci >= weekStartYMD && ci <= weekEndYMD;
     });
 
@@ -83,7 +78,7 @@ export async function GET(req: NextRequest) {
       const dayStr = toYMD(dayDate);
 
       const dayBookings = weekBookingsFiltered.filter((b) => {
-        const ci = toYMD(b.checkIn);
+        const ci = b.checkInDateKey || toYMD(b.checkIn);
         return ci === dayStr;
       });
 
@@ -136,7 +131,11 @@ export async function GET(req: NextRequest) {
     // Monthly revenue (filtered)
     const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const monthlyRevenue = MONTHS.map((month, i) => {
-      const mb = filtered.filter((b) => new Date(b.checkIn).getMonth() === i);
+      const mb = filtered.filter((b) => {
+        const key = b.checkInDateKey || toYMD(b.checkIn);
+        const monthNumber = Number(key.slice(5, 7));
+        return monthNumber === i + 1;
+      });
       return {
         month,
         revenue:  mb.reduce((s, b) => s + b.totalFee, 0),

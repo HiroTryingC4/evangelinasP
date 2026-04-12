@@ -17,8 +17,10 @@ export const bookings = pgTable("bookings", {
   // Unit & schedule
   unit:         text("unit").notNull(),           // "1116", "1118", etc.
   checkIn:      timestamp("check_in", { mode: "date" }).notNull(),
+  checkInDateKey: text("check_in_date_key"),
   checkInTime:  text("check_in_time").notNull().default("2:00 PM"),
   checkOut:     timestamp("check_out", { mode: "date" }).notNull(),
+  checkOutDateKey: text("check_out_date_key"),
   checkOutTime: text("check_out_time").notNull().default("12:00 PM"),
   hoursStayed:  real("hours_stayed").notNull().default(0),
 

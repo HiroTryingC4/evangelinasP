@@ -24,12 +24,12 @@ export async function GET(req: NextRequest) {
 
     if (view === "upcoming") {
       const today = toYMD(new Date());
-      all = all.filter((b) => toYMD(b.checkOut) >= today);
+      all = all.filter((b) => (b.checkOutDateKey || toYMD(b.checkOut)) >= today);
     }
 
     if (view === "past") {
       const today = toYMD(new Date());
-      all = all.filter((b) => toYMD(b.checkOut) < today);
+      all = all.filter((b) => (b.checkOutDateKey || toYMD(b.checkOut)) < today);
     }
 
     return NextResponse.json(all);
@@ -53,6 +53,8 @@ export async function POST(req: NextRequest) {
 
     const checkIn  = parseYMDToPHDate(body.checkIn);
     const checkOut = parseYMDToPHDate(body.checkOut);
+    const checkInDateKey = toYMD(checkIn);
+    const checkOutDateKey = toYMD(checkOut);
 
     // Pre-filter candidates by date overlap, then perform time-aware conflict check.
     const conflicts = await db
@@ -96,8 +98,10 @@ export async function POST(req: NextRequest) {
         contactNo:        body.contactNo?.trim() || null,
         unit:             unitCode,
         checkIn,
+        checkInDateKey,
         checkInTime:      body.checkInTime  || "2:00 PM",
         checkOut,
+        checkOutDateKey,
         checkOutTime:     body.checkOutTime || "12:00 PM",
         hoursStayed:      Number(body.hoursStayed) || 0,
         totalFee:         total,
