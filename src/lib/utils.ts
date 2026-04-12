@@ -11,6 +11,13 @@ export function calcRemaining(dp: number, fp: number, total: number): number {
 
 const PH_TIME_ZONE = "Asia/Manila";
 
+const phDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: PH_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 const phMonthFormatter = new Intl.DateTimeFormat("en-PH", {
   timeZone: PH_TIME_ZONE,
   month: "short",
@@ -23,10 +30,10 @@ export function formatPHP(amount: number): string {
 export function toYMD(date: string | Date | null | undefined): string {
   if (!date) return "";
 
-  const value = new Date(date);
-  const year = value.getUTCFullYear();
-  const month = String(value.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(value.getUTCDate()).padStart(2, "0");
+  const parts = phDateFormatter.formatToParts(new Date(date));
+  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
 
   return `${year}-${month}-${day}`;
 }
@@ -71,25 +78,32 @@ export function hasUnitTimeConflict(
 
 export function formatDate(date: string | Date | null): string {
   if (!date) return "—";
-  const value = new Date(date);
   return new Intl.DateTimeFormat("en-PH", {
-    timeZone: "UTC",
+    timeZone: PH_TIME_ZONE,
     year: "numeric",
     month: "short",
     day: "numeric",
-  }).format(value);
+  }).format(new Date(date));
 }
 
-export function parseYMDToUTCDate(value: string | Date): Date {
+function dayNumberToYMD(dayNumber: number): string {
+  const date = new Date(dayNumber * 86400000);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function parseYMDToPHDate(value: string | Date): Date {
   if (value instanceof Date) {
     return new Date(value.getTime());
   }
 
-  return new Date(`${value}T00:00:00Z`);
+  return new Date(`${value}T00:00:00+08:00`);
 }
 
 function toPhNoonDate(date: string | Date): Date {
-  return parseYMDToUTCDate(date);
+  return parseYMDToPHDate(date);
 }
 
 export function formatWeekRange(startDate: string | Date, endDate: string | Date): string {
@@ -113,20 +127,21 @@ export function formatWeekRange(startDate: string | Date, endDate: string | Date
 }
 
 export function getSundayToSaturdayWeek(date: string | Date) {
-  const anchor = parseYMDToUTCDate(date);
-  const weekStart = new Date(anchor);
-  weekStart.setUTCDate(anchor.getUTCDate() - anchor.getUTCDay());
-  weekStart.setUTCHours(0, 0, 0, 0);
+  const anchorYMD = toYMD(date);
+  const anchorDayNumber = ymdToDayNumber(anchorYMD);
+  const [y, m, d] = anchorYMD.split("-").map(Number);
+  const anchorDow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 
-  const weekEnd = new Date(weekStart);
-  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
-  weekEnd.setUTCHours(23, 59, 59, 999);
+  const weekStartYMD = dayNumberToYMD(anchorDayNumber - anchorDow);
+  const weekEndYMD = dayNumberToYMD(anchorDayNumber - anchorDow + 6);
+  const weekStart = parseYMDToPHDate(weekStartYMD);
+  const weekEnd = parseYMDToPHDate(weekEndYMD);
 
   return {
     start: weekStart,
     end: weekEnd,
-    startDate: toYMD(weekStart),
-    endDate: toYMD(weekEnd),
+    startDate: weekStartYMD,
+    endDate: weekEndYMD,
     label: formatWeekRange(weekStart, weekEnd),
   };
 }
