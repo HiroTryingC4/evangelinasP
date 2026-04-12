@@ -29,6 +29,15 @@ function getDayLabel(dateStr: string, todayStr: string) {
   return target.toLocaleDateString("en-PH", { weekday: "long", month: "short", day: "numeric" });
 }
 
+function timeToMinutes(time: string) {
+  const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  let hours = Number(match[1]) % 12;
+  const minutes = Number(match[2]);
+  if (match[3].toUpperCase() === "PM") hours += 12;
+  return hours * 60 + minutes;
+}
+
 export default function TomorrowPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +105,36 @@ export default function TomorrowPage() {
             <div className="card p-4 text-center text-gray-400 text-sm">No bookings — all units free</div>
           ) : (
             <div className="space-y-2">
-              {dayBookings.map((b) => {
+              {(() => {
+                const sortedBookings = [...dayBookings].sort((a, b) => {
+                  const aIn = toYMD(a.checkIn) === dateStr;
+                  const bIn = toYMD(b.checkIn) === dateStr;
+
+                  const aTime = aIn ? a.checkInTime : a.checkOutTime;
+                  const bTime = bIn ? b.checkInTime : b.checkOutTime;
+
+                  const minuteDiff = timeToMinutes(aTime) - timeToMinutes(bTime);
+                  if (minuteDiff !== 0) return minuteDiff;
+
+                  const dateDiff = new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime();
+                  if (dateDiff !== 0) return dateDiff;
+
+                  return a.id - b.id;
+                });
+
+                const earliest = sortedBookings[0];
+                const earliestIsIn = toYMD(earliest.checkIn) === dateStr;
+                const earliestTime = earliestIsIn ? earliest.checkInTime : earliest.checkOutTime;
+                const earliestType = earliestIsIn ? "Check-in" : "Check-out";
+
+                return (
+                  <>
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs sm:text-sm flex items-center justify-between gap-2">
+                      <span className="text-blue-700 font-medium">Earliest booking: {earliest.guestName} (Unit {earliest.unit})</span>
+                      <span className="text-blue-800 font-semibold">{earliestType} {earliestTime}</span>
+                    </div>
+
+                    {sortedBookings.map((b) => {
                 const ci = toYMD(b.checkIn);
                 const co = toYMD(b.checkOut);
                 const isIn = ci === dateStr;
@@ -143,7 +181,10 @@ export default function TomorrowPage() {
                     </Link>
                   </div>
                 );
-              })}
+                    })}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>

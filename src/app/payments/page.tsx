@@ -26,12 +26,14 @@ type PaymentRecord = {
 export default function PaymentsPage() {
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [receiverFilters, setReceiverFilters] = useState<string[]>([]);
+  const [unitFilters, setUnitFilters] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [balanceFilter, setBalanceFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState<"week" | "all">("week");
   const [search, setSearch] = useState("");
   const [receivers, setReceivers] = useState<string[]>([]);
+  const [units, setUnits] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
@@ -70,6 +72,9 @@ export default function PaymentsPage() {
         if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
           setReceivers(settings.receivers);
         }
+        if (Array.isArray(settings.units) && settings.units.length > 0) {
+          setUnits(settings.units.map((u: string) => String(u).replace(/^Unit\s*/i, "")));
+        }
       })
       .finally(() => {
         setLoading(false);
@@ -77,10 +82,18 @@ export default function PaymentsPage() {
       });
   }, [weeklyDate, scopeFilter]);
 
+  const toggleUnit = (unit: string) => {
+    setUnitFilters((current) => {
+      if (current.includes(unit)) return current.filter((item) => item !== unit);
+      return [...current, unit];
+    });
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return records.filter((record) => {
       if (receiverFilters.length > 0 && !receiverFilters.includes(record.receivedBy ?? "")) return false;
+      if (unitFilters.length > 0 && !unitFilters.includes(record.unit)) return false;
       if (typeFilter && record.paymentType !== typeFilter) return false;
       if (statusFilter && record.paymentStatus !== statusFilter) return false;
       if (balanceFilter === "with" && record.remainingBalance <= 0) return false;
@@ -92,7 +105,7 @@ export default function PaymentsPage() {
         (record.receivedBy ?? "").toLowerCase().includes(q)
       );
     });
-  }, [records, receiverFilters, typeFilter, statusFilter, balanceFilter, search]);
+  }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search]);
 
   const totals = useMemo(() => {
     const dpCount = filtered.filter((r) => r.paymentType === "DP").length;
@@ -260,6 +273,42 @@ export default function PaymentsPage() {
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="truncate">{name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {units.length > 0 && (
+        <div className="card p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">Units</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Check one or more units to narrow payment records</p>
+            </div>
+            {unitFilters.length > 0 && (
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:underline"
+                onClick={() => setUnitFilters([])}
+              >
+                Clear unit filters
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {units.map((unit) => (
+              <label
+                key={unit}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${unitFilters.includes(unit) ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={unitFilters.includes(unit)}
+                  onChange={() => toggleUnit(unit)}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="truncate">Unit {unit}</span>
               </label>
             ))}
           </div>
