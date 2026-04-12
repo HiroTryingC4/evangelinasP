@@ -42,8 +42,9 @@ export async function GET(req: NextRequest) {
     const all = allRaw.map((b) => ({
       ...b,
       normalizedUnit: String(b.unit || "").replace(/^Unit\s*/i, "").trim(),
-      checkInKey: toYMD(b.checkIn),
-      checkOutKey: toYMD(b.checkOut),
+      // Prefer canonical date keys written from user input to avoid timestamp timezone drift.
+      checkInKey: b.checkInDateKey || toYMD(b.checkIn),
+      checkOutKey: b.checkOutDateKey || toYMD(b.checkOut),
     }));
 
     // All bookings in the selected date range (for the main stats)

@@ -25,7 +25,7 @@ function BookingsContent() {
     if (filterUnit) params.set("unit", filterUnit);
     if (filterStatus) params.set("status", filterStatus);
     params.set("view", filterDateScope);
-    const res = await fetch(`/api/bookings?${params}`);
+    const res = await fetch(`/api/bookings?${params}`, { cache: "no-store" });
     const data = await res.json();
     setBookings(data);
     setLoading(false);

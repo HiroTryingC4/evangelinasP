@@ -46,7 +46,10 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
     const ctrl = new AbortController();
     setUnitBookingsLoading(true);
 
-    fetch(`/api/bookings?unit=${encodeURIComponent(form.unit)}`, { signal: ctrl.signal })
+    fetch(`/api/bookings?unit=${encodeURIComponent(form.unit)}`, {
+      signal: ctrl.signal,
+      cache: "no-store",
+    })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setUnitBookings(data);
@@ -164,11 +167,15 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || `HTTP ${res.status}`);
+      }
       onSaved();
       onClose();
     } catch (e) {
-      alert("Failed to save booking. Please try again.");
+      const message = e instanceof Error ? e.message : "Unknown error";
+      alert(`Failed to save booking: ${message}`);
     } finally {
       setSaving(false);
     }

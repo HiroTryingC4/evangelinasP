@@ -84,6 +84,10 @@ export default function DashboardPage() {
     weeklyAnalysis,
   } = data;
 
+  const weekRevenueDisplay = weeklyAnalysis?.revenue ?? weekly?.revenue ?? 0;
+  const weekGuestsDisplay = weeklyAnalysis?.guests ?? weekly?.guests ?? 0;
+  const weekScopeLabel = weeklyAnalysis?.label ?? "All Units";
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -119,8 +123,8 @@ export default function DashboardPage() {
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Week Revenue</span>
             <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-blue-700">{formatPHP(weekly?.revenue ?? 0)}</div>
-          <div className="text-xs text-gray-400 mt-1">{weekly?.guests ?? 0} guests this week</div>
+          <div className="text-xl sm:text-2xl font-bold text-blue-700">{formatPHP(weekRevenueDisplay)}</div>
+          <div className="text-xs text-gray-400 mt-1">{weekGuestsDisplay} guests this week ({weekScopeLabel})</div>
         </Link>
       </div>
 

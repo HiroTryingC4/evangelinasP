@@ -38,10 +38,19 @@ export async function GET(req: NextRequest) {
       all = all.filter((b) => (b.checkOutDateKey || toYMD(b.checkOut)) < today);
     }
 
-    return NextResponse.json(all);
+    return NextResponse.json(all, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      },
+    });
   } catch (e) {
     console.error("[GET /api/bookings]", e);
-    return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch bookings" }, {
+      status: 500,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      },
+    });
   }
 }
 
