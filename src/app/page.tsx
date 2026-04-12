@@ -34,7 +34,7 @@ export default function DashboardPage() {
     params.set("weeklyDate", weeklyDate);
     if (selectedWeeklyUnits.length > 0) params.set("weeklyUnits", selectedWeeklyUnits.join(","));
     try {
-      const res = await fetch(`/api/dashboard?${params.toString()}`);
+      const res = await fetch(`/api/dashboard?${params.toString()}`, { cache: "no-store" });
       const json = await res.json();
       setData(json);
     } finally {

@@ -227,9 +227,18 @@ export async function GET(req: NextRequest) {
         endDate: weekEndYMD,
         days: weeklyAnalysisDays,
       },
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      },
     });
   } catch (e) {
     console.error("[GET /api/dashboard]", e);
-    return NextResponse.json({ error: "Failed to load dashboard" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load dashboard" }, {
+      status: 500,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      },
+    });
   }
 }
