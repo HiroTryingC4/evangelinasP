@@ -77,10 +77,12 @@ export async function GET(req: NextRequest) {
     const weekEndKey = new Date(weekStart);
     weekEndKey.setDate(weekStart.getDate() + 6);
     weekEndKey.setHours(12, 0, 0, 0);
+    const weekStartYMD = toYMD(weekStartKey);
+    const weekEndYMD = toYMD(weekEndKey);
 
     const weekBookings = all.filter((b) => {
       const ci = toYMD(b.checkIn);
-      return ci >= toYMD(weekStart) && ci <= toYMD(weekEnd);
+      return ci >= weekStartYMD && ci <= weekEndYMD;
     });
 
     const weekBookingsFiltered = hasUnitFilter
@@ -208,8 +210,8 @@ export async function GET(req: NextRequest) {
         revenue:   weekBookings.reduce((s, b) => s + b.totalFee, 0),
         guests:    weekBookings.length,
         perUnit:   weeklyPerUnit,
-        startDate: toYMD(weekStartKey),
-        endDate:   toYMD(weekEndKey),
+        startDate: weekStartYMD,
+        endDate:   weekEndYMD,
       },
       weeklyAnalysis: {
         scope: hasUnitFilter ? "multi" : "all",
@@ -221,8 +223,8 @@ export async function GET(req: NextRequest) {
           : "All Units",
         revenue: weekBookingsFiltered.reduce((s, b) => s + b.totalFee, 0),
         guests: weekBookingsFiltered.length,
-        startDate: toYMD(weekStartKey),
-        endDate: toYMD(weekEndKey),
+        startDate: weekStartYMD,
+        endDate: weekEndYMD,
         days: weeklyAnalysisDays,
       },
     });
