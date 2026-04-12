@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { eq, and, lt, gt, asc } from "drizzle-orm";
-import { calcPaymentStatus, calcRemaining, toYMD, hasUnitTimeConflict } from "@/lib/utils";
+import { calcPaymentStatus, calcRemaining, parseYMDToPHDate, toYMD, hasUnitTimeConflict } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
     // Strip "Unit " prefix if frontend sent "Unit 1558" instead of "1558"
     const unitCode = String(body.unit).replace(/^Unit\s*/i, "");
 
-    const checkIn  = new Date(body.checkIn);
-    const checkOut = new Date(body.checkOut);
+    const checkIn  = parseYMDToPHDate(body.checkIn);
+    const checkOut = parseYMDToPHDate(body.checkOut);
 
     // Pre-filter candidates by date overlap, then perform time-aware conflict check.
     const conflicts = await db
@@ -102,11 +102,11 @@ export async function POST(req: NextRequest) {
         hoursStayed:      Number(body.hoursStayed) || 0,
         totalFee:         total,
         dpAmount:         dp,
-        dpDate:           body.dpDate       ? new Date(body.dpDate)  : null,
+        dpDate:           body.dpDate       ? parseYMDToPHDate(body.dpDate)  : null,
         dpMethod:         body.dpMethod     || null,
         dpReceivedBy:     body.dpReceivedBy || null,
         fpAmount:         fp,
-        fpDate:           body.fpDate       ? new Date(body.fpDate)  : null,
+        fpDate:           body.fpDate       ? parseYMDToPHDate(body.fpDate)  : null,
         fpMethod:         body.fpMethod     || null,
         fpReceivedBy:     body.fpReceivedBy || null,
         remainingBalance: calcRemaining(dp, fp, total),

@@ -84,12 +84,16 @@ export function formatDate(date: string | Date | null): string {
   });
 }
 
-function toPhNoonDate(date: string | Date): Date {
-  if (date instanceof Date) {
-    return new Date(date.getTime());
+export function parseYMDToPHDate(value: string | Date): Date {
+  if (value instanceof Date) {
+    return new Date(value.getTime());
   }
 
-  return new Date(`${date}T12:00:00`);
+  return new Date(`${value}T12:00:00`);
+}
+
+function toPhNoonDate(date: string | Date): Date {
+  return parseYMDToPHDate(date);
 }
 
 export function formatWeekRange(startDate: string | Date, endDate: string | Date): string {
