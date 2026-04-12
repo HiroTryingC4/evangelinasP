@@ -33,6 +33,7 @@ export default function DashboardPage() {
     const params = new URLSearchParams({ from, to });
     params.set("weeklyDate", weeklyDate);
     if (selectedWeeklyUnits.length > 0) params.set("weeklyUnits", selectedWeeklyUnits.join(","));
+    params.set("_ts", Date.now().toString());
     try {
       const res = await fetch(`/api/dashboard?${params.toString()}`, { cache: "no-store" });
       const json = await res.json();

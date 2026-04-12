@@ -18,7 +18,7 @@ export default function TodayPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/dashboard", { cache: "no-store" })
+    fetch(`/api/dashboard?_ts=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => { setError("Failed to load. Please refresh."); setLoading(false); });
