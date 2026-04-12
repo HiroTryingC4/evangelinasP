@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const unit   = searchParams.get("unit");
     const status = searchParams.get("status");
+    const view   = searchParams.get("view") || "all";
 
     let all = await db
       .select()
@@ -18,6 +19,18 @@ export async function GET(req: NextRequest) {
 
     if (unit)   all = all.filter((b) => b.unit === unit);
     if (status) all = all.filter((b) => b.paymentStatus === status);
+
+    if (view === "upcoming") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      all = all.filter((b) => new Date(b.checkOut) >= today);
+    }
+
+    if (view === "past") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      all = all.filter((b) => new Date(b.checkOut) < today);
+    }
 
     return NextResponse.json(all);
   } catch (e) {

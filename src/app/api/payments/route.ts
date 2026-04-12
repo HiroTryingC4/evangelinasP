@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
     const type = searchParams.get("type");
     const receiver = searchParams.get("receiver");
     const weeklyDateParam = searchParams.get("weeklyDate");
+    const scope = searchParams.get("scope") || "week";
 
     const weeklyAnchor = weeklyDateParam
       ? new Date(`${weeklyDateParam}T12:00:00`)
@@ -41,6 +42,8 @@ export async function GET(req: NextRequest) {
         checkInTime: string;
         checkOutTime: string;
         paymentStatus: string;
+        remainingBalance: number;
+        dpDate: Date | null;
       }>;
 
       if (booking.dpAmount > 0) {
@@ -58,6 +61,8 @@ export async function GET(req: NextRequest) {
           checkInTime: booking.checkInTime,
           checkOutTime: booking.checkOutTime,
           paymentStatus: booking.paymentStatus,
+          remainingBalance: booking.remainingBalance,
+          dpDate: booking.dpDate,
         });
       }
 
@@ -76,6 +81,8 @@ export async function GET(req: NextRequest) {
           checkInTime: booking.checkInTime,
           checkOutTime: booking.checkOutTime,
           paymentStatus: booking.paymentStatus,
+          remainingBalance: booking.remainingBalance,
+          dpDate: booking.dpDate,
         });
       }
 
@@ -86,8 +93,10 @@ export async function GET(req: NextRequest) {
       if (type && record.paymentType !== type) return false;
       if (receiver && record.receivedBy !== receiver) return false;
 
-      const paymentDate = new Date(record.paymentDate ?? record.bookingDate);
-      if (paymentDate < weekStart || paymentDate > weekEnd) return false;
+      if (scope !== "all") {
+        const paymentDate = new Date(record.paymentDate ?? record.bookingDate);
+        if (paymentDate < weekStart || paymentDate > weekEnd) return false;
+      }
 
       return true;
     });

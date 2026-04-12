@@ -13,6 +13,7 @@ function BookingsContent() {
   const [search, setSearch] = useState("");
   const [filterUnit, setFilterUnit] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterDateScope, setFilterDateScope] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [editBooking, setEditBooking] = useState<Booking | null>(null);
   const searchParams = useSearchParams();
@@ -23,13 +24,14 @@ function BookingsContent() {
     const params = new URLSearchParams();
     if (filterUnit) params.set("unit", filterUnit);
     if (filterStatus) params.set("status", filterStatus);
+    params.set("view", filterDateScope);
     const res = await fetch(`/api/bookings?${params}`);
     const data = await res.json();
     setBookings(data);
     setLoading(false);
   };
 
-  useEffect(() => { fetchBookings(); }, [filterUnit, filterStatus]);
+  useEffect(() => { fetchBookings(); }, [filterUnit, filterStatus, filterDateScope]);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -120,6 +122,11 @@ function BookingsContent() {
             <option value="Fully Paid">Fully Paid</option>
             <option value="DP Paid">DP Paid</option>
             <option value="No DP">No DP</option>
+          </select>
+          <select className="input" value={filterDateScope} onChange={(e) => setFilterDateScope(e.target.value)}>
+            <option value="all">All dates</option>
+            <option value="upcoming">Upcoming/current</option>
+            <option value="past">Past records</option>
           </select>
         </div>
       </div>

@@ -9,7 +9,8 @@
     "start": "next start",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "npx tsx src/scripts/seed.ts"
+    "db:seed": "npx tsx src/scripts/seed.ts",
+    "db:import:xlsx": "npx tsx src/scripts/import-bookings-xlsx.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.5",
@@ -22,7 +23,8 @@
     "react": "^18",
     "react-dom": "^18",
     "recharts": "^2.12.7",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20",

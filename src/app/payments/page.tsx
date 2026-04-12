@@ -19,12 +19,17 @@ type PaymentRecord = {
   checkInTime: string;
   checkOutTime: string;
   paymentStatus: string;
+  remainingBalance: number;
+  dpDate: string | Date | null;
 };
 
 export default function PaymentsPage() {
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [receiverFilter, setReceiverFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [balanceFilter, setBalanceFilter] = useState("");
+  const [scopeFilter, setScopeFilter] = useState<"week" | "all">("week");
   const [search, setSearch] = useState("");
   const [receivers, setReceivers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +55,7 @@ export default function PaymentsPage() {
     if (!isInitialLoad) setRefreshing(true);
 
     Promise.all([
-      fetch(`/api/payments?weeklyDate=${weeklyDate}`).then((r) => r.json()),
+      fetch(`/api/payments?weeklyDate=${weeklyDate}&scope=${scopeFilter}`).then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()),
     ])
       .then(([payments, settings]) => {
@@ -63,13 +68,16 @@ export default function PaymentsPage() {
         setLoading(false);
         setRefreshing(false);
       });
-  }, [weeklyDate]);
+  }, [weeklyDate, scopeFilter]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return records.filter((record) => {
       if (receiverFilter && record.receivedBy !== receiverFilter) return false;
       if (typeFilter && record.paymentType !== typeFilter) return false;
+      if (statusFilter && record.paymentStatus !== statusFilter) return false;
+      if (balanceFilter === "with" && record.remainingBalance <= 0) return false;
+      if (balanceFilter === "settled" && record.remainingBalance > 0) return false;
       if (!q) return true;
       return (
         record.guestName.toLowerCase().includes(q) ||
@@ -77,13 +85,14 @@ export default function PaymentsPage() {
         (record.receivedBy ?? "").toLowerCase().includes(q)
       );
     });
-  }, [records, receiverFilter, typeFilter, search]);
+  }, [records, receiverFilter, typeFilter, statusFilter, balanceFilter, search]);
 
   const totals = useMemo(() => {
     const dpCount = filtered.filter((r) => r.paymentType === "DP").length;
     const fpCount = filtered.filter((r) => r.paymentType === "FP").length;
     const totalAmount = filtered.reduce((sum, r) => sum + r.amount, 0);
-    return { dpCount, fpCount, totalAmount };
+    const outstandingCount = filtered.filter((r) => r.remainingBalance > 0).length;
+    return { dpCount, fpCount, totalAmount, outstandingCount };
   }, [filtered]);
 
   if (loading) {
@@ -111,19 +120,25 @@ export default function PaymentsPage() {
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Weekly Payments</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {new Date(`${weeklyDate}T12:00:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} - {" "}
-              {(() => {
-                const base = new Date(`${weeklyDate}T12:00:00`);
-                const start = new Date(base);
-                start.setDate(base.getDate() - base.getDay());
-                const end = new Date(start);
-                end.setDate(start.getDate() + 6);
-                return end.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
-              })()}
+              {scopeFilter === "all"
+                ? "All payment records"
+                : `${new Date(`${weeklyDate}T12:00:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} - ${(() => {
+                    const base = new Date(`${weeklyDate}T12:00:00`);
+                    const start = new Date(base);
+                    start.setDate(base.getDate() - base.getDay());
+                    const end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    return end.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+                  })()}`}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <button type="button" onClick={() => shiftWeek(-7)} className="btn-secondary text-xs py-1.5">
+            <button
+              type="button"
+              onClick={() => shiftWeek(-7)}
+              className="btn-secondary text-xs py-1.5"
+              disabled={scopeFilter === "all"}
+            >
               <ChevronLeft className="w-4 h-4" /> Prev Week
             </button>
             <input
@@ -131,8 +146,14 @@ export default function PaymentsPage() {
               className="input py-1.5 text-xs w-auto"
               value={weeklyDate}
               onChange={(e) => setWeeklyDate(e.target.value)}
+              disabled={scopeFilter === "all"}
             />
-            <button type="button" onClick={() => shiftWeek(7)} className="btn-secondary text-xs py-1.5">
+            <button
+              type="button"
+              onClick={() => shiftWeek(7)}
+              className="btn-secondary text-xs py-1.5"
+              disabled={scopeFilter === "all"}
+            >
               Next Week <ChevronRight className="w-4 h-4" />
             </button>
             {refreshing && (
@@ -162,9 +183,9 @@ export default function PaymentsPage() {
         <div className="stat-card">
           <div className="flex items-center gap-1.5 text-purple-600 mb-1">
             <Users className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Receivers used</span>
+            <span className="text-xs font-semibold text-gray-500">With balance</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{new Set(filtered.map((r) => r.receivedBy).filter(Boolean)).size}</p>
+          <p className="text-2xl font-bold text-gray-900">{totals.outstandingCount}</p>
         </div>
       </div>
 
@@ -184,11 +205,26 @@ export default function PaymentsPage() {
             <option value="DP">Down Payment</option>
             <option value="FP">Full Payment</option>
           </select>
+          <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All payment status</option>
+            <option value="Fully Paid">Fully Paid</option>
+            <option value="DP Paid">DP Paid</option>
+            <option value="No DP">No DP</option>
+          </select>
+          <select className="input" value={balanceFilter} onChange={(e) => setBalanceFilter(e.target.value)}>
+            <option value="">All balances</option>
+            <option value="with">With balance</option>
+            <option value="settled">Fully settled</option>
+          </select>
           <select className="input" value={receiverFilter} onChange={(e) => setReceiverFilter(e.target.value)}>
             <option value="">All receivers</option>
             {receivers.map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
+          </select>
+          <select className="input" value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value as "week" | "all") }>
+            <option value="week">This week</option>
+            <option value="all">All records</option>
           </select>
         </div>
       </div>
@@ -212,8 +248,12 @@ export default function PaymentsPage() {
                 <p className="font-semibold text-gray-900 truncate">{record.guestName}</p>
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
                   <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{formatDate(record.paymentDate)}</span>
+                  <span>Deposit paid: {formatDate(record.dpDate)}</span>
                   <span>Method: {record.method ?? "—"}</span>
                   <span>Received by: <span className="font-semibold text-gray-700">{record.receivedBy ?? "—"}</span></span>
+                </div>
+                <div className="mt-1 text-xs">
+                  Balance: <span className={record.remainingBalance > 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>{formatPHP(record.remainingBalance)}</span>
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
