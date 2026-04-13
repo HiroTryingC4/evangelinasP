@@ -110,9 +110,17 @@ export async function GET(req: NextRequest) {
     });
 
     // ── FILTERED SUMMARY ───────────────────────────────────────────────────
+    const getCollectedForBooking = (b: typeof filtered[number]) => {
+      const totalFee = Number(b.totalFee ?? 0);
+      const dp = Number(b.dpAmount ?? 0);
+      const fp = Number(b.fpAmount ?? 0);
+      const paid = Math.max(0, dp + fp);
+      return Math.min(totalFee, paid);
+    };
+
     const totalRevenue   = filtered.reduce((s, b) => s + b.totalFee, 0);
     const expectedRevenue = totalRevenue;
-    const activeRevenue   = filtered.reduce((s, b) => s + Math.max(0, b.totalFee - b.remainingBalance), 0);
+    const activeRevenue   = filtered.reduce((s, b) => s + getCollectedForBooking(b), 0);
     const collectedRevenue = activeRevenue;
     const totalBookings  = filtered.length;
     const avgPerBooking  = totalBookings > 0 ? totalRevenue / totalBookings : 0;
@@ -145,8 +153,8 @@ export async function GET(req: NextRequest) {
         return monthNumber === i + 1;
       });
       const totalRevenue = mb.reduce((s, b) => s + b.totalFee, 0);
-      const incomingPayment = mb.reduce((s, b) => s + Math.max(0, b.totalFee - b.remainingBalance), 0);
-      const waitingPayment = mb.reduce((s, b) => s + Math.max(0, b.remainingBalance), 0);
+      const incomingPayment = mb.reduce((s, b) => s + getCollectedForBooking(b), 0);
+      const waitingPayment = Math.max(0, totalRevenue - incomingPayment);
       return {
         month,
         revenue: totalRevenue,

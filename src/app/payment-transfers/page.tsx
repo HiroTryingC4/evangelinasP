@@ -43,6 +43,8 @@ export default function PaymentTransfersPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [scopeFilter, setScopeFilter] = useState<"week" | "all">("all");
   const [weeklyDate, setWeeklyDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [accountScope, setAccountScope] = useState<"all" | "month">("all");
+  const [accountMonth, setAccountMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   const shiftWeek = (days: number) => {
     const base = new Date(`${weeklyDate}T12:00:00`);
@@ -85,7 +87,7 @@ export default function PaymentTransfersPage() {
   const fetchTransfers = async () => {
     try {
       const [transferRes, settingsRes] = await Promise.all([
-        fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&scope=${scopeFilter}&includeAccounts=1&_ts=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&scope=${scopeFilter}&includeAccounts=1&accountScope=${accountScope}&accountMonth=${accountMonth}&_ts=${Date.now()}`, { cache: "no-store" }),
         fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }),
       ]);
 
@@ -126,7 +128,7 @@ export default function PaymentTransfersPage() {
 
   useEffect(() => {
     fetchTransfers();
-  }, [weeklyDate, scopeFilter]);
+  }, [weeklyDate, scopeFilter, accountScope, accountMonth]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -608,7 +610,26 @@ export default function PaymentTransfersPage() {
             </div>
 
             <div className="card p-5 mb-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Receiver Account Balances</h3>
+              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                <h3 className="text-lg font-bold text-gray-900">Receiver Account Balances</h3>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="input py-1.5 text-xs"
+                    value={accountScope}
+                    onChange={(e) => setAccountScope(e.target.value as "all" | "month")}
+                  >
+                    <option value="month">By month</option>
+                    <option value="all">All time</option>
+                  </select>
+                  <input
+                    type="month"
+                    className="input py-1.5 text-xs"
+                    value={accountMonth}
+                    onChange={(e) => setAccountMonth(e.target.value)}
+                    disabled={accountScope !== "month"}
+                  />
+                </div>
+              </div>
               {receiverAccounts.length === 0 ? (
                 <p className="text-sm text-gray-500">No receiver balances yet.</p>
               ) : (
