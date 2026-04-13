@@ -70,6 +70,29 @@ export default function DashboardPage() {
     });
   };
 
+  const monthlyChartData = useMemo(() => {
+    const source = data?.monthlyRevenue ?? [];
+    return source.map((row: any) => {
+      const totalRevenue = Number(row.revenue ?? 0);
+      const incomingPayment = Number(row.incomingPayment ?? 0);
+      const waitingPayment = Number(row.waitingPayment ?? 0);
+      const collectedPayment = Math.max(0, totalRevenue - waitingPayment);
+
+      return {
+        ...row,
+        incomingPayment,
+        waitingPayment,
+        collectedPayment,
+        chartValue:
+          monthlyView === "total"
+            ? totalRevenue
+            : monthlyView === "collected"
+              ? collectedPayment
+              : incomingPayment,
+      };
+    });
+  }, [data?.monthlyRevenue, monthlyView]);
+
   if (loading && !data) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -89,28 +112,6 @@ export default function DashboardPage() {
   const weekRevenueDisplay = weeklyAnalysis?.revenue ?? weekly?.revenue ?? 0;
   const weekGuestsDisplay = weeklyAnalysis?.guests ?? weekly?.guests ?? 0;
   const weekScopeLabel = weeklyAnalysis?.label ?? "All Units";
-
-  const monthlyChartData = useMemo(() => {
-    return monthlyRevenue.map((row: any) => {
-      const totalRevenue = Number(row.revenue ?? 0);
-      const incomingPayment = Number(row.incomingPayment ?? 0);
-      const waitingPayment = Number(row.waitingPayment ?? 0);
-      const collectedPayment = Math.max(0, totalRevenue - waitingPayment);
-
-      return {
-        ...row,
-        incomingPayment,
-        waitingPayment,
-        collectedPayment,
-        chartValue:
-          monthlyView === "total"
-            ? totalRevenue
-            : monthlyView === "collected"
-              ? collectedPayment
-              : incomingPayment,
-      };
-    });
-  }, [monthlyRevenue, monthlyView]);
 
   const monthlyViewLabel =
     monthlyView === "total"
