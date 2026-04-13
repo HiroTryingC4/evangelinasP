@@ -10,6 +10,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "npx tsx src/scripts/seed.ts",
+    "db:seed:persons": "npx tsx src/scripts/seed-persons.ts",
     "db:add:recurring-expenses": "npx tsx src/scripts/add-recurring-expenses.ts",
     "db:backfill:date-keys": "npx tsx src/scripts/backfill-booking-date-keys.ts",
     "db:import:xlsx": "npx tsx src/scripts/import-bookings-xlsx.ts"

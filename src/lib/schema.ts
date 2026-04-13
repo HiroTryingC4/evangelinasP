@@ -119,9 +119,20 @@ export const expenses = pgTable("expenses", {
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
 });
 
+export const persons = pgTable("persons", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(), // riemar, sir mike, james, etc.
+  type: text("type").notNull().default("recipient"), // sender, recipient
+  balance: numeric("balance", { precision: 12, scale: 2 }).notNull().default("0"), // running balance
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
+
 export const paymentTransfers = pgTable("payment_transfers", {
   id: serial("id").primaryKey(),
-  recipient: text("recipient").notNull(), // sir mike, james, etc.
+  senderId: integer("sender_id").notNull(), // person sending money (riemar)
+  recipientId: integer("recipient_id").notNull(), // person receiving money (sir mike, james, etc)
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   transferDate: timestamp("transfer_date", { mode: "date" }).notNull(),
   reason: text("reason"), // why the transfer was made
