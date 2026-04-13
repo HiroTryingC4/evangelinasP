@@ -119,6 +119,19 @@ export const expenses = pgTable("expenses", {
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
 });
 
+export const paymentTransfers = pgTable("payment_transfers", {
+  id: serial("id").primaryKey(),
+  recipient: text("recipient").notNull(), // sir mike, james, etc.
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  transferDate: timestamp("transfer_date", { mode: "date" }).notNull(),
+  reason: text("reason"), // why the transfer was made
+  paymentMethod: text("payment_method"), // cash, gcash, bank transfer, etc.
+  status: text("status").notNull().default("transferred"), // transferred, pending, etc.
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
+
 export type Booking    = typeof bookings.$inferSelect;
 export type NewBooking = typeof bookings.$inferInsert;
 export type Bill       = typeof bills.$inferSelect;
