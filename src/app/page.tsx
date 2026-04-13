@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
 import { TrendingUp, Users, BookOpen, AlertTriangle, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
   const [selectedWeeklyUnits, setSelectedWeeklyUnits] = useState<string[]>([]);
   const [weeklyMetric, setWeeklyMetric] = useState<"revenue" | "guests">("revenue");
+  const [monthlyView, setMonthlyView] = useState<"incoming-waiting" | "total" | "collected">("incoming-waiting");
 
   const fetchDashboard = async () => {
     const isInitialLoad = !data;
@@ -88,6 +89,35 @@ export default function DashboardPage() {
   const weekRevenueDisplay = weeklyAnalysis?.revenue ?? weekly?.revenue ?? 0;
   const weekGuestsDisplay = weeklyAnalysis?.guests ?? weekly?.guests ?? 0;
   const weekScopeLabel = weeklyAnalysis?.label ?? "All Units";
+
+  const monthlyChartData = useMemo(() => {
+    return monthlyRevenue.map((row: any) => {
+      const totalRevenue = Number(row.revenue ?? 0);
+      const incomingPayment = Number(row.incomingPayment ?? 0);
+      const waitingPayment = Number(row.waitingPayment ?? 0);
+      const collectedPayment = Math.max(0, totalRevenue - waitingPayment);
+
+      return {
+        ...row,
+        incomingPayment,
+        waitingPayment,
+        collectedPayment,
+        chartValue:
+          monthlyView === "total"
+            ? totalRevenue
+            : monthlyView === "collected"
+              ? collectedPayment
+              : incomingPayment,
+      };
+    });
+  }, [monthlyRevenue, monthlyView]);
+
+  const monthlyViewLabel =
+    monthlyView === "total"
+      ? "Total revenue"
+      : monthlyView === "collected"
+        ? "Collected only"
+        : "Incoming vs waiting";
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -384,24 +414,62 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="card p-4 sm:p-5">
           <div className="mb-4">
-            <h2 className="text-sm font-semibold text-gray-700">Monthly Revenue (₱)</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Incoming payment vs waiting balance, grouped by check-in month</p>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700">Monthly Revenue (₱)</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Grouped by check-in month</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setMonthlyView("incoming-waiting")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${monthlyView === "incoming-waiting" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}
+                >
+                  Incoming / Waiting
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMonthlyView("total")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${monthlyView === "total" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}
+                >
+                  Total
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMonthlyView("collected")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${monthlyView === "collected" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}
+                >
+                  Collected only
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">View: {monthlyViewLabel}</p>
           </div>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={monthlyRevenue} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+            <BarChart data={monthlyChartData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
               <XAxis dataKey="month" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip
                 formatter={(value: number, name: string, props: any) => {
                   if (name === "incomingPayment") return [formatPHP(value), "Incoming payment"];
                   if (name === "waitingPayment") return [formatPHP(value), "Waiting payment"];
+                  if (name === "collectedPayment") return [formatPHP(value), "Collected payment"];
+                  if (name === "chartValue") return [formatPHP(value), monthlyViewLabel];
                   return [formatPHP(value), name];
                 }}
                 labelFormatter={(label) => `Month: ${label}`}
               />
-              <Legend />
-              <Bar dataKey="incomingPayment" name="Incoming payment" stackId="monthly" fill="#2563eb" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="waitingPayment" name="Waiting payment" stackId="monthly" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              {monthlyView === "incoming-waiting" ? (
+                <>
+                  <Legend />
+                  <Bar dataKey="incomingPayment" name="Incoming payment" stackId="monthly" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="waitingPayment" name="Waiting payment" stackId="monthly" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </>
+              ) : monthlyView === "total" ? (
+                <Bar dataKey="chartValue" name="Total revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              ) : (
+                <Bar dataKey="chartValue" name="Collected payment" fill="#10b981" radius={[4, 4, 0, 0]} />
+              )}
             </BarChart>
           </ResponsiveContainer>
         </div>
