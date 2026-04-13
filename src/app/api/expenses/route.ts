@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       .insert(expenses)
       .values({
         description,
-        amount: amountNumber,
+        amount: amountNumber.toFixed(2),
         expenseDate: expenseDateObj,
         dueDate: dueDateObj,
         category,

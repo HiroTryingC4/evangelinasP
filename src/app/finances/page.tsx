@@ -167,17 +167,17 @@ export default function FinancesPage() {
 
   const billsTotal = bills.reduce((s, b) => s + b.amount, 0);
   const wagesTotal = wages.reduce((s, w) => s + w.amount, 0);
-  const incomesTotal = incomes.reduce((s, i) => s + i.amount, 0);
-  const expensesTotal = expenses.reduce((s, e) => s + e.amount, 0);
+  const incomesTotal = incomes.reduce((s, i) => s + Number(i.amount || 0), 0);
+  const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const billsPending = bills.filter((b) => b.status === "pending").reduce((s, b) => s + b.amount, 0);
   const billsPaid = bills.filter((b) => b.status === "paid").reduce((s, b) => s + b.amount, 0);
   const wagesPending = wages.filter((w) => w.status === "pending").reduce((s, w) => s + w.amount, 0);
   const wagesPaid = wages.filter((w) => w.status === "paid").reduce((s, w) => s + w.amount, 0);
-  const incomesPending = incomes.filter((i) => i.status === "pending").reduce((s, i) => s + i.amount, 0);
-  const incomesPaid = incomes.filter((i) => i.status === "paid").reduce((s, i) => s + i.amount, 0);
-  const expensesPending = expenses.filter((e) => e.status === "pending").reduce((s, e) => s + e.amount, 0);
-  const expensesPaid = expenses.filter((e) => e.status === "paid").reduce((s, e) => s + e.amount, 0);
+  const incomesPending = incomes.filter((i) => i.status === "pending").reduce((s, i) => s + Number(i.amount || 0), 0);
+  const incomesPaid = incomes.filter((i) => i.status === "paid").reduce((s, i) => s + Number(i.amount || 0), 0);
+  const expensesPending = expenses.filter((e) => e.status === "pending").reduce((s, e) => s + Number(e.amount || 0), 0);
+  const expensesPaid = expenses.filter((e) => e.status === "paid").reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const pendingTotal = billsPending + wagesPending + expensesPending;
   const paidTotal = billsPaid + wagesPaid + expensesPaid;
@@ -211,22 +211,22 @@ export default function FinancesPage() {
   const weeklyBookingRevenue = bookingsByRevenueScope
     .filter((b) => inSelectedWeek(b.checkIn))
     .reduce((s, b) => s + (Number(b.totalFee) || 0), 0);
-  const weeklyExternalIncome = weeklyIncome.reduce((s, i) => s + i.amount, 0);
+  const weeklyExternalIncome = weeklyIncome.reduce((s, i) => s + Number(i.amount || 0), 0);
   const weeklyRevenue = weeklyBookingRevenue + weeklyExternalIncome;
 
   const weeklyBillsTotal = weeklyBills.reduce((s, b) => s + b.amount, 0);
   const weeklyWagesTotal = weeklyWages.reduce((s, w) => s + w.amount, 0);
-  const weeklyExpensesTotal = weeklyExpenses.reduce((s, e) => s + e.amount, 0);
+  const weeklyExpensesTotal = weeklyExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const weeklyPendingTotal =
     weeklyBills.filter((b) => b.status === "pending").reduce((s, b) => s + b.amount, 0) +
     weeklyWages.filter((w) => w.status === "pending").reduce((s, w) => s + w.amount, 0) +
-    weeklyExpenses.filter((e) => e.status === "pending").reduce((s, e) => s + e.amount, 0);
+    weeklyExpenses.filter((e) => e.status === "pending").reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const weeklyPaidTotal =
     weeklyBills.filter((b) => b.status === "paid").reduce((s, b) => s + b.amount, 0) +
     weeklyWages.filter((w) => w.status === "paid").reduce((s, w) => s + w.amount, 0) +
-    weeklyExpenses.filter((e) => e.status === "paid").reduce((s, e) => s + e.amount, 0);
+    weeklyExpenses.filter((e) => e.status === "paid").reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const weeklyGrandTotal = weeklyBillsTotal + weeklyWagesTotal + weeklyExpensesTotal;
   const weeklyNetAfterCosts = weeklyRevenue - weeklyGrandTotal;
@@ -252,10 +252,10 @@ export default function FinancesPage() {
     .reduce((s, w) => s + w.amount, 0);
   const monthlyIncomeTotal = incomes
     .filter((i) => inSelectedMonth(i.incomeDate))
-    .reduce((s, i) => s + i.amount, 0);
+    .reduce((s, i) => s + Number(i.amount || 0), 0);
   const monthlyExpensesTotal = expenses
     .filter((e) => inSelectedMonth(e.expenseDate))
-    .reduce((s, e) => s + e.amount, 0);
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const monthlyBookingRevenue = bookingsByRevenueScope
     .filter((b) => inSelectedMonth(b.checkIn))

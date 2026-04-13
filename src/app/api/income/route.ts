@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       .values({
         description,
         source,
-        amount: amountNumber,
+        amount: amountNumber.toFixed(2),
         incomeDate: incomeDateObj,
         paymentMethod,
         notes,

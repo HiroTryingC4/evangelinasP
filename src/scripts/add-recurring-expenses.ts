@@ -57,10 +57,10 @@ async function seedRecurringExpenses() {
     .from(expenses)
     .where(and(gte(expenses.expenseDate, monthStart), lt(expenses.expenseDate, nextMonthStart)));
 
-  const existingByKey = new Map(
+  const existingByKey = new Map<string, number>(
     existingForMonth.map((row) => {
       const date = new Date(row.expenseDate);
-      return [`${row.description}__${date.getUTCDate()}`, row.id] as const;
+      return [`${row.description}__${date.getUTCDate()}`, row.id];
     })
   );
 
@@ -76,7 +76,7 @@ async function seedRecurringExpenses() {
       await db
         .update(expenses)
         .set({
-          amount: item.amount,
+          amount: item.amount.toFixed(2),
           dueDate: expenseDate,
           category: item.category,
           notes: item.notes,
@@ -91,7 +91,7 @@ async function seedRecurringExpenses() {
       .insert(expenses)
       .values({
         description: item.description,
-        amount: item.amount,
+        amount: item.amount.toFixed(2),
         expenseDate,
         dueDate: expenseDate,
         category: item.category,

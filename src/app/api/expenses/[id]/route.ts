@@ -41,7 +41,7 @@ export async function PUT(
       .update(expenses)
       .set({
         description,
-        amount: amountNumber,
+        amount: amountNumber !== undefined ? amountNumber.toFixed(2) : undefined,
         expenseDate: expenseDateObj,
         dueDate: dueDateObj,
         category,

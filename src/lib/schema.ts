@@ -96,7 +96,7 @@ export const incomes = pgTable("incomes", {
   id: serial("id").primaryKey(),
   description: text("description").notNull(),
   source: text("source"), // airbnb, walk-in, direct booking, etc.
-  amount: numeric("amount", { precision: 12, scale: 2, mode: "number" }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   incomeDate: timestamp("income_date", { mode: "date" }).notNull(),
   paymentMethod: text("payment_method"),
   status: text("status").notNull().default("pending"), // pending, paid
@@ -108,7 +108,7 @@ export const incomes = pgTable("incomes", {
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
   description: text("description").notNull(),
-  amount: numeric("amount", { precision: 12, scale: 2, mode: "number" }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   expenseDate: timestamp("expense_date", { mode: "date" }).notNull(),
   dueDate: timestamp("due_date", { mode: "date" }),
   category: text("category"), // supplies, maintenance, utilities, food, etc.

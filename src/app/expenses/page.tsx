@@ -76,8 +76,8 @@ export default function ExpensesPage() {
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
 
-  const totalPending = expenses.filter((e) => e.status === "pending").reduce((s: number, e: any) => s + e.amount, 0);
-  const totalPaid = expenses.filter((e) => e.status === "paid").reduce((s: number, e: any) => s + e.amount, 0);
+  const totalPending = expenses.filter((e) => e.status === "pending").reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+  const totalPaid = expenses.filter((e) => e.status === "paid").reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
   const sortedExpenses = [...expenses].sort((a, b) => {
     const aDate = new Date(a.dueDate ?? a.expenseDate).getTime();
     const bDate = new Date(b.dueDate ?? b.expenseDate).getTime();
@@ -95,7 +95,7 @@ export default function ExpensesPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="card p-4">
           <p className="text-xs text-gray-500 uppercase">Total Expenses</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(expenses.reduce((s: number, e: any) => s + e.amount, 0))}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(expenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0))}</p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-gray-500 uppercase">Pending</p>

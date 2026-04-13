@@ -41,7 +41,7 @@ export async function PUT(
       .set({
         description,
         source,
-        amount: amountNumber,
+        amount: amountNumber !== undefined ? amountNumber.toFixed(2) : undefined,
         incomeDate: incomeDateObj,
         paymentMethod,
         status,
