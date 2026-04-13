@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, paymentTransfers, persons } from "@/lib/schema";
+import { toYMD } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
+    const weekStartKey = toYMD(weekStart);
+    const weekEndKey = toYMD(weekEnd);
 
     const [allBookings, allTransfers, allPersons] = await Promise.all([
       db.select().from(bookings).orderBy(desc(bookings.updatedAt), desc(bookings.id)),
@@ -40,6 +43,7 @@ export async function GET(req: NextRequest) {
       paymentType: "BK" as const,
       amount: Number(booking.totalFee ?? 0),
       paymentDate: booking.checkIn,
+      checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
       method: booking.dpMethod || booking.fpMethod,
       receivedBy: booking.dpReceivedBy || booking.fpReceivedBy,
       bookingDate: booking.checkIn,
@@ -106,17 +110,26 @@ export async function GET(req: NextRequest) {
       if (receiver && record.receivedBy !== receiver) return false;
 
       if (scope !== "all") {
-        const recordDate = new Date(record.paymentDate ?? record.bookingDate);
-        if (recordDate < weekStart || recordDate > weekEnd) return false;
+        if (record.paymentType === "BK") {
+          const bookingCheckInKey = record.checkInDateKey || toYMD(record.bookingDate);
+          if (bookingCheckInKey < weekStartKey || bookingCheckInKey > weekEndKey) return false;
+        } else {
+          const transferDateKey = toYMD(record.paymentDate ?? record.bookingDate);
+          if (transferDateKey < weekStartKey || transferDateKey > weekEndKey) return false;
+        }
       }
 
       return true;
     });
 
     filtered.sort((a, b) => {
-      const dateA = new Date(a.paymentDate ?? a.bookingDate).getTime();
-      const dateB = new Date(b.paymentDate ?? b.bookingDate).getTime();
-      if (dateA !== dateB) return dateB - dateA;
+      const dateAKey = a.paymentType === "BK"
+        ? (a.checkInDateKey || toYMD(a.bookingDate))
+        : toYMD(a.paymentDate ?? a.bookingDate);
+      const dateBKey = b.paymentType === "BK"
+        ? (b.checkInDateKey || toYMD(b.bookingDate))
+        : toYMD(b.paymentDate ?? b.bookingDate);
+      if (dateAKey !== dateBKey) return dateBKey.localeCompare(dateAKey);
       if (a.paymentType !== b.paymentType) return a.paymentType === "BK" ? -1 : 1;
       return b.bookingId - a.bookingId;
     });
