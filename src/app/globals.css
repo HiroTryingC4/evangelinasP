@@ -32,13 +32,13 @@
   }
   /* Mobile bottom nav */
   .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around z-50 pb-safe;
+    @apply fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 z-50 pb-safe shadow-[0_-6px_20px_rgba(0,0,0,0.06)];
   }
   .bottom-nav-item {
-    @apply flex flex-col items-center gap-0.5 px-3 py-2 text-gray-400 flex-1;
+    @apply flex flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-1.5 text-gray-500;
   }
   .bottom-nav-item.active {
-    @apply text-blue-600;
+    @apply text-blue-600 bg-blue-50;
   }
 }
 

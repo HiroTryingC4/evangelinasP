@@ -22,6 +22,9 @@ type PaymentRecord = {
   remainingBalance: number;
   dpDate: string | Date | null;
   fpDate: string | Date | null;
+  dpAmount?: number | string | null;
+  fpAmount?: number | string | null;
+  totalFee?: number | string | null;
 };
 
 type TransferRecord = {
@@ -192,9 +195,31 @@ export default function PaymentsPage() {
     });
   }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search, dateFilter]);
 
+  const getPaidAmount = (record: PaymentRecord) => {
+    if (record.paymentType !== "BK") return 0;
+
+    const dp = Number(record.dpAmount ?? 0);
+    const fp = Number(record.fpAmount ?? 0);
+    const fromParts = dp + fp;
+    if (fromParts > 0) return fromParts;
+
+    const total = Number(record.totalFee ?? record.amount ?? 0);
+    const remaining = Number(record.remainingBalance ?? 0);
+    return Math.max(0, total - remaining);
+  };
+
+  const getBookingTotal = (record: PaymentRecord) => {
+    if (record.paymentType !== "BK") return 0;
+    return Number(record.totalFee ?? record.amount ?? 0);
+  };
+
   const totals = useMemo(() => {
+    const bookingRecords = filtered.filter((r) => r.paymentType === "BK");
+    const totalAmount = bookingRecords.reduce((sum, record) => sum + getBookingTotal(record), 0);
+    const paidAmount = bookingRecords.reduce((sum, record) => sum + getPaidAmount(record), 0);
+    const remainingAmount = bookingRecords.reduce((sum, record) => sum + Number(record.remainingBalance ?? 0), 0);
     const outstandingCount = filtered.filter((r) => r.remainingBalance > 0).length;
-    return { outstandingCount };
+    return { outstandingCount, totalAmount, paidAmount, remainingAmount };
   }, [filtered]);
 
   if (loading) {
@@ -227,18 +252,18 @@ export default function PaymentsPage() {
                 : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => shiftWeek(-7)}
-              className="btn-secondary text-xs py-1.5"
+              className="btn-secondary text-xs py-1.5 justify-center"
               disabled={scopeFilter === "all"}
             >
               <ChevronLeft className="w-4 h-4" /> Prev Week
             </button>
             <input
               type="date"
-              className="input py-1.5 text-xs w-auto"
+              className="input py-1.5 text-xs w-full"
               value={weeklyDate}
               onChange={(e) => setWeeklyDate(e.target.value)}
               disabled={scopeFilter === "all"}
@@ -246,13 +271,13 @@ export default function PaymentsPage() {
             <button
               type="button"
               onClick={() => shiftWeek(7)}
-              className="btn-secondary text-xs py-1.5"
+              className="btn-secondary text-xs py-1.5 justify-center"
               disabled={scopeFilter === "all"}
             >
               Next Week <ChevronRight className="w-4 h-4" />
             </button>
             <select
-              className="input py-1.5 text-xs"
+              className="input py-1.5 text-xs w-full"
               value={scopeFilter}
               onChange={(e) => setScopeFilter(e.target.value as "week" | "all") }
             >
@@ -270,7 +295,7 @@ export default function PaymentsPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
         <div className="xl:col-span-5 space-y-4 sm:space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
             <div className="stat-card">
               <div className="flex items-center gap-1.5 text-blue-600 mb-1">
                 <CreditCard className="w-4 h-4" />
@@ -284,6 +309,21 @@ export default function PaymentsPage() {
                 <span className="text-xs font-semibold text-gray-500">With balance</span>
               </div>
               <p className="text-2xl font-bold text-gray-900">{totals.outstandingCount}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="stat-card">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Booking Amount</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">{formatPHP(totals.totalAmount)}</p>
+            </div>
+            <div className="stat-card">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Paid Already</p>
+              <p className="text-lg sm:text-xl font-bold text-green-700">{formatPHP(totals.paidAmount)}</p>
+            </div>
+            <div className="stat-card">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Remaining Balance</p>
+              <p className="text-lg sm:text-xl font-bold text-red-600">{formatPHP(totals.remainingAmount)}</p>
             </div>
           </div>
 
@@ -455,6 +495,9 @@ export default function PaymentsPage() {
                 </div>
                   {record.paymentType === "BK" && (
                   <div className="mt-1 text-xs">
+                    Paid: <span className="font-semibold text-green-700">{formatPHP(getPaidAmount(record))}</span>
+                    <span className="text-gray-400"> / Total: {formatPHP(getBookingTotal(record))}</span>
+                    <span className="mx-1.5 text-gray-300">|</span>
                     Balance: <span className={record.remainingBalance > 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>{formatPHP(record.remainingBalance)}</span>
                   </div>
                 )}

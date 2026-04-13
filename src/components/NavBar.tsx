@@ -49,16 +49,18 @@ export default function NavBar() {
 
       {/* Mobile bottom nav */}
       <nav className="sm:hidden bottom-nav">
-        {links.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`bottom-nav-item ${pathname === href ? "active" : ""}`}
-          >
-            <Icon className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{label}</span>
-          </Link>
-        ))}
+        <div className="grid grid-cols-5 gap-0.5 px-1 pt-1 pb-1">
+          {links.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`bottom-nav-item ${pathname === href ? "active" : ""}`}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="text-[9px] leading-tight font-medium text-center max-w-[58px] truncate">{label}</span>
+            </Link>
+          ))}
+        </div>
       </nav>
     </>
   );
