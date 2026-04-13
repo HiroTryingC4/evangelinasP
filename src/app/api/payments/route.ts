@@ -161,13 +161,32 @@ export async function GET(req: NextRequest) {
       return b.bookingId - a.bookingId;
     });
 
-    return NextResponse.json({
-      records: filtered,
-      weekStart: weekStart.toISOString(),
-      weekEnd: weekEnd.toISOString(),
-    });
+    return NextResponse.json(
+      {
+        records: filtered,
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (error) {
     console.error("[GET /api/payments]", error);
-    return NextResponse.json({ error: "Failed to load payment records" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load payment records" },
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   }
 }
