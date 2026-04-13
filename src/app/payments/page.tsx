@@ -41,6 +41,30 @@ type TransferRecord = {
   status: string;
 };
 
+type BookingRecord = {
+  id: number;
+  guestName: string;
+  contactNo?: string | null;
+  unit: string;
+  checkIn: string | Date;
+  checkInDateKey?: string | null;
+  checkInTime: string;
+  checkOut: string | Date;
+  checkOutDateKey?: string | null;
+  checkOutTime: string;
+  totalFee: number;
+  dpAmount: number;
+  dpDate: string | Date | null;
+  dpMethod: string | null;
+  dpReceivedBy: string | null;
+  fpAmount: number;
+  fpDate: string | Date | null;
+  fpMethod: string | null;
+  fpReceivedBy: string | null;
+  remainingBalance: number;
+  paymentStatus: string;
+};
+
 export default function PaymentsPage() {
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [receiverFilters, setReceiverFilters] = useState<string[]>([]);
@@ -89,13 +113,35 @@ export default function PaymentsPage() {
     if (!isInitialLoad) setRefreshing(true);
 
     Promise.all([
-      fetch(`/api/payments?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/bookings?view=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
       fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
       fetch(`/api/payment-transfers?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
     ])
-      .then(([payments, settings, transfers]) => {
-        const paymentRows: PaymentRecord[] = Array.isArray(payments.records) ? payments.records : [];
-          const bookingRows = paymentRows.filter((row) => row.paymentType !== "TR");
+      .then(([bookings, settings, transfers]) => {
+        const bookingRowsRaw: BookingRecord[] = Array.isArray(bookings) ? bookings : [];
+        const bookingRows: PaymentRecord[] = bookingRowsRaw.map((booking) => ({
+          id: `booking-${booking.id}`,
+          bookingId: booking.id,
+          guestName: booking.guestName,
+          unit: booking.unit,
+          normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
+          paymentType: "BK",
+          amount: Number(booking.totalFee ?? 0),
+          paymentDate: booking.checkIn,
+          checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
+          method: booking.dpMethod || booking.fpMethod,
+          receivedBy: booking.dpReceivedBy || booking.fpReceivedBy,
+          bookingDate: booking.checkIn,
+          checkInTime: booking.checkInTime,
+          checkOutTime: booking.checkOutTime,
+          paymentStatus: booking.paymentStatus,
+          remainingBalance: Number(booking.remainingBalance ?? 0),
+          dpDate: booking.dpDate,
+          fpDate: booking.fpDate,
+          dpAmount: booking.dpAmount,
+          fpAmount: booking.fpAmount,
+          totalFee: booking.totalFee,
+        }));
 
         const transferRowsRaw: TransferRecord[] = Array.isArray(transfers) ? transfers : [];
         const transferRows: PaymentRecord[] = transferRowsRaw.flatMap((t) => {
