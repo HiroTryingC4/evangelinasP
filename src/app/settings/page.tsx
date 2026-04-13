@@ -6,13 +6,17 @@ import { Plus, Save, Trash2 } from "lucide-react";
 type SettingsResponse = {
   units: string[];
   receivers: string[];
+  receiverPersons?: { name: string; role: "employee" | "host" }[];
 };
+
+type ReceiverPerson = { name: string; role: "employee" | "host" };
 
 export default function SettingsPage() {
   const [units, setUnits] = useState<string[]>([]);
-  const [receivers, setReceivers] = useState<string[]>([]);
+  const [receivers, setReceivers] = useState<ReceiverPerson[]>([]);
   const [newUnit, setNewUnit] = useState("");
   const [newReceiver, setNewReceiver] = useState("");
+  const [newReceiverRole, setNewReceiverRole] = useState<"employee" | "host">("employee");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -23,7 +27,11 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((data: SettingsResponse) => {
         setUnits(data.units ?? []);
-        setReceivers(data.receivers ?? []);
+        if (Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0) {
+          setReceivers(data.receiverPersons);
+        } else {
+          setReceivers((data.receivers ?? []).map((name) => ({ name, role: "employee" })));
+        }
         setLoading(false);
       })
       .catch(() => {
@@ -44,9 +52,15 @@ export default function SettingsPage() {
   const addReceiver = () => {
     const name = newReceiver.trim();
     if (!name) return;
-    if (receivers.some((r) => r.toLowerCase() === name.toLowerCase())) return;
-    setReceivers((prev) => [...prev, name]);
+    if (receivers.some((r) => r.name.toLowerCase() === name.toLowerCase())) return;
+    setReceivers((prev) => [...prev, { name, role: newReceiverRole }]);
     setNewReceiver("");
+    setNewReceiverRole("employee");
+    setMessage("");
+  };
+
+  const updateReceiverRole = (idx: number, role: "employee" | "host") => {
+    setReceivers((prev) => prev.map((item, i) => (i === idx ? { ...item, role } : item)));
     setMessage("");
   };
 
@@ -81,7 +95,11 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error(data?.error || "Failed to save");
 
       setUnits(data.units ?? units);
-      setReceivers(data.receivers ?? receivers);
+      if (Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0) {
+        setReceivers(data.receiverPersons);
+      } else {
+        setReceivers(receivers);
+      }
       setMessage("Saved. New units/receivers are now available in forms and filters.");
     } catch (e: any) {
       setError(e?.message || "Failed to save settings.");
@@ -155,23 +173,43 @@ export default function SettingsPage() {
               value={newReceiver}
               onChange={(e) => setNewReceiver(e.target.value)}
             />
+            <select
+              className="input max-w-[140px]"
+              value={newReceiverRole}
+              onChange={(e) => setNewReceiverRole((e.target.value === "host" ? "host" : "employee"))}
+            >
+              <option value="employee">Employee</option>
+              <option value="host">Host</option>
+            </select>
             <button type="button" className="btn-secondary" onClick={addReceiver}>
               <Plus className="w-4 h-4" /> Add
             </button>
           </div>
           <div className="space-y-2">
-            {receivers.map((name, i) => (
-              <div key={`${name}-${i}`} className="flex items-center justify-between p-2 rounded-lg border border-gray-100 bg-gray-50">
-                <span className="text-sm font-medium text-gray-800">{name}</span>
-                <button
-                  type="button"
-                  className="btn-danger"
-                  onClick={() => removeAt("receiver", i)}
-                  disabled={receivers.length <= 1}
-                  title={receivers.length <= 1 ? "At least one receiver is required" : "Remove receiver"}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+            {receivers.map((item, i) => (
+              <div key={`${item.name}-${i}`} className="flex items-center justify-between p-2 rounded-lg border border-gray-100 bg-gray-50 gap-2">
+                <div className="min-w-0">
+                  <span className="text-sm font-medium text-gray-800">{item.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="input h-9 py-1 max-w-[120px]"
+                    value={item.role}
+                    onChange={(e) => updateReceiverRole(i, e.target.value === "host" ? "host" : "employee")}
+                  >
+                    <option value="employee">Employee</option>
+                    <option value="host">Host</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => removeAt("receiver", i)}
+                    disabled={receivers.length <= 1}
+                    title={receivers.length <= 1 ? "At least one receiver is required" : "Remove receiver"}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

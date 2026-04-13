@@ -16,6 +16,12 @@ type Transfer = {
 };
 
 export default function PaymentTransfersPage() {
+  const recipientOptions = [
+    { label: "Riemar (Owner)", value: "riemar" },
+    { label: "Sir Mike (Employee)", value: "sir mike" },
+    { label: "James (Employee)", value: "james" },
+  ];
+
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -240,15 +246,20 @@ export default function PaymentTransfersPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Recipient *
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., sir mike, james"
+                  <select
                     value={formData.recipient}
                     onChange={(e) =>
                       setFormData({ ...formData, recipient: e.target.value })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  >
+                    <option value="">Select owner or employee</option>
+                    {recipientOptions.map((person) => (
+                      <option key={person.value} value={person.value}>
+                        {person.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Amount */}

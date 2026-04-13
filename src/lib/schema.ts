@@ -60,6 +60,7 @@ export const unitConfigs = pgTable("unit_configs", {
 export const receiverPersons = pgTable("receiver_persons", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
+  role: text("role").notNull().default("employee"), // employee, host
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
