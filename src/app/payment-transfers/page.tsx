@@ -10,6 +10,8 @@ type Transfer = {
   recipient: string;
   amount: string | number;
   transferDate: string | Date;
+  sourceUnit?: string | null;
+  sourceWeekStart?: string | Date | null;
   reason: string | null;
   paymentMethod: string | null;
   status: string;
@@ -23,6 +25,7 @@ type ReceiverPerson = {
 
 export default function PaymentTransfersPage() {
   const [recipientOptions, setRecipientOptions] = useState<ReceiverPerson[]>([]);
+  const [units, setUnits] = useState<string[]>([]);
 
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +47,29 @@ export default function PaymentTransfersPage() {
     recipient: "",
     amount: "",
     transferDate: new Date().toISOString().split("T")[0],
+    sourceUnit: "",
+    sourceWeekStart: new Date().toISOString().split("T")[0],
     reason: "",
     paymentMethod: "bank transfer",
   });
+
+  const formatWeekLabel = (value: string) => {
+    const base = new Date(`${value}T12:00:00`);
+    if (Number.isNaN(base.getTime())) return "";
+    const start = new Date(base);
+    start.setDate(base.getDate() - base.getDay());
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+    return `${start.toLocaleDateString(undefined, opts)} - ${end.toLocaleDateString(undefined, opts)}`;
+  };
+
+  const setWeekByOffset = (offsetDays: number) => {
+    const base = new Date(`${formData.sourceWeekStart}T12:00:00`);
+    if (Number.isNaN(base.getTime())) return;
+    base.setDate(base.getDate() + offsetDays);
+    setFormData((prev) => ({ ...prev, sourceWeekStart: base.toISOString().split("T")[0] }));
+  };
 
   // Fetch transfers
   const fetchTransfers = async () => {
@@ -67,6 +90,9 @@ export default function PaymentTransfersPage() {
         : [];
 
       setRecipientOptions(receiverPersons);
+      if (Array.isArray(settings.units) && settings.units.length > 0) {
+        setUnits(settings.units.map((u: string) => String(u).replace(/^Unit\s*/i, "")));
+      }
       setFormData((prev) => ({
         ...prev,
         sender: prev.sender || "riemar",
@@ -152,6 +178,8 @@ export default function PaymentTransfersPage() {
         recipient: "",
         amount: "",
         transferDate: new Date().toISOString().split("T")[0],
+        sourceUnit: formData.sourceUnit,
+        sourceWeekStart: formData.sourceWeekStart,
         reason: "",
         paymentMethod: "bank transfer",
       });
@@ -173,6 +201,10 @@ export default function PaymentTransfersPage() {
       recipient: transfer.recipient,
       amount: transfer.amount.toString(),
       transferDate: new Date(transfer.transferDate).toISOString().split("T")[0],
+      sourceUnit: transfer.sourceUnit ? String(transfer.sourceUnit) : "",
+      sourceWeekStart: transfer.sourceWeekStart
+        ? new Date(transfer.sourceWeekStart).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0],
       reason: transfer.reason || "",
       paymentMethod: transfer.paymentMethod || "bank transfer",
     });
@@ -206,6 +238,8 @@ export default function PaymentTransfersPage() {
       recipient: "",
       amount: "",
       transferDate: new Date().toISOString().split("T")[0],
+      sourceUnit: formData.sourceUnit,
+      sourceWeekStart: formData.sourceWeekStart,
       reason: "",
       paymentMethod: "bank transfer",
     });
@@ -397,6 +431,44 @@ export default function PaymentTransfersPage() {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Source Unit (where deducted)
+                  </label>
+                  <select
+                    value={formData.sourceUnit}
+                    onChange={(e) =>
+                      setFormData({ ...formData, sourceUnit: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">No specific unit</option>
+                    {units.map((unit) => (
+                      <option key={unit} value={unit}>Unit {unit}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Source Week (where deducted)
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.sourceWeekStart}
+                    onChange={(e) =>
+                      setFormData({ ...formData, sourceWeekStart: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Week: {formatWeekLabel(formData.sourceWeekStart)}</p>
+                  <div className="flex gap-2 mt-2">
+                    <button type="button" className="btn-secondary text-xs py-1 px-2" onClick={() => setWeekByOffset(-7)}>Prev Week</button>
+                    <button type="button" className="btn-secondary text-xs py-1 px-2" onClick={() => setFormData({ ...formData, sourceWeekStart: new Date().toISOString().split("T")[0] })}>This Week</button>
+                    <button type="button" className="btn-secondary text-xs py-1 px-2" onClick={() => setWeekByOffset(7)}>Next Week</button>
+                  </div>
                 </div>
 
                 {/* Payment Method */}

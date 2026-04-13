@@ -29,6 +29,8 @@ type TransferRecord = {
   recipient?: string;
   amount: string | number;
   transferDate: string | Date;
+  sourceUnit?: string | null;
+  sourceWeekStart?: string | Date | null;
   paymentMethod: string | null;
   status: string;
 };
@@ -87,15 +89,16 @@ export default function PaymentsPage() {
         const transferRowsRaw: TransferRecord[] = Array.isArray(transfers) ? transfers : [];
         const transferRows: PaymentRecord[] = transferRowsRaw.flatMap((t) => {
           const amount = Number(t.amount || 0);
-          const date = t.transferDate ?? new Date().toISOString();
+          const date = t.sourceWeekStart ?? t.transferDate ?? new Date().toISOString();
           const sender = (t.sender ?? "").toString();
           const recipient = (t.recipient ?? "").toString();
+          const sourceUnit = t.sourceUnit && String(t.sourceUnit).trim() ? String(t.sourceUnit) : "TRANSFER";
 
           const out: PaymentRecord = {
             id: `tr-out-${t.id}`,
             bookingId: 0,
             guestName: `Transfer to ${recipient}`,
-            unit: "TRANSFER",
+            unit: sourceUnit,
             paymentType: "TR",
             amount: -amount,
             paymentDate: date,
@@ -113,7 +116,7 @@ export default function PaymentsPage() {
             id: `tr-in-${t.id}`,
             bookingId: 0,
             guestName: `Transfer from ${sender}`,
-            unit: "TRANSFER",
+            unit: sourceUnit,
             paymentType: "TR",
             amount,
             paymentDate: date,
