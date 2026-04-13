@@ -182,6 +182,7 @@ export async function GET(req: NextRequest) {
     const recipientId = searchParams.get("recipientId");
     const senderId = searchParams.get("senderId");
     const weeklyDateParam = searchParams.get("weeklyDate");
+    const monthlyDateParam = searchParams.get("monthlyDate");
     const scope = searchParams.get("scope") || "all";
     const includeAccounts = searchParams.get("includeAccounts") === "1";
     const accountScope = searchParams.get("accountScope") || "all";
@@ -197,6 +198,13 @@ export async function GET(req: NextRequest) {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
+
+    const monthAnchor = monthlyDateParam
+      ? new Date(`${monthlyDateParam}-01T12:00:00`)
+      : new Date();
+    const monthBase = Number.isNaN(monthAnchor.getTime()) ? new Date() : monthAnchor;
+    const monthStart = new Date(monthBase.getFullYear(), monthBase.getMonth(), 1, 0, 0, 0, 0);
+    const monthEnd = new Date(monthBase.getFullYear(), monthBase.getMonth() + 1, 0, 23, 59, 59, 999);
 
     let query = db.select().from(paymentTransfers);
 
@@ -219,9 +227,10 @@ export async function GET(req: NextRequest) {
         recipient: personMap.get(t.recipientId) ?? "",
       }))
       .filter((t) => {
-        if (scope !== "week") return true;
         const d = new Date(t.transferDate ?? t.createdAt ?? new Date());
-        return d >= weekStart && d <= weekEnd;
+        if (scope === "week") return d >= weekStart && d <= weekEnd;
+        if (scope === "month") return d >= monthStart && d <= monthEnd;
+        return true;
       });
 
     if (!includeAccounts) {

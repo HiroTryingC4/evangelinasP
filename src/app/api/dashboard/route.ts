@@ -23,9 +23,23 @@ export async function GET(req: NextRequest) {
       .from(unitConfigs)
       .orderBy(asc(unitConfigs.sortOrder), asc(unitConfigs.id));
 
-    const unitCodes = configuredUnits.length > 0
+    const configuredUnitCodes = configuredUnits.length > 0
       ? configuredUnits.map((u) => u.code)
       : DEFAULT_UNITS;
+
+    // All bookings ever; normalize keys in-memory so legacy/stale fields do not affect totals.
+    const allRaw = await db.select().from(bookings);
+    const all = allRaw.map((b) => ({
+      ...b,
+      normalizedUnit: String(b.unit || "").replace(/^Unit\s*/i, "").trim(),
+      // Prefer canonical date keys written from user input to avoid timestamp timezone drift.
+      checkInKey: b.checkInDateKey || toYMD(b.checkIn),
+      checkOutKey: b.checkOutDateKey || toYMD(b.checkOut),
+    }));
+
+    const bookingUnitCodes = Array.from(new Set(all.map((b) => b.normalizedUnit).filter(Boolean)));
+    const configuredSet = new Set(configuredUnitCodes);
+    const unitCodes = [...configuredUnitCodes, ...bookingUnitCodes.filter((code) => !configuredSet.has(code))];
 
     const selectedUnits = weeklyUnitsParam
       ? Array.from(new Set(
@@ -37,16 +51,6 @@ export async function GET(req: NextRequest) {
       : [];
 
     const hasUnitFilter = selectedUnits.length > 0;
-
-    // All bookings ever; normalize keys in-memory so legacy/stale fields do not affect totals.
-    const allRaw = await db.select().from(bookings);
-    const all = allRaw.map((b) => ({
-      ...b,
-      normalizedUnit: String(b.unit || "").replace(/^Unit\s*/i, "").trim(),
-      // Prefer canonical date keys written from user input to avoid timestamp timezone drift.
-      checkInKey: b.checkInDateKey || toYMD(b.checkIn),
-      checkOutKey: b.checkOutDateKey || toYMD(b.checkOut),
-    }));
 
     // All bookings in the selected date range (for the main stats)
     const filtered = all.filter((b) => {

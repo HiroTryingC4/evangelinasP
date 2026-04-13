@@ -72,7 +72,7 @@ export default function PaymentsPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [balanceFilter, setBalanceFilter] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"week" | "all">("week");
+  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "all">("week");
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [compactMode, setCompactMode] = useState(false);
@@ -81,6 +81,7 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
+  const [monthlyDate, setMonthlyDate] = useState(() => toYMD(new Date()).slice(0, 7));
 
   const normalizeDateInput = (value: string): string => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -99,6 +100,13 @@ export default function PaymentsPage() {
     if (Number.isNaN(base.getTime())) return;
     base.setDate(base.getDate() + days);
     setWeeklyDate(toYMD(base));
+  };
+
+  const shiftMonth = (months: number) => {
+    const base = new Date(`${monthlyDate}-01T12:00:00`);
+    if (Number.isNaN(base.getTime())) return;
+    base.setMonth(base.getMonth() + months);
+    setMonthlyDate(toYMD(base).slice(0, 7));
   };
 
   const toggleReceiver = (receiver: string) => {
@@ -219,6 +227,7 @@ export default function PaymentsPage() {
     const week = getSundayToSaturdayWeek(normalizeDateInput(weeklyDate));
     const weekStartKey = week.startDate;
     const weekEndKey = week.endDate;
+    const monthKey = monthlyDate;
 
     return records.filter((record) => {
       if (scopeFilter === "week") {
@@ -226,6 +235,11 @@ export default function PaymentsPage() {
           ? (record.checkInDateKey || toYMD(record.bookingDate))
           : toYMD(record.paymentDate ?? record.bookingDate);
         if (recordDateKey < weekStartKey || recordDateKey > weekEndKey) return false;
+      } else if (scopeFilter === "month") {
+        const recordDateKey = record.paymentType === "BK"
+          ? (record.checkInDateKey || toYMD(record.bookingDate))
+          : toYMD(record.paymentDate ?? record.bookingDate);
+        if (!recordDateKey.startsWith(monthKey)) return false;
       }
 
       if (receiverFilters.length > 0) {
@@ -256,7 +270,7 @@ export default function PaymentsPage() {
         (record.receivedBy ?? "").toLowerCase().includes(q)
       );
     });
-  }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search, dateFilter, scopeFilter, weeklyDate]);
+  }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search, dateFilter, scopeFilter, weeklyDate, monthlyDate]);
 
   const getPaidAmount = (record: PaymentRecord) => {
     if (record.paymentType !== "BK") return 0;
@@ -308,11 +322,13 @@ export default function PaymentsPage() {
       <div className="card p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Weekly Payments</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Payment Scope</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               {scopeFilter === "all"
                 ? "All payment records"
-                : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
+                : scopeFilter === "month"
+                  ? new Date(`${monthlyDate}-01T12:00:00`).toLocaleDateString("en-PH", { month: "long", year: "numeric" })
+                  : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
             </p>
           </div>
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
@@ -320,7 +336,7 @@ export default function PaymentsPage() {
               type="button"
               onClick={() => shiftWeek(-7)}
               className="btn-secondary text-xs py-1.5 justify-center"
-              disabled={scopeFilter === "all"}
+              disabled={scopeFilter !== "week"}
             >
               <ChevronLeft className="w-4 h-4" /> Prev Week
             </button>
@@ -329,22 +345,46 @@ export default function PaymentsPage() {
               className="input py-1.5 text-xs w-full"
               value={weeklyDate}
                 onChange={(e) => setWeeklyDate(normalizeDateInput(e.target.value))}
-              disabled={scopeFilter === "all"}
+              disabled={scopeFilter !== "week"}
             />
             <button
               type="button"
               onClick={() => shiftWeek(7)}
               className="btn-secondary text-xs py-1.5 justify-center"
-              disabled={scopeFilter === "all"}
+              disabled={scopeFilter !== "week"}
             >
               Next Week <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => shiftMonth(-1)}
+              className="btn-secondary text-xs py-1.5 justify-center"
+              disabled={scopeFilter !== "month"}
+            >
+              <ChevronLeft className="w-4 h-4" /> Prev Month
+            </button>
+            <input
+              type="month"
+              className="input py-1.5 text-xs w-full"
+              value={monthlyDate}
+              onChange={(e) => setMonthlyDate(e.target.value)}
+              disabled={scopeFilter !== "month"}
+            />
+            <button
+              type="button"
+              onClick={() => shiftMonth(1)}
+              className="btn-secondary text-xs py-1.5 justify-center"
+              disabled={scopeFilter !== "month"}
+            >
+              Next Month <ChevronRight className="w-4 h-4" />
             </button>
             <select
               className="input py-1.5 text-xs w-full"
               value={scopeFilter}
-              onChange={(e) => setScopeFilter(e.target.value as "week" | "all") }
+              onChange={(e) => setScopeFilter(e.target.value as "week" | "month" | "all") }
             >
               <option value="week">This week</option>
+              <option value="month">This month</option>
               <option value="all">All records</option>
             </select>
             {refreshing && (

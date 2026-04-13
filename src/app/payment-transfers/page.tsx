@@ -41,8 +41,9 @@ export default function PaymentTransfersPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [scopeFilter, setScopeFilter] = useState<"week" | "all">("all");
+  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "all">("all");
   const [weeklyDate, setWeeklyDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [monthlyDate, setMonthlyDate] = useState(() => new Date().toISOString().slice(0, 7));
   const [accountScope, setAccountScope] = useState<"all" | "month">("all");
   const [accountMonth, setAccountMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
@@ -51,6 +52,13 @@ export default function PaymentTransfersPage() {
     if (Number.isNaN(base.getTime())) return;
     base.setDate(base.getDate() + days);
     setWeeklyDate(base.toISOString().slice(0, 10));
+  };
+
+  const shiftMonth = (months: number) => {
+    const base = new Date(`${monthlyDate}-01T12:00:00`);
+    if (Number.isNaN(base.getTime())) return;
+    base.setMonth(base.getMonth() + months);
+    setMonthlyDate(base.toISOString().slice(0, 7));
   };
 
   // Form state
@@ -87,7 +95,7 @@ export default function PaymentTransfersPage() {
   const fetchTransfers = async () => {
     try {
       const [transferRes, settingsRes] = await Promise.all([
-        fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&scope=${scopeFilter}&includeAccounts=1&accountScope=${accountScope}&accountMonth=${accountMonth}&_ts=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&monthlyDate=${monthlyDate}&scope=${scopeFilter}&includeAccounts=1&accountScope=${accountScope}&accountMonth=${accountMonth}&_ts=${Date.now()}`, { cache: "no-store" }),
         fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }),
       ]);
 
@@ -128,7 +136,7 @@ export default function PaymentTransfersPage() {
 
   useEffect(() => {
     fetchTransfers();
-  }, [weeklyDate, scopeFilter, accountScope, accountMonth]);
+  }, [weeklyDate, monthlyDate, scopeFilter, accountScope, accountMonth]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -306,7 +314,9 @@ export default function PaymentTransfersPage() {
               <p className="text-xs text-gray-400 mt-0.5">
                 {scopeFilter === "all"
                   ? "All transfer records"
-                  : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
+                  : scopeFilter === "month"
+                    ? new Date(`${monthlyDate}-01T12:00:00`).toLocaleDateString("en-PH", { month: "long", year: "numeric" })
+                    : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -314,7 +324,7 @@ export default function PaymentTransfersPage() {
                 type="button"
                 onClick={() => shiftWeek(-7)}
                 className="btn-secondary text-xs py-1.5"
-                disabled={scopeFilter === "all"}
+                disabled={scopeFilter !== "week"}
               >
                 <ChevronLeft className="w-4 h-4" /> Prev Week
               </button>
@@ -323,22 +333,46 @@ export default function PaymentTransfersPage() {
                 className="input py-1.5 text-xs w-auto"
                 value={weeklyDate}
                 onChange={(e) => setWeeklyDate(e.target.value)}
-                disabled={scopeFilter === "all"}
+                disabled={scopeFilter !== "week"}
               />
               <button
                 type="button"
                 onClick={() => shiftWeek(7)}
                 className="btn-secondary text-xs py-1.5"
-                disabled={scopeFilter === "all"}
+                disabled={scopeFilter !== "week"}
               >
                 Next Week <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => shiftMonth(-1)}
+                className="btn-secondary text-xs py-1.5"
+                disabled={scopeFilter !== "month"}
+              >
+                <ChevronLeft className="w-4 h-4" /> Prev Month
+              </button>
+              <input
+                type="month"
+                className="input py-1.5 text-xs w-auto"
+                value={monthlyDate}
+                onChange={(e) => setMonthlyDate(e.target.value)}
+                disabled={scopeFilter !== "month"}
+              />
+              <button
+                type="button"
+                onClick={() => shiftMonth(1)}
+                className="btn-secondary text-xs py-1.5"
+                disabled={scopeFilter !== "month"}
+              >
+                Next Month <ChevronRight className="w-4 h-4" />
               </button>
               <select
                 className="input py-1.5 text-xs"
                 value={scopeFilter}
-                onChange={(e) => setScopeFilter(e.target.value as "week" | "all")}
+                onChange={(e) => setScopeFilter(e.target.value as "week" | "month" | "all")}
               >
                 <option value="week">This week</option>
+                <option value="month">This month</option>
                 <option value="all">All transfers</option>
               </select>
             </div>
