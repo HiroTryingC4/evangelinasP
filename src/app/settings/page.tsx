@@ -95,7 +95,10 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to save");
+      if (!res.ok) {
+        const detail = data?.detail ? ` (${data.detail})` : "";
+        throw new Error(`${data?.error || "Failed to save"}${detail}`);
+      }
 
       setUnits(Array.from(new Set((data.units ?? units).map((unit) => normalizeUnitCode(String(unit))).filter(Boolean))));
       if (Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0) {

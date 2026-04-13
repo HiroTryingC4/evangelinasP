@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { receiverPersons, unitConfigs } from "@/lib/schema";
+import { persons, receiverPersons, unitConfigs } from "@/lib/schema";
 import { STAFF, UNITS } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -125,6 +125,19 @@ export async function PUT(req: NextRequest) {
     await db.insert(receiverPersons).values(
       receivers.map((person, i) => ({ name: person.name, role: person.role, sortOrder: i }))
     );
+
+    // Keep `persons` in sync so newly added receivers are available
+    // in transfer/payment database flows that read from this table.
+    const existingPersons = await db.select({ name: persons.name }).from(persons);
+    const existingSet = new Set(existingPersons.map((p) => String(p.name).trim().toLowerCase()));
+    const personRows = receivers
+      .map((person) => String(person.name).trim().toLowerCase())
+      .filter((name) => name && !existingSet.has(name))
+      .map((name) => ({ name, type: "recipient" as const, balance: "0" }));
+
+    if (personRows.length > 0) {
+      await db.insert(persons).values(personRows);
+    }
 
     return NextResponse.json({
       units,
