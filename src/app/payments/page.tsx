@@ -42,6 +42,8 @@ export default function PaymentsPage() {
   const [balanceFilter, setBalanceFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState<"week" | "all">("week");
   const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [compactMode, setCompactMode] = useState(false);
   const [receivers, setReceivers] = useState<string[]>([]);
   const [units, setUnits] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,6 +166,17 @@ export default function PaymentsPage() {
       if (statusFilter && record.paymentStatus !== statusFilter) return false;
       if (balanceFilter === "with" && record.remainingBalance <= 0) return false;
       if (balanceFilter === "settled" && record.remainingBalance > 0) return false;
+
+      if (dateFilter) {
+        const d = new Date(record.paymentDate ?? record.bookingDate);
+        if (Number.isNaN(d.getTime())) return false;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const ymd = `${y}-${m}-${day}`;
+        if (ymd !== dateFilter) return false;
+      }
+
       if (!q) return true;
       return (
         record.guestName.toLowerCase().includes(q) ||
@@ -171,7 +184,7 @@ export default function PaymentsPage() {
         (record.receivedBy ?? "").toLowerCase().includes(q)
       );
     });
-  }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search]);
+  }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search, dateFilter]);
 
   const totals = useMemo(() => {
     const dpCount = filtered.filter((r) => r.paymentType === "DP").length;
@@ -307,6 +320,20 @@ export default function PaymentsPage() {
                 <option value="with">With balance</option>
                 <option value="settled">Fully settled</option>
               </select>
+              <input
+                type="date"
+                className="input"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                placeholder="Filter by date"
+              />
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setDateFilter("")}
+              >
+                Clear Date
+              </button>
             </div>
           </div>
 
@@ -384,12 +411,26 @@ export default function PaymentsPage() {
         </div>
 
         <div className="xl:col-span-7">
+          <div className="card p-3 sm:p-4 mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Records List</h3>
+              <p className="text-xs text-gray-500">Toggle compact mode for denser rows</p>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setCompactMode((v) => !v)}
+            >
+              {compactMode ? "Normal View" : "Compact View"}
+            </button>
+          </div>
+
           {filtered.length === 0 ? (
             <div className="card p-8 text-center text-gray-400">No payment records found</div>
           ) : (
             <div className="space-y-2">
           {filtered.map((record) => (
-            <div key={record.id} className="card p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div key={record.id} className={`card ${compactMode ? "p-2" : "p-3 sm:p-4"} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`}>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${record.paymentType === "DP" ? "bg-yellow-100 text-yellow-800" : record.paymentType === "FP" ? "bg-green-100 text-green-800" : "bg-indigo-100 text-indigo-800"}`}>
@@ -400,8 +441,8 @@ export default function PaymentsPage() {
                     {record.paymentStatus}
                   </span>
                 </div>
-                <p className="font-semibold text-gray-900 truncate">{record.guestName}</p>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                <p className={`${compactMode ? "text-sm" : ""} font-semibold text-gray-900 truncate`}>{record.guestName}</p>
+                <div className={`${compactMode ? "mt-0.5" : "mt-1"} flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500`}>
                   <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{formatDate(record.paymentDate)}</span>
                   {record.paymentType !== "TR" && <span>Deposit paid: {formatDate(record.dpDate)}</span>}
                   <span>Method: {record.method ?? "—"}</span>
