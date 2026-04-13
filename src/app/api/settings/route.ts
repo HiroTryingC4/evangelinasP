@@ -18,6 +18,23 @@ function sanitizeList(values: unknown): string[] {
   return Array.from(new Set(out));
 }
 
+function sanitizeUnits(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    const unit = normalizeUnitCode(String(value ?? ""));
+    if (!unit) continue;
+    if (seen.has(unit)) continue;
+    seen.add(unit);
+    out.push(unit);
+  }
+
+  return out;
+}
+
 type ReceiverInput = { name: string; role: "employee" | "host" };
 
 function sanitizeReceivers(values: unknown): ReceiverInput[] {
@@ -86,7 +103,7 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const units = sanitizeList(body.units).map(normalizeUnitCode);
+    const units = sanitizeUnits(body.units);
     const receivers = sanitizeReceivers(body.receivers);
 
     if (units.length === 0) {

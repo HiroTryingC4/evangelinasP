@@ -12,6 +12,8 @@ type SettingsResponse = {
 type ReceiverPerson = { name: string; role: "employee" | "host" };
 
 export default function SettingsPage() {
+  const normalizeUnitCode = (value: string) => value.trim().replace(/^Unit\s*/i, "");
+
   const [units, setUnits] = useState<string[]>([]);
   const [receivers, setReceivers] = useState<ReceiverPerson[]>([]);
   const [newUnit, setNewUnit] = useState("");
@@ -26,7 +28,7 @@ export default function SettingsPage() {
     fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data: SettingsResponse) => {
-        setUnits(data.units ?? []);
+        setUnits(Array.from(new Set((data.units ?? []).map((unit) => normalizeUnitCode(String(unit))).filter(Boolean))));
         if (Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0) {
           setReceivers(data.receiverPersons);
         } else {
@@ -41,7 +43,7 @@ export default function SettingsPage() {
   }, []);
 
   const addUnit = () => {
-    const code = newUnit.trim().replace(/^Unit\s*/i, "");
+    const code = normalizeUnitCode(newUnit);
     if (!code) return;
     if (units.includes(code)) return;
     setUnits((prev) => [...prev, code]);
@@ -85,16 +87,17 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
+      const normalizedUnits = Array.from(new Set(units.map((unit) => normalizeUnitCode(unit)).filter(Boolean)));
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ units, receivers }),
+        body: JSON.stringify({ units: normalizedUnits, receivers }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to save");
 
-      setUnits(data.units ?? units);
+      setUnits(Array.from(new Set((data.units ?? units).map((unit) => normalizeUnitCode(String(unit))).filter(Boolean))));
       if (Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0) {
         setReceivers(data.receiverPersons);
       } else {
