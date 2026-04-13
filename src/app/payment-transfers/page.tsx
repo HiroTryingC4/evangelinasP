@@ -6,6 +6,7 @@ import { formatPHP, formatDate } from "@/lib/utils";
 
 type Transfer = {
   id: number;
+  sender: string;
   recipient: string;
   amount: string | number;
   transferDate: string | Date;
@@ -15,12 +16,13 @@ type Transfer = {
   createdAt: string | Date;
 };
 
+type ReceiverPerson = {
+  name: string;
+  role: "employee" | "host";
+};
+
 export default function PaymentTransfersPage() {
-  const recipientOptions = [
-    { label: "Riemar (Owner)", value: "riemar" },
-    { label: "Sir Mike (Employee)", value: "sir mike" },
-    { label: "James (Employee)", value: "james" },
-  ];
+  const [recipientOptions, setRecipientOptions] = useState<ReceiverPerson[]>([]);
 
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ export default function PaymentTransfersPage() {
 
   // Form state
   const [formData, setFormData] = useState({
+    sender: "",
     recipient: "",
     amount: "",
     transferDate: new Date().toISOString().split("T")[0],
@@ -39,9 +42,26 @@ export default function PaymentTransfersPage() {
   // Fetch transfers
   const fetchTransfers = async () => {
     try {
-      const res = await fetch("/api/payment-transfers");
-      const data = await res.json();
+      const [transferRes, settingsRes] = await Promise.all([
+        fetch("/api/payment-transfers"),
+        fetch("/api/settings"),
+      ]);
+
+      const data = await transferRes.json();
+      const settings = await settingsRes.json();
       setTransfers(data);
+
+      const receiverPersons = Array.isArray(settings.receiverPersons)
+        ? settings.receiverPersons
+        : Array.isArray(settings.receivers)
+        ? settings.receivers.map((name: string) => ({ name, role: "employee" as const }))
+        : [];
+
+      setRecipientOptions(receiverPersons);
+      setFormData((prev) => ({
+        ...prev,
+        sender: prev.sender || "riemar",
+      }));
     } catch (error) {
       console.error("Failed to fetch transfers:", error);
       alert("Failed to load transfers");
@@ -86,8 +106,12 @@ export default function PaymentTransfersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.recipient.trim() || !formData.amount) {
-      alert("Please fill in recipient and amount");
+    if (!formData.sender.trim() || !formData.recipient.trim() || !formData.amount) {
+      alert("Please fill in sender, recipient, and amount");
+      return;
+    }
+    if (formData.sender.trim().toLowerCase() === formData.recipient.trim().toLowerCase()) {
+      alert("Sender and recipient must be different");
       return;
     }
 
@@ -115,6 +139,7 @@ export default function PaymentTransfersPage() {
 
       // Reset form
       setFormData({
+        sender: formData.sender,
         recipient: "",
         amount: "",
         transferDate: new Date().toISOString().split("T")[0],
@@ -135,6 +160,7 @@ export default function PaymentTransfersPage() {
 
   const handleEdit = (transfer: Transfer) => {
     setFormData({
+      sender: transfer.sender,
       recipient: transfer.recipient,
       amount: transfer.amount.toString(),
       transferDate: new Date(transfer.transferDate).toISOString().split("T")[0],
@@ -167,6 +193,7 @@ export default function PaymentTransfersPage() {
 
   const handleCancel = () => {
     setFormData({
+      sender: formData.sender || "riemar",
       recipient: "",
       amount: "",
       transferDate: new Date().toISOString().split("T")[0],
@@ -241,6 +268,26 @@ export default function PaymentTransfersPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sender *
+                  </label>
+                  <select
+                    value={formData.sender}
+                    onChange={(e) =>
+                      setFormData({ ...formData, sender: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select sender</option>
+                    {recipientOptions.map((person) => (
+                      <option key={`sender-${person.name}`} value={person.name}>
+                        {person.name} ({person.role === "host" ? "Host" : "Employee"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Recipient */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -254,9 +301,11 @@ export default function PaymentTransfersPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select owner or employee</option>
-                    {recipientOptions.map((person) => (
-                      <option key={person.value} value={person.value}>
-                        {person.label}
+                    {recipientOptions
+                      .filter((person) => person.name.toLowerCase() !== formData.sender.toLowerCase())
+                      .map((person) => (
+                      <option key={`recipient-${person.name}`} value={person.name}>
+                        {person.name} ({person.role === "host" ? "Host" : "Employee"})
                       </option>
                     ))}
                   </select>
@@ -410,7 +459,7 @@ export default function PaymentTransfersPage() {
                   >
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900 capitalize">
-                        {transfer.recipient}
+                        {transfer.sender} to {transfer.recipient}
                       </p>
                       <p className="text-sm text-gray-600 mt-1">
                         {transfer.reason || "No reason"}

@@ -10,7 +10,7 @@ type PaymentRecord = {
   bookingId: number;
   guestName: string;
   unit: string;
-  paymentType: "DP" | "FP";
+  paymentType: "DP" | "FP" | "TR";
   amount: number;
   paymentDate: string | Date | null;
   method: string | null;
@@ -241,7 +241,7 @@ export default function PaymentsPage() {
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">Received By</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Check one or more people to show only the payments they handled</p>
+                <p className="text-xs text-gray-400 mt-0.5">Check one or more people to show payments and transfers they handled</p>
             </div>
             {receiverFilters.length > 0 && (
               <button
@@ -316,10 +316,10 @@ export default function PaymentsPage() {
             <div key={record.id} className="card p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${record.paymentType === "DP" ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"}`}>
-                    {record.paymentType === "DP" ? "Down Payment" : "Full Payment"}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${record.paymentType === "DP" ? "bg-yellow-100 text-yellow-800" : record.paymentType === "FP" ? "bg-green-100 text-green-800" : "bg-indigo-100 text-indigo-800"}`}>
+                    {record.paymentType === "DP" ? "Down Payment" : record.paymentType === "FP" ? "Full Payment" : "Transfer"}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700">Unit {record.unit}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700">{record.unit === "TRANSFER" ? "Transfer" : `Unit ${record.unit}`}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[record.paymentStatus] ?? "bg-gray-100 text-gray-600"}`}>
                     {record.paymentStatus}
                   </span>
@@ -327,19 +327,23 @@ export default function PaymentsPage() {
                 <p className="font-semibold text-gray-900 truncate">{record.guestName}</p>
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
                   <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{formatDate(record.paymentDate)}</span>
-                  <span>Deposit paid: {formatDate(record.dpDate)}</span>
+                  {record.paymentType !== "TR" && <span>Deposit paid: {formatDate(record.dpDate)}</span>}
                   <span>Method: {record.method ?? "—"}</span>
                   <span>Received by: <span className="font-semibold text-gray-700">{record.receivedBy ?? "—"}</span></span>
                 </div>
-                <div className="mt-1 text-xs">
-                  Balance: <span className={record.remainingBalance > 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>{formatPHP(record.remainingBalance)}</span>
-                </div>
+                {record.paymentType !== "TR" && (
+                  <div className="mt-1 text-xs">
+                    Balance: <span className={record.remainingBalance > 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>{formatPHP(record.remainingBalance)}</span>
+                  </div>
+                )}
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-lg font-bold text-gray-900">{formatPHP(record.amount)}</p>
-                <Link href={`/bookings?edit=${record.bookingId}`} className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 mt-1">
-                  View booking <ArrowRight className="w-3 h-3" />
-                </Link>
+                <p className={`text-lg font-bold ${record.amount < 0 ? "text-red-600" : "text-gray-900"}`}>{formatPHP(record.amount)}</p>
+                {record.bookingId > 0 && (
+                  <Link href={`/bookings?edit=${record.bookingId}`} className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 mt-1">
+                    View booking <ArrowRight className="w-3 h-3" />
+                  </Link>
+                )}
               </div>
             </div>
           ))}

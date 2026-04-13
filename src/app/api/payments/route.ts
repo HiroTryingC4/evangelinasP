@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bookings } from "@/lib/schema";
+import { bookings, paymentTransfers, persons } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +24,13 @@ export async function GET(req: NextRequest) {
     weekEnd.setDate(weekStart.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
 
-    const allBookings = await db
-      .select()
-      .from(bookings)
-      .orderBy(desc(bookings.updatedAt), desc(bookings.id));
+    const [allBookings, allTransfers, allPersons] = await Promise.all([
+      db.select().from(bookings).orderBy(desc(bookings.updatedAt), desc(bookings.id)),
+      db.select().from(paymentTransfers).orderBy(desc(paymentTransfers.transferDate), desc(paymentTransfers.id)),
+      db.select().from(persons),
+    ]);
+
+    const personMap = new Map(allPersons.map((p) => [p.id, p.name]));
 
     const records = allBookings.flatMap((booking) => {
       const items = [] as Array<{
@@ -91,7 +94,54 @@ export async function GET(req: NextRequest) {
       return items;
     });
 
-    const filtered = records.filter((record) => {
+    const transferRecords = allTransfers.flatMap((transfer) => {
+      const sender = personMap.get(transfer.senderId) ?? "";
+      const recipient = personMap.get(transfer.recipientId) ?? "";
+      const date = transfer.transferDate ?? transfer.createdAt ?? new Date();
+      const amount = Number(transfer.amount ?? 0);
+
+      const outgoing = {
+        id: `tr-out-${transfer.id}`,
+        bookingId: 0,
+        guestName: `Transfer to ${recipient}`,
+        unit: "TRANSFER",
+        paymentType: "TR" as const,
+        amount: -amount,
+        paymentDate: date,
+        method: transfer.paymentMethod,
+        receivedBy: sender,
+        bookingDate: date,
+        checkInTime: "",
+        checkOutTime: "",
+        paymentStatus: "Transferred",
+        remainingBalance: 0,
+        dpDate: null,
+      };
+
+      const incoming = {
+        id: `tr-in-${transfer.id}`,
+        bookingId: 0,
+        guestName: `Transfer from ${sender}`,
+        unit: "TRANSFER",
+        paymentType: "TR" as const,
+        amount,
+        paymentDate: date,
+        method: transfer.paymentMethod,
+        receivedBy: recipient,
+        bookingDate: date,
+        checkInTime: "",
+        checkOutTime: "",
+        paymentStatus: "Transferred",
+        remainingBalance: 0,
+        dpDate: null,
+      };
+
+      return [outgoing, incoming];
+    });
+
+    const allRecords = [...records, ...transferRecords];
+
+    const filtered = allRecords.filter((record) => {
       if (type && record.paymentType !== type) return false;
       if (receiver && record.receivedBy !== receiver) return false;
 
