@@ -22,6 +22,19 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const recipientId = searchParams.get("recipientId");
     const senderId = searchParams.get("senderId");
+    const weeklyDateParam = searchParams.get("weeklyDate");
+    const scope = searchParams.get("scope") || "all";
+
+    const weeklyAnchor = weeklyDateParam
+      ? new Date(`${weeklyDateParam}T12:00:00`)
+      : new Date();
+    const anchor = Number.isNaN(weeklyAnchor.getTime()) ? new Date() : weeklyAnchor;
+    const weekStart = new Date(anchor);
+    weekStart.setDate(anchor.getDate() - anchor.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
 
     let query = db.select().from(paymentTransfers);
 
@@ -37,18 +50,37 @@ export async function GET(req: NextRequest) {
     const allPersons = await db.select().from(persons);
     const personMap = new Map(allPersons.map((p) => [p.id, p.name]));
 
-    return NextResponse.json(
-      transfers.map((t) => ({
+    const enriched = transfers
+      .map((t) => ({
         ...t,
         sender: personMap.get(t.senderId) ?? "",
         recipient: personMap.get(t.recipientId) ?? "",
       }))
-    );
+      .filter((t) => {
+        if (scope !== "week") return true;
+        const d = new Date(t.transferDate ?? t.createdAt ?? new Date());
+        return d >= weekStart && d <= weekEnd;
+      });
+
+    return NextResponse.json(enriched, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    });
   } catch (error) {
     console.error("GET /api/payment-transfers:", error);
     return NextResponse.json(
       { error: "Failed to fetch transfers" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
     );
   }
 }

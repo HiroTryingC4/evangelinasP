@@ -64,8 +64,8 @@ export default function PaymentsPage() {
     if (!isInitialLoad) setRefreshing(true);
 
     Promise.all([
-      fetch(`/api/payments?weeklyDate=${weeklyDate}&scope=${scopeFilter}`, { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/settings", { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/payments?weeklyDate=${weeklyDate}&scope=${scopeFilter}&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
     ])
       .then(([payments, settings]) => {
         setRecords(Array.isArray(payments.records) ? payments.records : []);

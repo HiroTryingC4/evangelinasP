@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Send, Plus, Trash2, Edit2, Loader2 } from "lucide-react";
-import { formatPHP, formatDate } from "@/lib/utils";
+import { Send, Plus, Trash2, Edit2, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { formatPHP, formatDate, formatWeekRange, getSundayToSaturdayWeek } from "@/lib/utils";
 
 type Transfer = {
   id: number;
@@ -28,6 +28,15 @@ export default function PaymentTransfersPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [scopeFilter, setScopeFilter] = useState<"week" | "all">("all");
+  const [weeklyDate, setWeeklyDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const shiftWeek = (days: number) => {
+    const base = new Date(`${weeklyDate}T12:00:00`);
+    if (Number.isNaN(base.getTime())) return;
+    base.setDate(base.getDate() + days);
+    setWeeklyDate(base.toISOString().slice(0, 10));
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -43,8 +52,8 @@ export default function PaymentTransfersPage() {
   const fetchTransfers = async () => {
     try {
       const [transferRes, settingsRes] = await Promise.all([
-        fetch("/api/payment-transfers"),
-        fetch("/api/settings"),
+        fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&scope=${scopeFilter}&_ts=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }),
       ]);
 
       const data = await transferRes.json();
@@ -72,7 +81,7 @@ export default function PaymentTransfersPage() {
 
   useEffect(() => {
     fetchTransfers();
-  }, []);
+  }, [weeklyDate, scopeFilter]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -220,6 +229,52 @@ export default function PaymentTransfersPage() {
         </div>
 
         {/* Summary Cards */}
+        <div className="card p-4 sm:p-5 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">Transfer Scope</h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {scopeFilter === "all"
+                  ? "All transfer records"
+                  : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => shiftWeek(-7)}
+                className="btn-secondary text-xs py-1.5"
+                disabled={scopeFilter === "all"}
+              >
+                <ChevronLeft className="w-4 h-4" /> Prev Week
+              </button>
+              <input
+                type="date"
+                className="input py-1.5 text-xs w-auto"
+                value={weeklyDate}
+                onChange={(e) => setWeeklyDate(e.target.value)}
+                disabled={scopeFilter === "all"}
+              />
+              <button
+                type="button"
+                onClick={() => shiftWeek(7)}
+                className="btn-secondary text-xs py-1.5"
+                disabled={scopeFilter === "all"}
+              >
+                Next Week <ChevronRight className="w-4 h-4" />
+              </button>
+              <select
+                className="input py-1.5 text-xs"
+                value={scopeFilter}
+                onChange={(e) => setScopeFilter(e.target.value as "week" | "all")}
+              >
+                <option value="week">This week</option>
+                <option value="all">All transfers</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="card p-4 sm:p-5 bg-blue-50 border border-blue-200">
             <p className="text-xs text-blue-600 uppercase tracking-wide font-semibold">
