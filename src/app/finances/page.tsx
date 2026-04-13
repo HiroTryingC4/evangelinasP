@@ -293,9 +293,11 @@ export default function FinancesPage() {
         <Link href="/" className="text-xs text-blue-600 hover:underline">← Back to Dashboard</Link>
       </div>
 
-      <div className="card p-4 sm:p-5">
-        <p className="text-xs text-gray-500 uppercase tracking-wide">Complete Computation</p>
-        <p className="text-xs text-gray-400 mt-1">Grand Total = Bills + Wages + Expenses</p>
+      <details className="card p-4 sm:p-5" open>
+        <summary className="cursor-pointer list-none">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Complete Computation</p>
+          <p className="text-xs text-gray-400 mt-1">Grand Total = Bills + Wages + Expenses</p>
+        </summary>
 
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
           <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
@@ -326,31 +328,35 @@ export default function FinancesPage() {
             <p className="text-xl font-bold text-green-800 mt-0.5">{formatPHP(paidTotal)}</p>
           </div>
         </div>
-      </div>
+      </details>
 
-      <div className="card p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide">Weekly Totals</p>
-            <p className="text-xs text-gray-400 mt-1">
-              {formatWeekRange(weekStart, weekEnd)}
-            </p>
-            <p className="text-[11px] text-gray-400 mt-0.5">Revenue scope below applies to both weekly and monthly net.</p>
+      <details className="card p-4 sm:p-5" open>
+        <summary className="cursor-pointer list-none">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Weekly Totals</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {formatWeekRange(weekStart, weekEnd)}
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Revenue scope below applies to both weekly and monthly net.</p>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400">Click to collapse</div>
           </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => shiftWeek(-7)} className="btn-secondary text-xs py-1.5 px-3">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <input
-              type="date"
-              className="input py-1.5 text-xs w-auto"
-              value={weeklyDate}
-              onChange={(e) => setWeeklyDate(e.target.value)}
-            />
-            <button type="button" onClick={() => shiftWeek(7)} className="btn-secondary text-xs py-1.5 px-3">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+        </summary>
+
+        <div className="flex items-center gap-2 mt-3">
+          <button type="button" onClick={() => shiftWeek(-7)} className="btn-secondary text-xs py-1.5 px-3">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <input
+            type="date"
+            className="input py-1.5 text-xs w-auto"
+            value={weeklyDate}
+            onChange={(e) => setWeeklyDate(e.target.value)}
+          />
+          <button type="button" onClick={() => shiftWeek(7)} className="btn-secondary text-xs py-1.5 px-3">
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-3">
@@ -425,16 +431,22 @@ export default function FinancesPage() {
             {formatPHP(weeklyNetAfterCosts)}
           </p>
         </div>
-      </div>
+      </details>
 
-      <div className="card p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide">Monthly Totals</p>
-            <p className="text-xs text-gray-400 mt-1">
-              {monthStart.toLocaleDateString("en-PH", { month: "long", year: "numeric" })}
-            </p>
+      <details className="card p-4 sm:p-5">
+        <summary className="cursor-pointer list-none">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Monthly Totals</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {monthStart.toLocaleDateString("en-PH", { month: "long", year: "numeric" })}
+              </p>
+            </div>
+            <div className="hidden sm:flex text-xs text-gray-400">Click to expand</div>
           </div>
+        </summary>
+
+        <div className="mt-3">
           <input
             type="month"
             className="input py-1.5 text-xs w-auto"
@@ -485,9 +497,9 @@ export default function FinancesPage() {
             </p>
           </div>
         </div>
-      </div>
+      </details>
 
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b border-gray-200 overflow-x-auto sticky top-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70 z-10">
         <button
           onClick={() => setTab("bills")}
           className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
