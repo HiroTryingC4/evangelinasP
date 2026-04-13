@@ -23,6 +23,16 @@ type PaymentRecord = {
   dpDate: string | Date | null;
 };
 
+type TransferRecord = {
+  id: number;
+  sender?: string;
+  recipient?: string;
+  amount: string | number;
+  transferDate: string | Date;
+  paymentMethod: string | null;
+  status: string;
+};
+
 export default function PaymentsPage() {
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [receiverFilters, setReceiverFilters] = useState<string[]>([]);
@@ -66,9 +76,59 @@ export default function PaymentsPage() {
     Promise.all([
       fetch(`/api/payments?weeklyDate=${weeklyDate}&scope=${scopeFilter}&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
       fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&scope=${scopeFilter}&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
     ])
-      .then(([payments, settings]) => {
-        setRecords(Array.isArray(payments.records) ? payments.records : []);
+      .then(([payments, settings, transfers]) => {
+        const paymentRows: PaymentRecord[] = Array.isArray(payments.records) ? payments.records : [];
+        const nonTransferRows = paymentRows.filter((row) => row.paymentType !== "TR");
+
+        const transferRowsRaw: TransferRecord[] = Array.isArray(transfers) ? transfers : [];
+        const transferRows: PaymentRecord[] = transferRowsRaw.flatMap((t) => {
+          const amount = Number(t.amount || 0);
+          const date = t.transferDate ?? new Date().toISOString();
+          const sender = (t.sender ?? "").toString();
+          const recipient = (t.recipient ?? "").toString();
+
+          const out: PaymentRecord = {
+            id: `tr-out-${t.id}`,
+            bookingId: 0,
+            guestName: `Transfer to ${recipient}`,
+            unit: "TRANSFER",
+            paymentType: "TR",
+            amount: -amount,
+            paymentDate: date,
+            method: t.paymentMethod,
+            receivedBy: sender,
+            bookingDate: date,
+            checkInTime: "",
+            checkOutTime: "",
+            paymentStatus: t.status || "Transferred",
+            remainingBalance: 0,
+            dpDate: null,
+          };
+
+          const incoming: PaymentRecord = {
+            id: `tr-in-${t.id}`,
+            bookingId: 0,
+            guestName: `Transfer from ${sender}`,
+            unit: "TRANSFER",
+            paymentType: "TR",
+            amount,
+            paymentDate: date,
+            method: t.paymentMethod,
+            receivedBy: recipient,
+            bookingDate: date,
+            checkInTime: "",
+            checkOutTime: "",
+            paymentStatus: t.status || "Transferred",
+            remainingBalance: 0,
+            dpDate: null,
+          };
+
+          return [out, incoming];
+        });
+
+        setRecords([...nonTransferRows, ...transferRows]);
         if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
           setReceivers(settings.receivers);
         }
