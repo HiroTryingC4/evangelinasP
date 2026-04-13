@@ -83,18 +83,18 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "At least one receiver person is required" }, { status: 400 });
     }
 
-    await db.transaction(async (tx) => {
-      await tx.delete(unitConfigs);
-      await tx.delete(receiverPersons);
+    // Neon HTTP driver does not support db.transaction(),
+    // so persist updates in sequence.
+    await db.delete(unitConfigs);
+    await db.delete(receiverPersons);
 
-      await tx.insert(unitConfigs).values(
-        units.map((code, i) => ({ code, sortOrder: i }))
-      );
+    await db.insert(unitConfigs).values(
+      units.map((code, i) => ({ code, sortOrder: i }))
+    );
 
-      await tx.insert(receiverPersons).values(
-        receivers.map((person, i) => ({ name: person.name, role: person.role, sortOrder: i }))
-      );
-    });
+    await db.insert(receiverPersons).values(
+      receivers.map((person, i) => ({ name: person.name, role: person.role, sortOrder: i }))
+    );
 
     return NextResponse.json({
       units,
