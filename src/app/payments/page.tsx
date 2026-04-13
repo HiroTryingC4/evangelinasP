@@ -235,6 +235,14 @@ export default function PaymentsPage() {
             >
               Next Week <ChevronRight className="w-4 h-4" />
             </button>
+            <select
+              className="input py-1.5 text-xs"
+              value={scopeFilter}
+              onChange={(e) => setScopeFilter(e.target.value as "week" | "all") }
+            >
+              <option value="week">This week</option>
+              <option value="all">All records</option>
+            </select>
             {refreshing && (
               <span className="flex items-center gap-2 text-xs text-gray-500">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating...
@@ -244,140 +252,142 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-blue-600 mb-1">
-            <CreditCard className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Records</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{filtered.length}</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-emerald-600 mb-1">
-            <CalendarDays className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Total Amount</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{formatPHP(totals.totalAmount)}</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-purple-600 mb-1">
-            <Users className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">With balance</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{totals.outstandingCount}</p>
-        </div>
-      </div>
-
-      <div className="card p-3 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            className="input pl-9"
-            placeholder="Search guest, unit, receiver..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <select className="input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option value="">All types</option>
-            <option value="DP">Down Payment</option>
-            <option value="FP">Full Payment</option>
-          </select>
-          <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="">All payment status</option>
-            <option value="Fully Paid">Fully Paid</option>
-            <option value="DP Paid">DP Paid</option>
-            <option value="No DP">No DP</option>
-          </select>
-          <select className="input" value={balanceFilter} onChange={(e) => setBalanceFilter(e.target.value)}>
-            <option value="">All balances</option>
-            <option value="with">With balance</option>
-            <option value="settled">Fully settled</option>
-          </select>
-          <select className="input" value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value as "week" | "all") }>
-            <option value="week">This week</option>
-            <option value="all">All records</option>
-          </select>
-        </div>
-      </div>
-
-      {receivers.length > 0 && (
-        <div className="card p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">Received By</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Check one or more people to show payments and transfers they handled</p>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
+        <div className="xl:col-span-5 space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-3">
+            <div className="stat-card">
+              <div className="flex items-center gap-1.5 text-blue-600 mb-1">
+                <CreditCard className="w-4 h-4" />
+                <span className="text-xs font-semibold text-gray-500">Records</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{filtered.length}</p>
             </div>
-            {receiverFilters.length > 0 && (
-              <button
-                type="button"
-                className="text-xs text-blue-600 hover:underline"
-                onClick={() => setReceiverFilters([])}
-              >
-                Clear receiver filters
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {receivers.map((name) => (
-              <label
-                key={name}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${receiverFilters.includes(name) ? "border-blue-300 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={receiverFilters.includes(name)}
-                  onChange={() => toggleReceiver(name)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="truncate">{name}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {units.length > 0 && (
-        <div className="card p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">Units</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Check one or more units to narrow payment records</p>
+            <div className="stat-card">
+              <div className="flex items-center gap-1.5 text-emerald-600 mb-1">
+                <CalendarDays className="w-4 h-4" />
+                <span className="text-xs font-semibold text-gray-500">Total Amount</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{formatPHP(totals.totalAmount)}</p>
             </div>
-            {unitFilters.length > 0 && (
-              <button
-                type="button"
-                className="text-xs text-blue-600 hover:underline"
-                onClick={() => setUnitFilters([])}
-              >
-                Clear unit filters
-              </button>
-            )}
+            <div className="stat-card">
+              <div className="flex items-center gap-1.5 text-purple-600 mb-1">
+                <Users className="w-4 h-4" />
+                <span className="text-xs font-semibold text-gray-500">With balance</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{totals.outstandingCount}</p>
+            </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            {units.map((unit) => (
-              <label
-                key={unit}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${unitFilters.includes(unit) ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={unitFilters.includes(unit)}
-                  onChange={() => toggleUnit(unit)}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="truncate">Unit {unit}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {filtered.length === 0 ? (
-        <div className="card p-8 text-center text-gray-400">No payment records found</div>
-      ) : (
-        <div className="space-y-2">
+          <div className="card p-3 sm:p-4 space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                className="input pl-9"
+                placeholder="Search guest, unit, receiver..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <select className="input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                <option value="">All types</option>
+                <option value="DP">Down Payment</option>
+                <option value="FP">Full Payment</option>
+                <option value="TR">Transfer</option>
+              </select>
+              <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">All payment status</option>
+                <option value="Fully Paid">Fully Paid</option>
+                <option value="DP Paid">DP Paid</option>
+                <option value="No DP">No DP</option>
+                <option value="Transferred">Transferred</option>
+              </select>
+              <select className="input sm:col-span-2" value={balanceFilter} onChange={(e) => setBalanceFilter(e.target.value)}>
+                <option value="">All balances</option>
+                <option value="with">With balance</option>
+                <option value="settled">Fully settled</option>
+              </select>
+            </div>
+          </div>
+
+          {receivers.length > 0 && (
+            <div className="card p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Received By</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Filter payments and transfers by person</p>
+                </div>
+                {receiverFilters.length > 0 && (
+                  <button
+                    type="button"
+                    className="text-xs text-blue-600 hover:underline"
+                    onClick={() => setReceiverFilters([])}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {receivers.map((name) => (
+                  <label
+                    key={name}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${receiverFilters.includes(name) ? "border-blue-300 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={receiverFilters.includes(name)}
+                      onChange={() => toggleReceiver(name)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="truncate">{name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {units.length > 0 && (
+            <div className="card p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Units</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Narrow payment records by unit</p>
+                </div>
+                {unitFilters.length > 0 && (
+                  <button
+                    type="button"
+                    className="text-xs text-blue-600 hover:underline"
+                    onClick={() => setUnitFilters([])}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {units.map((unit) => (
+                  <label
+                    key={unit}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${unitFilters.includes(unit) ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={unitFilters.includes(unit)}
+                      onChange={() => toggleUnit(unit)}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="truncate">Unit {unit}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="xl:col-span-7">
+          {filtered.length === 0 ? (
+            <div className="card p-8 text-center text-gray-400">No payment records found</div>
+          ) : (
+            <div className="space-y-2">
           {filtered.map((record) => (
             <div key={record.id} className="card p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="min-w-0">
@@ -413,8 +423,10 @@ export default function PaymentsPage() {
               </div>
             </div>
           ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
