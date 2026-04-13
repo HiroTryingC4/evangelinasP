@@ -116,6 +116,7 @@ export async function PUT(req: NextRequest) {
     });
   } catch (e) {
     console.error("[PUT /api/settings]", e);
-    return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
+    const message = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: "Failed to save settings", detail: message }, { status: 500 });
   }
 }
