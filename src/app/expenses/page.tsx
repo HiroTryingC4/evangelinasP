@@ -35,7 +35,7 @@ export default function ExpensesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description: newExpense.description,
-          amount: parseInt(newExpense.amount),
+          amount: parseFloat(newExpense.amount),
           expenseDate: newExpense.expenseDate,
           category: newExpense.category,
           paymentMethod: newExpense.paymentMethod,
@@ -78,6 +78,12 @@ export default function ExpensesPage() {
 
   const totalPending = expenses.filter((e) => e.status === "pending").reduce((s: number, e: any) => s + e.amount, 0);
   const totalPaid = expenses.filter((e) => e.status === "paid").reduce((s: number, e: any) => s + e.amount, 0);
+  const sortedExpenses = [...expenses].sort((a, b) => {
+    const aDate = new Date(a.dueDate ?? a.expenseDate).getTime();
+    const bDate = new Date(b.dueDate ?? b.expenseDate).getTime();
+    if (aDate !== bDate) return aDate - bDate;
+    return a.id - b.id;
+  });
 
   return (
     <div className="space-y-4">
@@ -106,7 +112,7 @@ export default function ExpensesPage() {
         <form onSubmit={handleAddExpense} className="space-y-3">
           <input type="text" placeholder="Description" value={newExpense.description} onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })} className="input w-full" />
           <div className="grid grid-cols-2 gap-2">
-            <input type="number" placeholder="Amount (₱)" value={newExpense.amount} onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })} className="input" />
+            <input type="number" step="0.01" placeholder="Amount (₱)" value={newExpense.amount} onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })} className="input" />
             <input type="date" value={newExpense.expenseDate} onChange={(e) => setNewExpense({ ...newExpense, expenseDate: e.target.value })} className="input" />
             <input type="text" placeholder="Category" value={newExpense.category} onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })} className="input" />
             <input type="text" placeholder="Payment Method" value={newExpense.paymentMethod} onChange={(e) => setNewExpense({ ...newExpense, paymentMethod: e.target.value })} className="input" />
@@ -125,7 +131,7 @@ export default function ExpensesPage() {
       </div>
 
       <div className="space-y-2">
-        {expenses.map((expense) => (
+        {sortedExpenses.map((expense) => (
           <div key={expense.id} className="card p-3 flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">

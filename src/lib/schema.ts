@@ -3,6 +3,7 @@ import {
   serial,
   text,
   integer,
+  numeric,
   timestamp,
   real,
 } from "drizzle-orm/pg-core";
@@ -91,10 +92,23 @@ export const wages = pgTable("wages", {
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
 });
 
+export const incomes = pgTable("incomes", {
+  id: serial("id").primaryKey(),
+  description: text("description").notNull(),
+  source: text("source"), // airbnb, walk-in, direct booking, etc.
+  amount: numeric("amount", { precision: 12, scale: 2, mode: "number" }).notNull(),
+  incomeDate: timestamp("income_date", { mode: "date" }).notNull(),
+  paymentMethod: text("payment_method"),
+  status: text("status").notNull().default("pending"), // pending, paid
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
+
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
   description: text("description").notNull(),
-  amount: integer("amount").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2, mode: "number" }).notNull(),
   expenseDate: timestamp("expense_date", { mode: "date" }).notNull(),
   dueDate: timestamp("due_date", { mode: "date" }),
   category: text("category"), // supplies, maintenance, utilities, food, etc.
@@ -111,5 +125,7 @@ export type Bill       = typeof bills.$inferSelect;
 export type NewBill    = typeof bills.$inferInsert;
 export type Wage       = typeof wages.$inferSelect;
 export type NewWage    = typeof wages.$inferInsert;
+export type Income     = typeof incomes.$inferSelect;
+export type NewIncome  = typeof incomes.$inferInsert;
 export type Expense    = typeof expenses.$inferSelect;
 export type NewExpense = typeof expenses.$inferInsert;

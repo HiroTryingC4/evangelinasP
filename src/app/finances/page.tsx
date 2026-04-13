@@ -12,12 +12,13 @@ function toYMD(date: Date): string {
 }
 
 export default function FinancesPage() {
-  const [tab, setTab] = useState<"bills" | "wages" | "expenses">("bills");
+  const [tab, setTab] = useState<"bills" | "wages" | "income" | "expenses">("bills");
   const [units, setUnits] = useState<string[]>(UNITS);
   const [selectedRevenueUnits, setSelectedRevenueUnits] = useState<string[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
   const [wages, setWages] = useState<any[]>([]);
+  const [incomes, setIncomes] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "paid">("all");
@@ -38,6 +39,7 @@ export default function FinancesPage() {
       fetch("/api/bookings").then((r) => r.json()).then((d) => setBookings(d || [])),
       fetch("/api/bills").then((r) => r.json()).then((d) => setBills(d || [])),
       fetch("/api/wages").then((r) => r.json()).then((d) => setWages(d || [])),
+      fetch("/api/income").then((r) => r.json()).then((d) => setIncomes(d || [])),
       fetch("/api/expenses").then((r) => r.json()).then((d) => setExpenses(d || [])),
     ]).finally(() => setLoading(false));
   }, []);
@@ -94,14 +96,32 @@ export default function FinancesPage() {
     }
   };
 
-  const handleDelete = async (type: "bills" | "wages" | "expenses", id: number) => {
+  const handleAddIncome = async (e: React.FormEvent, data: any) => {
+    e.preventDefault();
+    try {
+      await fetch("/api/income", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const res = await fetch("/api/income");
+      setIncomes(await res.json());
+    } catch (e) {
+      console.error("Failed to add income:", e);
+    }
+  };
+
+  const handleDelete = async (type: "bills" | "wages" | "incomes" | "expenses", id: number) => {
     if (!confirm("Delete this record?")) return;
     try {
-      await fetch(`/api/${type}/${id}`, { method: "DELETE" });
+      const apiType = type === "incomes" ? "income" : type;
+      await fetch(`/api/${apiType}/${id}`, { method: "DELETE" });
       if (type === "bills") {
         setBills(bills.filter((b) => b.id !== id));
       } else if (type === "wages") {
         setWages(wages.filter((w) => w.id !== id));
+      } else if (type === "incomes") {
+        setIncomes(incomes.filter((i) => i.id !== id));
       } else {
         setExpenses(expenses.filter((e) => e.id !== id));
       }
@@ -110,9 +130,10 @@ export default function FinancesPage() {
     }
   };
 
-  const handleMarkPaid = async (type: "bills" | "wages" | "expenses", item: any) => {
+  const handleMarkPaid = async (type: "bills" | "wages" | "incomes" | "expenses", item: any) => {
     try {
-      await fetch(`/api/${type}/${item.id}`, {
+      const apiType = type === "incomes" ? "income" : type;
+      await fetch(`/api/${apiType}/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...item, status: "paid", paidDate: new Date().toISOString().split("T")[0] }),
@@ -121,6 +142,8 @@ export default function FinancesPage() {
         setBills(bills.map((b) => (b.id === item.id ? { ...b, status: "paid" } : b)));
       } else if (type === "wages") {
         setWages(wages.map((w) => (w.id === item.id ? { ...w, status: "paid" } : w)));
+      } else if (type === "incomes") {
+        setIncomes(incomes.map((i) => (i.id === item.id ? { ...i, status: "paid" } : i)));
       } else {
         setExpenses(expenses.map((e) => (e.id === item.id ? { ...e, status: "paid" } : e)));
       }
@@ -133,16 +156,26 @@ export default function FinancesPage() {
 
   const billsFiltered = getFilteredData(bills);
   const wagesFiltered = getFilteredData(wages);
+  const incomesFiltered = getFilteredData(incomes);
   const expensesFiltered = getFilteredData(expenses);
+  const expensesSortedByUpcoming = [...expensesFiltered].sort((a, b) => {
+    const aDate = new Date(a.dueDate ?? a.expenseDate).getTime();
+    const bDate = new Date(b.dueDate ?? b.expenseDate).getTime();
+    if (aDate !== bDate) return aDate - bDate;
+    return a.id - b.id;
+  });
 
   const billsTotal = bills.reduce((s, b) => s + b.amount, 0);
   const wagesTotal = wages.reduce((s, w) => s + w.amount, 0);
+  const incomesTotal = incomes.reduce((s, i) => s + i.amount, 0);
   const expensesTotal = expenses.reduce((s, e) => s + e.amount, 0);
 
   const billsPending = bills.filter((b) => b.status === "pending").reduce((s, b) => s + b.amount, 0);
   const billsPaid = bills.filter((b) => b.status === "paid").reduce((s, b) => s + b.amount, 0);
   const wagesPending = wages.filter((w) => w.status === "pending").reduce((s, w) => s + w.amount, 0);
   const wagesPaid = wages.filter((w) => w.status === "paid").reduce((s, w) => s + w.amount, 0);
+  const incomesPending = incomes.filter((i) => i.status === "pending").reduce((s, i) => s + i.amount, 0);
+  const incomesPaid = incomes.filter((i) => i.status === "paid").reduce((s, i) => s + i.amount, 0);
   const expensesPending = expenses.filter((e) => e.status === "pending").reduce((s, e) => s + e.amount, 0);
   const expensesPaid = expenses.filter((e) => e.status === "paid").reduce((s, e) => s + e.amount, 0);
 
@@ -168,15 +201,18 @@ export default function FinancesPage() {
 
   const weeklyBills = bills.filter((b) => inSelectedWeek(b.billDate));
   const weeklyWages = wages.filter((w) => inSelectedWeek(w.payDate));
+  const weeklyIncome = incomes.filter((i) => inSelectedWeek(i.incomeDate));
   const weeklyExpenses = expenses.filter((e) => inSelectedWeek(e.expenseDate));
 
   const bookingsByRevenueScope = selectedRevenueUnits.length > 0
     ? bookings.filter((b) => selectedRevenueUnits.includes(String(b.unit).replace(/^Unit\s*/i, "")))
     : bookings;
 
-  const weeklyRevenue = bookingsByRevenueScope
+  const weeklyBookingRevenue = bookingsByRevenueScope
     .filter((b) => inSelectedWeek(b.checkIn))
     .reduce((s, b) => s + (Number(b.totalFee) || 0), 0);
+  const weeklyExternalIncome = weeklyIncome.reduce((s, i) => s + i.amount, 0);
+  const weeklyRevenue = weeklyBookingRevenue + weeklyExternalIncome;
 
   const weeklyBillsTotal = weeklyBills.reduce((s, b) => s + b.amount, 0);
   const weeklyWagesTotal = weeklyWages.reduce((s, w) => s + w.amount, 0);
@@ -214,13 +250,17 @@ export default function FinancesPage() {
   const monthlyWagesTotal = wages
     .filter((w) => inSelectedMonth(w.payDate))
     .reduce((s, w) => s + w.amount, 0);
+  const monthlyIncomeTotal = incomes
+    .filter((i) => inSelectedMonth(i.incomeDate))
+    .reduce((s, i) => s + i.amount, 0);
   const monthlyExpensesTotal = expenses
     .filter((e) => inSelectedMonth(e.expenseDate))
     .reduce((s, e) => s + e.amount, 0);
 
-  const monthlyRevenue = bookingsByRevenueScope
+  const monthlyBookingRevenue = bookingsByRevenueScope
     .filter((b) => inSelectedMonth(b.checkIn))
     .reduce((s, b) => s + (Number(b.totalFee) || 0), 0);
+  const monthlyRevenue = monthlyBookingRevenue + monthlyIncomeTotal;
 
   const monthlyCostsTotal = monthlyBillsTotal + monthlyWagesTotal + monthlyExpensesTotal;
   const monthlyNetAfterCosts = monthlyRevenue - monthlyCostsTotal;
@@ -337,9 +377,13 @@ export default function FinancesPage() {
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
           <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-3 col-span-2 lg:col-span-1">
             <p className="text-[11px] uppercase text-indigo-700">
-              Weekly Revenue ({selectedRevenueUnits.length > 0 ? `${selectedRevenueUnits.length} Unit${selectedRevenueUnits.length > 1 ? "s" : ""}` : "All Units"})
+              Weekly Revenue ({selectedRevenueUnits.length > 0 ? `${selectedRevenueUnits.length} Unit${selectedRevenueUnits.length > 1 ? "s" : ""}` : "All Units"} + External)
             </p>
             <p className="text-lg font-bold text-indigo-800 mt-0.5">{formatPHP(weeklyRevenue)}</p>
+          </div>
+          <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
+            <p className="text-[11px] uppercase text-emerald-700">External Income This Week</p>
+            <p className="text-lg font-bold text-emerald-800 mt-0.5">{formatPHP(weeklyExternalIncome)}</p>
           </div>
           <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
             <p className="text-[11px] uppercase text-gray-500">Bills This Week</p>
@@ -402,9 +446,13 @@ export default function FinancesPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
           <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-3 col-span-2 lg:col-span-1">
             <p className="text-[11px] uppercase text-indigo-700">
-              Monthly Revenue ({selectedRevenueUnits.length > 0 ? `${selectedRevenueUnits.length} Unit${selectedRevenueUnits.length > 1 ? "s" : ""}` : "All Units"})
+              Monthly Revenue ({selectedRevenueUnits.length > 0 ? `${selectedRevenueUnits.length} Unit${selectedRevenueUnits.length > 1 ? "s" : ""}` : "All Units"} + External)
             </p>
             <p className="text-lg font-bold text-indigo-800 mt-0.5">{formatPHP(monthlyRevenue)}</p>
+          </div>
+          <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
+            <p className="text-[11px] uppercase text-emerald-700">External Income This Month</p>
+            <p className="text-lg font-bold text-emerald-800 mt-0.5">{formatPHP(monthlyIncomeTotal)}</p>
           </div>
           <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
             <p className="text-[11px] uppercase text-gray-500">Bills This Month</p>
@@ -459,6 +507,16 @@ export default function FinancesPage() {
           }`}
         >
           Wages
+        </button>
+        <button
+          onClick={() => setTab("income")}
+          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+            tab === "income"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Income
         </button>
         <button
           onClick={() => setTab("expenses")}
@@ -571,6 +629,55 @@ export default function FinancesPage() {
         </div>
       )}
 
+      {/* INCOME TAB */}
+      {tab === "income" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="card p-4">
+              <p className="text-xs text-gray-500 uppercase">Total Income</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(incomesTotal)}</p>
+            </div>
+            <div className="card p-4">
+              <p className="text-xs text-gray-500 uppercase">Pending</p>
+              <p className="text-2xl font-bold text-yellow-700 mt-1">{formatPHP(incomesPending)}</p>
+            </div>
+            <div className="card p-4">
+              <p className="text-xs text-gray-500 uppercase">Received</p>
+              <p className="text-2xl font-bold text-green-700 mt-1">{formatPHP(incomesPaid)}</p>
+            </div>
+          </div>
+
+          <IncomeForm onSubmit={handleAddIncome} />
+
+          <div className="flex gap-2 mb-4">
+            {["all", "pending", "paid"].map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilter(s as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  filter === s ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {incomesFiltered.map((income) => (
+              <ItemCard
+                key={income.id}
+                item={income}
+                type="incomes"
+                onDelete={() => handleDelete("incomes", income.id)}
+                onMarkPaid={() => handleMarkPaid("incomes", income)}
+                fields={[income.source ? `Source: ${income.source}` : "", income.paymentMethod ? `Method: ${income.paymentMethod}` : "", formatDate(income.incomeDate)]}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* EXPENSES TAB */}
       {tab === "expenses" && (
         <div className="space-y-4">
@@ -606,7 +713,7 @@ export default function FinancesPage() {
           </div>
 
           <div className="space-y-2">
-            {expensesFiltered.map((expense) => (
+            {expensesSortedByUpcoming.map((expense) => (
               <ItemCard
                 key={expense.id}
                 item={expense}
@@ -822,7 +929,7 @@ function ExpenseForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) =
         onSubmit={(e) => {
           onSubmit(e, {
             description: form.description,
-            amount: parseInt(form.amount),
+            amount: parseFloat(form.amount),
             expenseDate: form.expenseDate,
             dueDate: form.dueDate || null,
             category: form.category,
@@ -844,6 +951,7 @@ function ExpenseForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) =
         <div className="grid grid-cols-2 gap-2">
           <input
             type="number"
+            step="0.01"
             placeholder="Amount (₱)"
             value={form.amount}
             onChange={(e) => setForm({ ...form, amount: e.target.value })}
@@ -893,6 +1001,91 @@ function ExpenseForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) =
         />
         <button type="submit" className="btn-primary w-full">
           Add Expense
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function IncomeForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => void }) {
+  const [form, setForm] = useState({
+    description: "",
+    source: "Airbnb",
+    amount: "",
+    incomeDate: new Date().toISOString().split("T")[0],
+    paymentMethod: "",
+    notes: "",
+  });
+
+  return (
+    <div className="card p-4">
+      <h2 className="text-sm font-semibold text-gray-700 mb-3">Add Income</h2>
+      <form
+        onSubmit={(e) => {
+          onSubmit(e, {
+            description: form.description,
+            source: form.source,
+            amount: parseFloat(form.amount),
+            incomeDate: form.incomeDate,
+            paymentMethod: form.paymentMethod,
+            notes: form.notes,
+          });
+          setForm({ description: "", source: "Airbnb", amount: "", incomeDate: new Date().toISOString().split("T")[0], paymentMethod: "", notes: "" });
+        }}
+        className="space-y-3"
+      >
+        <input
+          type="text"
+          placeholder="Description"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          className="input w-full"
+          required
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="number"
+            step="0.01"
+            placeholder="Amount (₱)"
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            className="input"
+            required
+          />
+          <div className="space-y-1">
+            <p className="text-[11px] font-medium text-gray-500 uppercase">Income Date</p>
+            <input
+              type="date"
+              value={form.incomeDate}
+              onChange={(e) => setForm({ ...form, incomeDate: e.target.value })}
+              className="input"
+              required
+            />
+          </div>
+          <input
+            type="text"
+            placeholder="Source (e.g., Airbnb)"
+            value={form.source}
+            onChange={(e) => setForm({ ...form, source: e.target.value })}
+            className="input"
+          />
+          <input
+            type="text"
+            placeholder="Payment Method"
+            value={form.paymentMethod}
+            onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+            className="input"
+          />
+        </div>
+        <textarea
+          placeholder="Notes"
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          className="input w-full"
+          rows={2}
+        />
+        <button type="submit" className="btn-primary w-full">
+          Add Income
         </button>
       </form>
     </div>

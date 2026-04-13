@@ -31,12 +31,17 @@ export async function PUT(
 
     const expenseDateObj = expenseDate ? new Date(expenseDate) : undefined;
     const dueDateObj = dueDate ? new Date(dueDate) : null;
+    const amountNumber = amount !== undefined ? Number(amount) : undefined;
+
+    if (amount !== undefined && Number.isNaN(amountNumber)) {
+      return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+    }
 
     const updated = await db
       .update(expenses)
       .set({
         description,
-        amount: amount !== undefined ? Math.round(amount) : undefined,
+        amount: amountNumber,
         expenseDate: expenseDateObj,
         dueDate: dueDateObj,
         category,
