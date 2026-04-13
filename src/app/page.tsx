@@ -420,6 +420,37 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <div className="card overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">Monthly Payment Breakdown</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Incoming payment and waiting payment by month</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th className="px-4 py-3 text-left font-medium">Month</th>
+                <th className="px-4 py-3 text-left font-medium">Incoming payment</th>
+                <th className="px-4 py-3 text-left font-medium">Waiting payment</th>
+                <th className="px-4 py-3 text-left font-medium">Total</th>
+                <th className="px-4 py-3 text-left font-medium">Bookings</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {monthlyRevenue.map((row: any) => (
+                <tr key={row.month} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{row.month}</td>
+                  <td className="px-4 py-3 text-blue-700 font-semibold">{formatPHP(row.incomingPayment ?? 0)}</td>
+                  <td className="px-4 py-3 text-amber-700 font-semibold">{formatPHP(row.waitingPayment ?? 0)}</td>
+                  <td className="px-4 py-3 font-semibold text-gray-900">{formatPHP(row.revenue ?? 0)}</td>
+                  <td className="px-4 py-3 text-gray-600">{row.bookings ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Per-unit analytics table — scrollable on mobile */}
       <div className="card overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-gray-100">
