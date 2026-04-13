@@ -17,6 +17,40 @@ async function findOrCreatePersonId(name: string, type: "sender" | "recipient") 
   return created[0].id;
 }
 
+async function recalculatePersonBalancesFromTransfers() {
+  const [allPeople, allTransfers] = await Promise.all([
+    db.select().from(persons),
+    db.select().from(paymentTransfers),
+  ]);
+
+  const deltaByPersonId = new Map<number, number>();
+  for (const person of allPeople) {
+    deltaByPersonId.set(person.id, 0);
+  }
+
+  for (const transfer of allTransfers) {
+    const amount = Number(transfer.amount || 0);
+    deltaByPersonId.set(
+      transfer.senderId,
+      (deltaByPersonId.get(transfer.senderId) || 0) - amount
+    );
+    deltaByPersonId.set(
+      transfer.recipientId,
+      (deltaByPersonId.get(transfer.recipientId) || 0) + amount
+    );
+  }
+
+  for (const person of allPeople) {
+    await db
+      .update(persons)
+      .set({
+        balance: (deltaByPersonId.get(person.id) || 0).toFixed(2),
+        updatedAt: new Date(),
+      })
+      .where(eq(persons.id, person.id));
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
@@ -144,9 +178,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const senderBal = Number(sendP[0].balance || 0);
-    const recipBal = Number(recP[0].balance || 0);
-
     const newTransfer = await db
       .insert(paymentTransfers)
       .values({
@@ -162,11 +193,7 @@ export async function POST(req: NextRequest) {
 
     const transfer = newTransfer[0];
 
-    const newSenderBal = (senderBal - amountNumber).toFixed(2);
-    const newRecipBal = (recipBal + amountNumber).toFixed(2);
-
-    await db.update(persons).set({ balance: newSenderBal, updatedAt: new Date() }).where(eq(persons.id, resolvedSenderId));
-    await db.update(persons).set({ balance: newRecipBal, updatedAt: new Date() }).where(eq(persons.id, resolvedRecipientId));
+    await recalculatePersonBalancesFromTransfers();
 
     return NextResponse.json(
       {

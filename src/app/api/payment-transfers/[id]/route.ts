@@ -16,6 +16,40 @@ async function findOrCreatePersonId(name: string, type: "sender" | "recipient") 
   return created[0].id;
 }
 
+async function recalculatePersonBalancesFromTransfers() {
+  const [allPeople, allTransfers] = await Promise.all([
+    db.select().from(persons),
+    db.select().from(paymentTransfers),
+  ]);
+
+  const deltaByPersonId = new Map<number, number>();
+  for (const person of allPeople) {
+    deltaByPersonId.set(person.id, 0);
+  }
+
+  for (const transfer of allTransfers) {
+    const amount = Number(transfer.amount || 0);
+    deltaByPersonId.set(
+      transfer.senderId,
+      (deltaByPersonId.get(transfer.senderId) || 0) - amount
+    );
+    deltaByPersonId.set(
+      transfer.recipientId,
+      (deltaByPersonId.get(transfer.recipientId) || 0) + amount
+    );
+  }
+
+  for (const person of allPeople) {
+    await db
+      .update(persons)
+      .set({
+        balance: (deltaByPersonId.get(person.id) || 0).toFixed(2),
+        updatedAt: new Date(),
+      })
+      .where(eq(persons.id, person.id));
+  }
+}
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -66,7 +100,6 @@ export async function PUT(
     }
 
     const orig = originalTransfer[0];
-    const origAmountNum = Number(orig.amount);
 
     const newSenderId = sender
       ? await findOrCreatePersonId(String(sender), "sender")
@@ -79,43 +112,12 @@ export async function PUT(
       return NextResponse.json({ error: "Sender and recipient must be different" }, { status: 400 });
     }
 
-    const oldSender = await db.select().from(persons).where(eq(persons.id, orig.senderId));
-    const oldRecipient = await db.select().from(persons).where(eq(persons.id, orig.recipientId));
     const newSender = await db.select().from(persons).where(eq(persons.id, newSenderId));
     const newRecipient = await db.select().from(persons).where(eq(persons.id, newRecipientId));
 
-    if (!oldSender.length || !oldRecipient.length || !newSender.length || !newRecipient.length) {
+    if (!newSender.length || !newRecipient.length) {
       return NextResponse.json({ error: "Sender or recipient not found" }, { status: 404 });
     }
-
-    // Revert old transfer effect.
-    await db
-      .update(persons)
-      .set({ balance: (Number(oldSender[0].balance || 0) + origAmountNum).toFixed(2), updatedAt: new Date() })
-      .where(eq(persons.id, orig.senderId));
-    await db
-      .update(persons)
-      .set({ balance: (Number(oldRecipient[0].balance || 0) - origAmountNum).toFixed(2), updatedAt: new Date() })
-      .where(eq(persons.id, orig.recipientId));
-
-    // Fetch balances again after revert when sender/recipient are reused.
-    const newSenderAfterRevert = await db.select().from(persons).where(eq(persons.id, newSenderId));
-    const newRecipientAfterRevert = await db.select().from(persons).where(eq(persons.id, newRecipientId));
-
-    await db
-      .update(persons)
-      .set({
-        balance: (Number(newSenderAfterRevert[0].balance || 0) - amountNumber).toFixed(2),
-        updatedAt: new Date(),
-      })
-      .where(eq(persons.id, newSenderId));
-    await db
-      .update(persons)
-      .set({
-        balance: (Number(newRecipientAfterRevert[0].balance || 0) + amountNumber).toFixed(2),
-        updatedAt: new Date(),
-      })
-      .where(eq(persons.id, newRecipientId));
 
     const updated = await db
       .update(paymentTransfers)
@@ -132,10 +134,12 @@ export async function PUT(
       .where(eq(paymentTransfers.id, id))
       .returning();
 
+    await recalculatePersonBalancesFromTransfers();
+
     return NextResponse.json({
       ...updated[0],
-      sender: newSenderAfterRevert[0].name,
-      recipient: newRecipientAfterRevert[0].name,
+      sender: newSender[0].name,
+      recipient: newRecipient[0].name,
     });
   } catch (error) {
     console.error("PUT /api/payment-transfers/[id]:", error);
@@ -172,43 +176,12 @@ export async function DELETE(
         { status: 404 }
       );
     }
-
-
-    const t = transfer[0];
-    const tAmountNum = Number(t.amount);
-
-    // Get persons to reverse their balances
-    const senderPerson = await db
-      .select()
-      .from(persons)
-      .where(eq(persons.id, t.senderId));
-
-    const recipPerson = await db
-      .select()
-      .from(persons)
-      .where(eq(persons.id, t.recipientId));
-
-    if (senderPerson.length > 0) {
-      const newBalance = (Number(senderPerson[0].balance || 0) + tAmountNum).toFixed(2);
-      await db
-        .update(persons)
-        .set({ balance: newBalance })
-        .where(eq(persons.id, t.senderId));
-    }
-
-    if (recipPerson.length > 0) {
-      const newBalance = (Number(recipPerson[0].balance || 0) - tAmountNum).toFixed(2);
-      await db
-        .update(persons)
-        .set({ balance: newBalance })
-        .where(eq(persons.id, t.recipientId));
-    }
-
-
     const deleted = await db
       .delete(paymentTransfers)
       .where(eq(paymentTransfers.id, id))
       .returning();
+
+    await recalculatePersonBalancesFromTransfers();
 
     return NextResponse.json({ success: true });
   } catch (error) {
