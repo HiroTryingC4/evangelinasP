@@ -105,64 +105,62 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "At least one receiver person is required" }, { status: 400 });
     }
 
-    await db.transaction(async (tx) => {
-      for (let i = 0; i < units.length; i++) {
-        const code = units[i];
-        await tx
-          .insert(unitConfigs)
-          .values({ code, sortOrder: i })
-          .onConflictDoUpdate({
-            target: unitConfigs.code,
-            set: { sortOrder: i },
-          });
-      }
+    for (let i = 0; i < units.length; i++) {
+      const code = units[i];
+      await db
+        .insert(unitConfigs)
+        .values({ code, sortOrder: i })
+        .onConflictDoUpdate({
+          target: unitConfigs.code,
+          set: { sortOrder: i },
+        });
+    }
 
-      const existingUnits = await tx.select({ code: unitConfigs.code }).from(unitConfigs);
-      const incomingUnitSet = new Set(units);
-      for (const row of existingUnits) {
-        if (!incomingUnitSet.has(row.code)) {
-          await tx.delete(unitConfigs).where(eq(unitConfigs.code, row.code));
-        }
+    const existingUnits = await db.select({ code: unitConfigs.code }).from(unitConfigs);
+    const incomingUnitSet = new Set(units);
+    for (const row of existingUnits) {
+      if (!incomingUnitSet.has(row.code)) {
+        await db.delete(unitConfigs).where(eq(unitConfigs.code, row.code));
       }
+    }
 
-      for (let i = 0; i < receivers.length; i++) {
-        const person = receivers[i];
-        await tx
-          .insert(receiverPersons)
-          .values({ name: person.name, role: person.role, sortOrder: i })
-          .onConflictDoUpdate({
-            target: receiverPersons.name,
-            set: { role: person.role, sortOrder: i },
-          });
+    for (let i = 0; i < receivers.length; i++) {
+      const person = receivers[i];
+      await db
+        .insert(receiverPersons)
+        .values({ name: person.name, role: person.role, sortOrder: i })
+        .onConflictDoUpdate({
+          target: receiverPersons.name,
+          set: { role: person.role, sortOrder: i },
+        });
+    }
+
+    const existingReceivers = await db.select({ name: receiverPersons.name }).from(receiverPersons);
+    const incomingReceiverSet = new Set(receivers.map((r) => r.name.trim().toLowerCase()));
+    for (const row of existingReceivers) {
+      if (!incomingReceiverSet.has(String(row.name).trim().toLowerCase())) {
+        await db.delete(receiverPersons).where(eq(receiverPersons.name, row.name));
       }
+    }
 
-      const existingReceivers = await tx.select({ name: receiverPersons.name }).from(receiverPersons);
-      const incomingReceiverSet = new Set(receivers.map((r) => r.name.trim().toLowerCase()));
-      for (const row of existingReceivers) {
-        if (!incomingReceiverSet.has(String(row.name).trim().toLowerCase())) {
-          await tx.delete(receiverPersons).where(eq(receiverPersons.name, row.name));
-        }
-      }
-
-      // Keep `persons` in sync so newly added receivers are available
-      // in transfer/payment database flows that read from this table.
-      for (const person of receivers) {
-        await tx
-          .insert(persons)
-          .values({
-            name: person.name.trim().toLowerCase(),
+    // Keep `persons` in sync so newly added receivers are available
+    // in transfer/payment database flows that read from this table.
+    for (const person of receivers) {
+      await db
+        .insert(persons)
+        .values({
+          name: person.name.trim().toLowerCase(),
+          type: "recipient",
+          balance: "0",
+        })
+        .onConflictDoUpdate({
+          target: persons.name,
+          set: {
             type: "recipient",
             balance: "0",
-          })
-          .onConflictDoUpdate({
-            target: persons.name,
-            set: {
-              type: "recipient",
-              balance: "0",
-            },
-          });
-      }
-    });
+          },
+        });
+    }
 
     const [savedUnits, savedReceivers] = await Promise.all([
       db.select({ code: unitConfigs.code }).from(unitConfigs).orderBy(asc(unitConfigs.sortOrder), asc(unitConfigs.id)),
