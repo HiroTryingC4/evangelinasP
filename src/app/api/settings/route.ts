@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { asc } from "drizzle-orm";
+import { asc, notInArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { persons, receiverPersons, unitConfigs } from "@/lib/schema";
 import { STAFF, UNITS } from "@/lib/utils";
@@ -8,14 +8,6 @@ export const dynamic = "force-dynamic";
 
 function normalizeUnitCode(value: string): string {
   return value.trim().replace(/^Unit\s*/i, "");
-}
-
-function sanitizeList(values: unknown): string[] {
-  if (!Array.isArray(values)) return [];
-  const out = values
-    .map((v) => String(v ?? "").trim())
-    .filter(Boolean);
-  return Array.from(new Set(out));
 }
 
 function sanitizeUnits(values: unknown): string[] {
@@ -113,17 +105,33 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "At least one receiver person is required" }, { status: 400 });
     }
 
-    // Neon HTTP driver does not support db.transaction(),
-    // so persist updates in sequence.
-    await db.delete(unitConfigs);
-    await db.delete(receiverPersons);
+    // Upsert first to avoid unique-key conflicts, then delete removed rows.
+    for (let i = 0; i < units.length; i++) {
+      const code = units[i];
+      await db
+        .insert(unitConfigs)
+        .values({ code, sortOrder: i })
+        .onConflictDoUpdate({
+          target: unitConfigs.code,
+          set: { sortOrder: i },
+        });
+    }
 
-    await db.insert(unitConfigs).values(
-      units.map((code, i) => ({ code, sortOrder: i }))
-    );
+    await db.delete(unitConfigs).where(notInArray(unitConfigs.code, units));
 
-    await db.insert(receiverPersons).values(
-      receivers.map((person, i) => ({ name: person.name, role: person.role, sortOrder: i }))
+    for (let i = 0; i < receivers.length; i++) {
+      const person = receivers[i];
+      await db
+        .insert(receiverPersons)
+        .values({ name: person.name, role: person.role, sortOrder: i })
+        .onConflictDoUpdate({
+          target: receiverPersons.name,
+          set: { role: person.role, sortOrder: i },
+        });
+    }
+
+    await db.delete(receiverPersons).where(
+      notInArray(receiverPersons.name, receivers.map((r) => r.name))
     );
 
     // Keep `persons` in sync so newly added receivers are available
