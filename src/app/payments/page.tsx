@@ -22,6 +22,7 @@ type PaymentRecord = {
   remainingBalance: number;
   dpDate: string | Date | null;
   fpDate: string | Date | null;
+  checkInDateKey?: string | null;
   dpAmount?: number | string | null;
   fpAmount?: number | string | null;
   totalFee?: number | string | null;
@@ -175,7 +176,7 @@ export default function PaymentsPage() {
     return records.filter((record) => {
       if (scopeFilter === "week") {
         const recordDateKey = record.paymentType === "BK"
-          ? toYMD(record.bookingDate)
+          ? (record.checkInDateKey || toYMD(record.bookingDate))
           : toYMD(record.paymentDate ?? record.bookingDate);
         if (recordDateKey < weekStartKey || recordDateKey > weekEndKey) return false;
       }
@@ -195,7 +196,7 @@ export default function PaymentsPage() {
 
       if (dateFilter) {
         const ymd = record.paymentType === "BK"
-          ? toYMD(record.bookingDate)
+          ? (record.checkInDateKey || toYMD(record.bookingDate))
           : toYMD(record.paymentDate ?? record.bookingDate);
         if (ymd !== dateFilter) return false;
       }
