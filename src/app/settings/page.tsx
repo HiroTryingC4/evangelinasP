@@ -94,13 +94,13 @@ export default function SettingsPage() {
         body: JSON.stringify({ units: normalizedUnits, receivers }),
       });
 
-      const data = await res.json();
+      const data: SettingsResponse & { error?: string; detail?: string } = await res.json();
       if (!res.ok) {
         const detail = data?.detail ? ` (${data.detail})` : "";
         throw new Error(`${data?.error || "Failed to save"}${detail}`);
       }
 
-      setUnits(Array.from(new Set((data.units ?? units).map((unit) => normalizeUnitCode(String(unit))).filter(Boolean))));
+      setUnits(Array.from(new Set((data.units ?? units).map((unit: string) => normalizeUnitCode(unit)).filter(Boolean))));
       if (Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0) {
         setReceivers(data.receiverPersons);
       } else {
