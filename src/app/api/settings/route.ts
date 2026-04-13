@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { asc, notInArray } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { persons, receiverPersons, unitConfigs } from "@/lib/schema";
 import { STAFF, UNITS } from "@/lib/utils";
@@ -117,7 +117,13 @@ export async function PUT(req: NextRequest) {
         });
     }
 
-    await db.delete(unitConfigs).where(notInArray(unitConfigs.code, units));
+    const existingUnits = await db.select({ code: unitConfigs.code }).from(unitConfigs);
+    const incomingUnitSet = new Set(units);
+    for (const row of existingUnits) {
+      if (!incomingUnitSet.has(row.code)) {
+        await db.delete(unitConfigs).where(eq(unitConfigs.code, row.code));
+      }
+    }
 
     for (let i = 0; i < receivers.length; i++) {
       const person = receivers[i];
@@ -130,9 +136,13 @@ export async function PUT(req: NextRequest) {
         });
     }
 
-    await db.delete(receiverPersons).where(
-      notInArray(receiverPersons.name, receivers.map((r) => r.name))
-    );
+    const existingReceivers = await db.select({ name: receiverPersons.name }).from(receiverPersons);
+    const incomingReceiverSet = new Set(receivers.map((r) => r.name.trim().toLowerCase()));
+    for (const row of existingReceivers) {
+      if (!incomingReceiverSet.has(String(row.name).trim().toLowerCase())) {
+        await db.delete(receiverPersons).where(eq(receiverPersons.name, row.name));
+      }
+    }
 
     // Keep `persons` in sync so newly added receivers are available
     // in transfer/payment database flows that read from this table.
