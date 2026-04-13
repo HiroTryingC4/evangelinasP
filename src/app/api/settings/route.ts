@@ -144,7 +144,10 @@ export async function PUT(req: NextRequest) {
       .map((name) => ({ name, type: "recipient" as const, balance: "0" }));
 
     if (personRows.length > 0) {
-      await db.insert(persons).values(personRows);
+      await db
+        .insert(persons)
+        .values(personRows)
+        .onConflictDoNothing({ target: persons.name });
     }
 
     return NextResponse.json({
