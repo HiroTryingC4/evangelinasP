@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, CreditCard, Users, Search, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { formatPHP, formatDate, formatWeekRange, getSundayToSaturdayWeek, STATUS_COLOR, PAYMENT_METHODS } from "@/lib/utils";
+import { formatPHP, formatDate, formatWeekRange, getSundayToSaturdayWeek, STATUS_COLOR, toYMD } from "@/lib/utils";
 
 type PaymentRecord = {
   id: string;
@@ -56,15 +56,20 @@ export default function PaymentsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
 
-  function toYMD(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }
+  const normalizeDateInput = (value: string): string => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const slash = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (slash) {
+      const day = String(Number(slash[1])).padStart(2, "0");
+      const month = String(Number(slash[2])).padStart(2, "0");
+      const year = slash[3];
+      return `${year}-${month}-${day}`;
+    }
+    return toYMD(new Date());
+  };
 
   const shiftWeek = (days: number) => {
-    const base = new Date(`${weeklyDate}T12:00:00`);
+    const base = new Date(`${normalizeDateInput(weeklyDate)}T12:00:00`);
     if (Number.isNaN(base.getTime())) return;
     base.setDate(base.getDate() + days);
     setWeeklyDate(toYMD(base));
@@ -82,9 +87,9 @@ export default function PaymentsPage() {
     if (!isInitialLoad) setRefreshing(true);
 
     Promise.all([
-      fetch(`/api/payments?weeklyDate=${weeklyDate}&scope=${scopeFilter}&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/payments?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
       fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
-      fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&scope=${scopeFilter}&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/payment-transfers?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
     ])
       .then(([payments, settings, transfers]) => {
         const paymentRows: PaymentRecord[] = Array.isArray(payments.records) ? payments.records : [];
@@ -162,7 +167,18 @@ export default function PaymentsPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const week = getSundayToSaturdayWeek(normalizeDateInput(weeklyDate));
+    const weekStartKey = week.startDate;
+    const weekEndKey = week.endDate;
+
     return records.filter((record) => {
+      if (scopeFilter === "week") {
+        const recordDateKey = record.paymentType === "BK"
+          ? toYMD(record.bookingDate)
+          : toYMD(record.paymentDate ?? record.bookingDate);
+        if (recordDateKey < weekStartKey || recordDateKey > weekEndKey) return false;
+      }
+
       if (receiverFilters.length > 0) {
         const receiverSet = new Set(receiverFilters.map((r) => r.toLowerCase()));
         if (!receiverSet.has((record.receivedBy ?? "").toLowerCase())) return false;
@@ -177,12 +193,9 @@ export default function PaymentsPage() {
       if (balanceFilter === "settled" && record.remainingBalance > 0) return false;
 
       if (dateFilter) {
-        const d = new Date(record.paymentDate ?? record.bookingDate);
-        if (Number.isNaN(d.getTime())) return false;
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        const ymd = `${y}-${m}-${day}`;
+        const ymd = record.paymentType === "BK"
+          ? toYMD(record.bookingDate)
+          : toYMD(record.paymentDate ?? record.bookingDate);
         if (ymd !== dateFilter) return false;
       }
 
@@ -193,7 +206,7 @@ export default function PaymentsPage() {
         (record.receivedBy ?? "").toLowerCase().includes(q)
       );
     });
-  }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search, dateFilter]);
+  }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search, dateFilter, scopeFilter, weeklyDate]);
 
   const getPaidAmount = (record: PaymentRecord) => {
     if (record.paymentType !== "BK") return 0;
@@ -265,7 +278,7 @@ export default function PaymentsPage() {
               type="date"
               className="input py-1.5 text-xs w-full"
               value={weeklyDate}
-              onChange={(e) => setWeeklyDate(e.target.value)}
+                onChange={(e) => setWeeklyDate(normalizeDateInput(e.target.value))}
               disabled={scopeFilter === "all"}
             />
             <button
