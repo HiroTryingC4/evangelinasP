@@ -92,8 +92,14 @@ export default function PaymentsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return records.filter((record) => {
-      if (receiverFilters.length > 0 && !receiverFilters.includes(record.receivedBy ?? "")) return false;
-      if (unitFilters.length > 0 && !unitFilters.includes(record.unit)) return false;
+      if (receiverFilters.length > 0) {
+        const receiverSet = new Set(receiverFilters.map((r) => r.toLowerCase()));
+        if (!receiverSet.has((record.receivedBy ?? "").toLowerCase())) return false;
+      }
+
+      // Keep transfer records visible even when unit filters are active,
+      // so sender deductions are reflected in totals.
+      if (unitFilters.length > 0 && record.unit !== "TRANSFER" && !unitFilters.includes(record.unit)) return false;
       if (typeFilter && record.paymentType !== typeFilter) return false;
       if (statusFilter && record.paymentStatus !== statusFilter) return false;
       if (balanceFilter === "with" && record.remainingBalance <= 0) return false;
