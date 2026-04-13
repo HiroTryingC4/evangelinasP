@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
 import { TrendingUp, Users, BookOpen, AlertTriangle, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { formatPHP, formatDate, formatWeekRange, UNITS } from "@/lib/utils";
@@ -383,13 +383,25 @@ export default function DashboardPage() {
       {/* Charts — stacked on mobile, side by side on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="card p-4 sm:p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Monthly Revenue (₱)</h2>
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold text-gray-700">Monthly Revenue (₱)</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Incoming payment vs waiting balance, grouped by check-in month</p>
+          </div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={monthlyRevenue} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
               <XAxis dataKey="month" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v: number) => formatPHP(v)} />
-              <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Tooltip
+                formatter={(value: number, name: string, props: any) => {
+                  if (name === "incomingPayment") return [formatPHP(value), "Incoming payment"];
+                  if (name === "waitingPayment") return [formatPHP(value), "Waiting payment"];
+                  return [formatPHP(value), name];
+                }}
+                labelFormatter={(label) => `Month: ${label}`}
+              />
+              <Legend />
+              <Bar dataKey="incomingPayment" name="Incoming payment" stackId="monthly" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="waitingPayment" name="Waiting payment" stackId="monthly" fill="#f59e0b" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

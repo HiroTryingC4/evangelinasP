@@ -144,9 +144,14 @@ export async function GET(req: NextRequest) {
         const monthNumber = Number(key.slice(5, 7));
         return monthNumber === i + 1;
       });
+      const totalRevenue = mb.reduce((s, b) => s + b.totalFee, 0);
+      const incomingPayment = mb.reduce((s, b) => s + Math.max(0, b.totalFee - b.remainingBalance), 0);
+      const waitingPayment = mb.reduce((s, b) => s + Math.max(0, b.remainingBalance), 0);
       return {
         month,
-        revenue:  mb.reduce((s, b) => s + b.totalFee, 0),
+        revenue: totalRevenue,
+        incomingPayment,
+        waitingPayment,
         bookings: mb.length,
       };
     });
