@@ -23,8 +23,18 @@ type ReceiverPerson = {
   role: "employee" | "host";
 };
 
+type ReceiverAccount = {
+  name: string;
+  role: "employee" | "host";
+  bookingReceived: number;
+  incomingTransfers: number;
+  outgoingTransfers: number;
+  availableBalance: number;
+};
+
 export default function PaymentTransfersPage() {
   const [recipientOptions, setRecipientOptions] = useState<ReceiverPerson[]>([]);
+  const [receiverAccounts, setReceiverAccounts] = useState<ReceiverAccount[]>([]);
   const [units, setUnits] = useState<string[]>([]);
 
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -75,13 +85,22 @@ export default function PaymentTransfersPage() {
   const fetchTransfers = async () => {
     try {
       const [transferRes, settingsRes] = await Promise.all([
-        fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&scope=${scopeFilter}&_ts=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&scope=${scopeFilter}&includeAccounts=1&_ts=${Date.now()}`, { cache: "no-store" }),
         fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }),
       ]);
 
-      const data = await transferRes.json();
+      const transferPayload = await transferRes.json();
       const settings = await settingsRes.json();
-      setTransfers(data);
+
+      const list = Array.isArray(transferPayload)
+        ? transferPayload
+        : (Array.isArray(transferPayload?.transfers) ? transferPayload.transfers : []);
+      const accounts = !Array.isArray(transferPayload) && Array.isArray(transferPayload?.accounts)
+        ? transferPayload.accounts
+        : [];
+
+      setTransfers(list);
+      setReceiverAccounts(accounts);
 
       const receiverPersons = Array.isArray(settings.receiverPersons)
         ? settings.receiverPersons
@@ -138,6 +157,17 @@ export default function PaymentTransfersPage() {
     return groups;
   }, [transfers]);
 
+  const senderAccount = useMemo(() => {
+    const senderKey = formData.sender.trim().toLowerCase();
+    if (!senderKey) return null;
+    return receiverAccounts.find((account) => account.name.trim().toLowerCase() === senderKey) ?? null;
+  }, [formData.sender, receiverAccounts]);
+
+  const amountNumber = Number(formData.amount || 0);
+  const hasInsufficientFunds = Boolean(
+    senderAccount && amountNumber > 0 && amountNumber > Number(senderAccount.availableBalance || 0)
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -147,6 +177,10 @@ export default function PaymentTransfersPage() {
     }
     if (formData.sender.trim().toLowerCase() === formData.recipient.trim().toLowerCase()) {
       alert("Sender and recipient must be different");
+      return;
+    }
+    if (hasInsufficientFunds && senderAccount) {
+      alert(`Insufficient balance. ${senderAccount.name} only has ${formatPHP(Number(senderAccount.availableBalance))}.`);
       return;
     }
 
@@ -375,6 +409,12 @@ export default function PaymentTransfersPage() {
                       </option>
                     ))}
                   </select>
+                  {senderAccount && (
+                    <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                      <p className="text-xs text-blue-700">Available balance</p>
+                      <p className="text-sm font-semibold text-blue-900">{formatPHP(Number(senderAccount.availableBalance))}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Recipient */}
@@ -416,6 +456,11 @@ export default function PaymentTransfersPage() {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  {hasInsufficientFunds && senderAccount && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Not enough balance. Available: {formatPHP(Number(senderAccount.availableBalance))}
+                    </p>
+                  )}
                 </div>
 
                 {/* Transfer Date */}
@@ -510,7 +555,7 @@ export default function PaymentTransfersPage() {
                 <div className="flex gap-2">
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || hasInsufficientFunds}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {submitting ? (
@@ -560,6 +605,31 @@ export default function PaymentTransfersPage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="card p-5 mb-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Receiver Account Balances</h3>
+              {receiverAccounts.length === 0 ? (
+                <p className="text-sm text-gray-500">No receiver balances yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {receiverAccounts.map((account) => (
+                    <div key={account.name} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold text-gray-900">
+                          {account.name} ({account.role === "host" ? "Host" : "Employee"})
+                        </p>
+                        <p className={`text-sm font-bold ${Number(account.availableBalance) < 0 ? "text-red-600" : "text-green-700"}`}>
+                          {formatPHP(Number(account.availableBalance))}
+                        </p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        From bookings: {formatPHP(Number(account.bookingReceived))} | In transfers: {formatPHP(Number(account.incomingTransfers))} | Out transfers: {formatPHP(Number(account.outgoingTransfers))}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Transfers List */}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { paymentTransfers, persons } from "@/lib/schema";
-import { eq } from "drizzle-orm";
+import { bookings, paymentTransfers, persons, receiverPersons } from "@/lib/schema";
+import { asc, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +48,86 @@ async function recalculatePersonBalancesFromTransfers() {
       })
       .where(eq(persons.id, person.id));
   }
+}
+
+type ReceiverAccount = {
+  name: string;
+  role: "employee" | "host";
+  availableBalance: number;
+};
+
+function normalizeName(value: string | null | undefined): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+async function buildReceiverAccountMap(excludeTransferId?: number) {
+  const [configuredReceivers, allBookings, allTransfers, allPersons] = await Promise.all([
+    db
+      .select({ name: receiverPersons.name, role: receiverPersons.role })
+      .from(receiverPersons)
+      .orderBy(asc(receiverPersons.sortOrder), asc(receiverPersons.id)),
+    db
+      .select({
+        dpAmount: bookings.dpAmount,
+        fpAmount: bookings.fpAmount,
+        dpReceivedBy: bookings.dpReceivedBy,
+        fpReceivedBy: bookings.fpReceivedBy,
+      })
+      .from(bookings),
+    db.select().from(paymentTransfers),
+    db.select().from(persons),
+  ]);
+
+  const personMap = new Map(allPersons.map((p) => [p.id, normalizeName(p.name)]));
+  const accountMap = new Map<string, ReceiverAccount>();
+
+  for (const receiver of configuredReceivers) {
+    const key = normalizeName(receiver.name);
+    if (!key || accountMap.has(key)) continue;
+    accountMap.set(key, {
+      name: receiver.name,
+      role: receiver.role === "host" ? "host" : "employee",
+      availableBalance: 0,
+    });
+  }
+
+  const addBookingReceipt = (name: string | null, amount: number) => {
+    const key = normalizeName(name);
+    if (!key || amount <= 0) return;
+    const account = accountMap.get(key);
+    if (!account) return;
+    account.availableBalance += amount;
+  };
+
+  for (const booking of allBookings) {
+    addBookingReceipt(booking.dpReceivedBy, Number(booking.dpAmount ?? 0));
+    addBookingReceipt(booking.fpReceivedBy, Number(booking.fpAmount ?? 0));
+  }
+
+  for (const transfer of allTransfers) {
+    if (excludeTransferId && transfer.id === excludeTransferId) continue;
+    const amount = Number(transfer.amount ?? 0);
+    if (amount <= 0) continue;
+
+    const senderKey = personMap.get(transfer.senderId) ?? "";
+    const recipientKey = personMap.get(transfer.recipientId) ?? "";
+
+    const senderAccount = accountMap.get(senderKey);
+    if (senderAccount) senderAccount.availableBalance -= amount;
+
+    const recipientAccount = accountMap.get(recipientKey);
+    if (recipientAccount) recipientAccount.availableBalance += amount;
+  }
+
+  return new Map(
+    Array.from(accountMap.values()).map((account) => [
+      normalizeName(account.name),
+      {
+        ...account,
+        availableBalance: Number(account.availableBalance.toFixed(2)),
+      },
+    ])
+  );
 }
 
 export async function PUT(
@@ -112,6 +192,25 @@ export async function PUT(
 
     if (newSenderId === newRecipientId) {
       return NextResponse.json({ error: "Sender and recipient must be different" }, { status: 400 });
+    }
+
+    const senderName = String(sender ?? "").trim();
+    const accountMap = await buildReceiverAccountMap(id);
+    const senderAccount = accountMap.get(normalizeName(senderName));
+    if (!senderAccount) {
+      return NextResponse.json(
+        { error: "Sender is not configured in Settings > Receiver Persons" },
+        { status: 400 }
+      );
+    }
+
+    if (amountNumber > senderAccount.availableBalance) {
+      return NextResponse.json(
+        {
+          error: `Insufficient balance. ${senderName} has ${senderAccount.availableBalance.toFixed(2)} available.`,
+        },
+        { status: 400 }
+      );
     }
 
     const newSender = await db.select().from(persons).where(eq(persons.id, newSenderId));
