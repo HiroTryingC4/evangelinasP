@@ -10,7 +10,7 @@ type PaymentRecord = {
   bookingId: number;
   guestName: string;
   unit: string;
-  paymentType: "DP" | "FP" | "TR";
+  paymentType: "BK" | "TR";
   amount: number;
   paymentDate: string | Date | null;
   method: string | null;
@@ -21,6 +21,7 @@ type PaymentRecord = {
   paymentStatus: string;
   remainingBalance: number;
   dpDate: string | Date | null;
+  fpDate: string | Date | null;
 };
 
 type TransferRecord = {
@@ -84,7 +85,7 @@ export default function PaymentsPage() {
     ])
       .then(([payments, settings, transfers]) => {
         const paymentRows: PaymentRecord[] = Array.isArray(payments.records) ? payments.records : [];
-        const nonTransferRows = paymentRows.filter((row) => row.paymentType !== "TR");
+        const bookingRows = paymentRows.filter((row) => row.paymentType !== "TR");
 
         const transferRowsRaw: TransferRecord[] = Array.isArray(transfers) ? transfers : [];
         const transferRows: PaymentRecord[] = transferRowsRaw.flatMap((t) => {
@@ -110,6 +111,7 @@ export default function PaymentsPage() {
             paymentStatus: t.status || "Transferred",
             remainingBalance: 0,
             dpDate: null,
+            fpDate: null,
           };
 
           const incoming: PaymentRecord = {
@@ -128,12 +130,13 @@ export default function PaymentsPage() {
             paymentStatus: t.status || "Transferred",
             remainingBalance: 0,
             dpDate: null,
+            fpDate: null,
           };
 
           return [out, incoming];
         });
 
-        setRecords([...nonTransferRows, ...transferRows]);
+        setRecords([...bookingRows, ...transferRows]);
         if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
           setReceivers(settings.receivers);
         }
@@ -190,11 +193,8 @@ export default function PaymentsPage() {
   }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search, dateFilter]);
 
   const totals = useMemo(() => {
-    const dpCount = filtered.filter((r) => r.paymentType === "DP").length;
-    const fpCount = filtered.filter((r) => r.paymentType === "FP").length;
-    const totalAmount = filtered.reduce((sum, r) => sum + r.amount, 0);
     const outstandingCount = filtered.filter((r) => r.remainingBalance > 0).length;
-    return { dpCount, fpCount, totalAmount, outstandingCount };
+    return { outstandingCount };
   }, [filtered]);
 
   if (loading) {
@@ -279,13 +279,6 @@ export default function PaymentsPage() {
               <p className="text-2xl font-bold text-gray-900">{filtered.length}</p>
             </div>
             <div className="stat-card">
-              <div className="flex items-center gap-1.5 text-emerald-600 mb-1">
-                <CalendarDays className="w-4 h-4" />
-                <span className="text-xs font-semibold text-gray-500">Total Amount</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{formatPHP(totals.totalAmount)}</p>
-            </div>
-            <div className="stat-card">
               <div className="flex items-center gap-1.5 text-purple-600 mb-1">
                 <Users className="w-4 h-4" />
                 <span className="text-xs font-semibold text-gray-500">With balance</span>
@@ -307,8 +300,7 @@ export default function PaymentsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <select className="input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                 <option value="">All types</option>
-                <option value="DP">Down Payment</option>
-                <option value="FP">Full Payment</option>
+                <option value="BK">Booking</option>
                 <option value="TR">Transfer</option>
               </select>
               <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -436,8 +428,8 @@ export default function PaymentsPage() {
             <div key={record.id} className={`card ${compactMode ? "p-2" : "p-3 sm:p-4"} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`}>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${record.paymentType === "DP" ? "bg-yellow-100 text-yellow-800" : record.paymentType === "FP" ? "bg-green-100 text-green-800" : "bg-indigo-100 text-indigo-800"}`}>
-                    {record.paymentType === "DP" ? "Down Payment" : record.paymentType === "FP" ? "Full Payment" : "Transfer"}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${record.paymentType === "BK" ? "bg-sky-100 text-sky-800" : "bg-indigo-100 text-indigo-800"}`}>
+                    {record.paymentType === "BK" ? "Booking" : "Transfer"}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700">{record.unit === "TRANSFER" ? "Transfer" : `Unit ${record.unit}`}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[record.paymentStatus] ?? "bg-gray-100 text-gray-600"}`}>
@@ -446,12 +438,22 @@ export default function PaymentsPage() {
                 </div>
                 <p className={`${compactMode ? "text-sm" : ""} font-semibold text-gray-900 truncate`}>{record.guestName}</p>
                 <div className={`${compactMode ? "mt-0.5" : "mt-1"} flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500`}>
-                  <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{formatDate(record.paymentDate)}</span>
-                  {record.paymentType !== "TR" && <span>Deposit paid: {formatDate(record.dpDate)}</span>}
-                  <span>Method: {record.method ?? "—"}</span>
-                  <span>Received by: <span className="font-semibold text-gray-700">{record.receivedBy ?? "—"}</span></span>
+                    {record.paymentType === "BK" ? (
+                      <>
+                        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />Check-in: {formatDate(record.bookingDate)}</span>
+                        <span>DP: {formatDate(record.dpDate)}</span>
+                        <span>FP: {formatDate(record.fpDate)}</span>
+                        <span>Received by: <span className="font-semibold text-gray-700">{record.receivedBy ?? "—"}</span></span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{formatDate(record.paymentDate)}</span>
+                        <span>Method: {record.method ?? "—"}</span>
+                        <span>Received by: <span className="font-semibold text-gray-700">{record.receivedBy ?? "—"}</span></span>
+                      </>
+                    )}
                 </div>
-                {record.paymentType !== "TR" && (
+                  {record.paymentType === "BK" && (
                   <div className="mt-1 text-xs">
                     Balance: <span className={record.remainingBalance > 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>{formatPHP(record.remainingBalance)}</span>
                   </div>

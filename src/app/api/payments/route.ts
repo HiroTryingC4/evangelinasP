@@ -32,67 +32,27 @@ export async function GET(req: NextRequest) {
 
     const personMap = new Map(allPersons.map((p) => [p.id, p.name]));
 
-    const records = allBookings.flatMap((booking) => {
-      const items = [] as Array<{
-        id: string;
-        bookingId: number;
-        guestName: string;
-        unit: string;
-        paymentType: "DP" | "FP";
-        amount: number;
-        paymentDate: Date | null;
-        method: string | null;
-        receivedBy: string | null;
-        bookingDate: Date;
-        checkInTime: string;
-        checkOutTime: string;
-        paymentStatus: string;
-        remainingBalance: number;
-        dpDate: Date | null;
-      }>;
-
-      if (booking.dpAmount > 0) {
-        items.push({
-          id: `dp-${booking.id}`,
-          bookingId: booking.id,
-          guestName: booking.guestName,
-          unit: booking.unit,
-          paymentType: "DP",
-          amount: booking.dpAmount,
-          paymentDate: booking.dpDate,
-          method: booking.dpMethod,
-          receivedBy: booking.dpReceivedBy,
-          bookingDate: booking.checkIn,
-          checkInTime: booking.checkInTime,
-          checkOutTime: booking.checkOutTime,
-          paymentStatus: booking.paymentStatus,
-          remainingBalance: booking.remainingBalance,
-          dpDate: booking.dpDate,
-        });
-      }
-
-      if (booking.fpAmount > 0) {
-        items.push({
-          id: `fp-${booking.id}`,
-          bookingId: booking.id,
-          guestName: booking.guestName,
-          unit: booking.unit,
-          paymentType: "FP",
-          amount: booking.fpAmount,
-          paymentDate: booking.fpDate,
-          method: booking.fpMethod,
-          receivedBy: booking.fpReceivedBy,
-          bookingDate: booking.checkIn,
-          checkInTime: booking.checkInTime,
-          checkOutTime: booking.checkOutTime,
-          paymentStatus: booking.paymentStatus,
-          remainingBalance: booking.remainingBalance,
-          dpDate: booking.dpDate,
-        });
-      }
-
-      return items;
-    });
+    const records = allBookings.map((booking) => ({
+      id: `booking-${booking.id}`,
+      bookingId: booking.id,
+      guestName: booking.guestName,
+      unit: booking.unit,
+      paymentType: "BK" as const,
+      amount: Number(booking.totalFee ?? 0),
+      paymentDate: booking.checkIn,
+      method: booking.dpMethod || booking.fpMethod,
+      receivedBy: booking.dpReceivedBy || booking.fpReceivedBy,
+      bookingDate: booking.checkIn,
+      checkInTime: booking.checkInTime,
+      checkOutTime: booking.checkOutTime,
+      paymentStatus: booking.paymentStatus,
+      remainingBalance: booking.remainingBalance,
+      dpDate: booking.dpDate,
+      fpDate: booking.fpDate,
+      dpAmount: booking.dpAmount,
+      fpAmount: booking.fpAmount,
+      totalFee: booking.totalFee,
+    }));
 
     const transferRecords = allTransfers.flatMap((transfer) => {
       const sender = personMap.get(transfer.senderId) ?? "";
@@ -146,8 +106,8 @@ export async function GET(req: NextRequest) {
       if (receiver && record.receivedBy !== receiver) return false;
 
       if (scope !== "all") {
-        const paymentDate = new Date(record.paymentDate ?? record.bookingDate);
-        if (paymentDate < weekStart || paymentDate > weekEnd) return false;
+        const recordDate = new Date(record.paymentDate ?? record.bookingDate);
+        if (recordDate < weekStart || recordDate > weekEnd) return false;
       }
 
       return true;
@@ -157,7 +117,7 @@ export async function GET(req: NextRequest) {
       const dateA = new Date(a.paymentDate ?? a.bookingDate).getTime();
       const dateB = new Date(b.paymentDate ?? b.bookingDate).getTime();
       if (dateA !== dateB) return dateB - dateA;
-      if (a.paymentType !== b.paymentType) return a.paymentType === "FP" ? -1 : 1;
+      if (a.paymentType !== b.paymentType) return a.paymentType === "BK" ? -1 : 1;
       return b.bookingId - a.bookingId;
     });
 
