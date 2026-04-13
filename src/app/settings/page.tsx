@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
 
 type SettingsResponse = {
@@ -13,6 +13,15 @@ type ReceiverPerson = { name: string; role: "employee" | "host" };
 
 export default function SettingsPage() {
   const normalizeUnitCode = (value: string) => value.trim().replace(/^Unit\s*/i, "");
+  const normalizeReceiver = (value: ReceiverPerson): ReceiverPerson => ({
+    name: value.name.trim(),
+    role: value.role === "host" ? "host" : "employee",
+  });
+  const snapshotSettings = (nextUnits: string[], nextReceivers: ReceiverPerson[]) =>
+    JSON.stringify({
+      units: Array.from(new Set(nextUnits.map((unit) => normalizeUnitCode(unit)).filter(Boolean))),
+      receivers: nextReceivers.map(normalizeReceiver),
+    });
 
   const [units, setUnits] = useState<string[]>([]);
   const [receivers, setReceivers] = useState<ReceiverPerson[]>([]);
@@ -23,24 +32,52 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const lastSavedSnapshotRef = useRef("");
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const loadSettings = async () => {
+    const res = await fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" });
+    const data: SettingsResponse = await res.json();
+
+    const loadedUnits = Array.from(new Set((data.units ?? []).map((unit) => normalizeUnitCode(String(unit))).filter(Boolean)));
+    const loadedReceivers = Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0
+      ? data.receiverPersons.map(normalizeReceiver)
+      : (data.receivers ?? []).map((name) => normalizeReceiver({ name, role: "employee" }));
+
+    setUnits(loadedUnits);
+    setReceivers(loadedReceivers);
+    lastSavedSnapshotRef.current = snapshotSettings(loadedUnits, loadedReceivers);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((data: SettingsResponse) => {
-        setUnits(Array.from(new Set((data.units ?? []).map((unit) => normalizeUnitCode(String(unit))).filter(Boolean))));
-        if (Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0) {
-          setReceivers(data.receiverPersons);
-        } else {
-          setReceivers((data.receivers ?? []).map((name) => ({ name, role: "employee" })));
-        }
-        setLoading(false);
-      })
+    void loadSettings()
       .catch(() => {
         setError("Failed to load settings.");
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const snapshot = snapshotSettings(units, receivers);
+    if (snapshot === lastSavedSnapshotRef.current) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      void save();
+    }, 500);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [units, receivers, loading]);
 
   const addUnit = () => {
     const code = normalizeUnitCode(newUnit);
@@ -72,26 +109,28 @@ export default function SettingsPage() {
     setMessage("");
   };
 
-  const save = async () => {
+  async function save() {
     setError("");
     setMessage("");
 
-    if (units.length === 0) {
+    const normalizedUnits = Array.from(new Set(units.map((unit) => normalizeUnitCode(unit)).filter(Boolean)));
+    const normalizedReceivers = receivers.map(normalizeReceiver).filter((item) => item.name.length > 0);
+
+    if (normalizedUnits.length === 0) {
       setError("Add at least one unit.");
       return;
     }
-    if (receivers.length === 0) {
+    if (normalizedReceivers.length === 0) {
       setError("Add at least one receiver person.");
       return;
     }
 
     setSaving(true);
     try {
-      const normalizedUnits = Array.from(new Set(units.map((unit) => normalizeUnitCode(unit)).filter(Boolean)));
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ units: normalizedUnits, receivers }),
+        body: JSON.stringify({ units: normalizedUnits, receivers: normalizedReceivers }),
       });
 
       const data: SettingsResponse & { error?: string; detail?: string } = await res.json();
@@ -100,19 +139,21 @@ export default function SettingsPage() {
         throw new Error(`${data?.error || "Failed to save"}${detail}`);
       }
 
-      setUnits(Array.from(new Set((data.units ?? units).map((unit: string) => normalizeUnitCode(unit)).filter(Boolean))));
-      if (Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0) {
-        setReceivers(data.receiverPersons);
-      } else {
-        setReceivers(receivers);
-      }
+      const savedUnits = Array.from(new Set((data.units ?? normalizedUnits).map((unit: string) => normalizeUnitCode(unit)).filter(Boolean)));
+      const savedReceivers = Array.isArray(data.receiverPersons) && data.receiverPersons.length > 0
+        ? data.receiverPersons.map(normalizeReceiver)
+        : normalizedReceivers;
+
+      setUnits(savedUnits);
+      setReceivers(savedReceivers);
+      lastSavedSnapshotRef.current = snapshotSettings(savedUnits, savedReceivers);
       setMessage("Saved. New units/receivers are now available in forms and filters.");
     } catch (e: any) {
       setError(e?.message || "Failed to save settings.");
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   if (loading) {
     return (
