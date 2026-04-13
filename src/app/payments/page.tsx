@@ -94,6 +94,11 @@ export default function PaymentsPage() {
       .then(([payments, settings, transfers]) => {
         const paymentRows: PaymentRecord[] = Array.isArray(payments.records) ? payments.records : [];
         const bookingRows = paymentRows.filter((row) => row.paymentType !== "TR");
+        const currentWeek = getSundayToSaturdayWeek(normalizeDateInput(weeklyDate));
+        const currentWeekHasBookings = bookingRows.some((row) => {
+          const bookingDateKey = toYMD(row.bookingDate);
+          return bookingDateKey >= currentWeek.startDate && bookingDateKey <= currentWeek.endDate;
+        });
 
         const transferRowsRaw: TransferRecord[] = Array.isArray(transfers) ? transfers : [];
         const transferRows: PaymentRecord[] = transferRowsRaw.flatMap((t) => {
@@ -145,6 +150,17 @@ export default function PaymentsPage() {
         });
 
         setRecords([...bookingRows, ...transferRows]);
+
+        if (scopeFilter === "week" && bookingRows.length > 0 && !currentWeekHasBookings) {
+          const latestBooking = bookingRows.reduce((latest, row) => {
+            const latestKey = toYMD(latest.bookingDate);
+            const rowKey = toYMD(row.bookingDate);
+            return rowKey > latestKey ? row : latest;
+          }, bookingRows[0]);
+
+          setWeeklyDate(toYMD(latestBooking.bookingDate));
+        }
+
         if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
           setReceivers(settings.receivers);
         }
