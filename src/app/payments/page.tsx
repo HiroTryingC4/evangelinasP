@@ -10,6 +10,7 @@ type PaymentRecord = {
   bookingId: number;
   guestName: string;
   unit: string;
+  normalizedUnit?: string;
   paymentType: "BK" | "TR";
   amount: number;
   paymentDate: string | Date | null;
@@ -94,7 +95,7 @@ export default function PaymentsPage() {
     ])
       .then(([payments, settings, transfers]) => {
         const paymentRows: PaymentRecord[] = Array.isArray(payments.records) ? payments.records : [];
-        const bookingRows = paymentRows.filter((row) => row.paymentType !== "TR");
+          const bookingRows = paymentRows.filter((row) => row.paymentType !== "TR");
 
         const transferRowsRaw: TransferRecord[] = Array.isArray(transfers) ? transfers : [];
         const transferRows: PaymentRecord[] = transferRowsRaw.flatMap((t) => {
@@ -188,7 +189,8 @@ export default function PaymentsPage() {
 
       // Keep transfer records visible even when unit filters are active,
       // so sender deductions are reflected in totals.
-      if (unitFilters.length > 0 && record.unit !== "TRANSFER" && !unitFilters.includes(record.unit)) return false;
+      const normalizedUnit = String(record.normalizedUnit ?? record.unit ?? "").replace(/^Unit\s*/i, "").trim();
+      if (unitFilters.length > 0 && record.unit !== "TRANSFER" && !unitFilters.includes(normalizedUnit)) return false;
       if (typeFilter && record.paymentType !== typeFilter) return false;
       if (statusFilter && record.paymentStatus !== statusFilter) return false;
       if (balanceFilter === "with" && record.remainingBalance <= 0) return false;
@@ -204,7 +206,7 @@ export default function PaymentsPage() {
       if (!q) return true;
       return (
         record.guestName.toLowerCase().includes(q) ||
-        record.unit.toLowerCase().includes(q) ||
+        normalizedUnit.toLowerCase().includes(q) ||
         (record.receivedBy ?? "").toLowerCase().includes(q)
       );
     });
