@@ -331,55 +331,9 @@ export default function PaymentsPage() {
                   : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => shiftWeek(-7)}
-              className="btn-secondary text-xs py-1.5 justify-center"
-              disabled={scopeFilter !== "week"}
-            >
-              <ChevronLeft className="w-4 h-4" /> Prev Week
-            </button>
-            <input
-              type="date"
-              className="input py-1.5 text-xs w-full"
-              value={weeklyDate}
-                onChange={(e) => setWeeklyDate(normalizeDateInput(e.target.value))}
-              disabled={scopeFilter !== "week"}
-            />
-            <button
-              type="button"
-              onClick={() => shiftWeek(7)}
-              className="btn-secondary text-xs py-1.5 justify-center"
-              disabled={scopeFilter !== "week"}
-            >
-              Next Week <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => shiftMonth(-1)}
-              className="btn-secondary text-xs py-1.5 justify-center"
-              disabled={scopeFilter !== "month"}
-            >
-              <ChevronLeft className="w-4 h-4" /> Prev Month
-            </button>
-            <input
-              type="month"
-              className="input py-1.5 text-xs w-full"
-              value={monthlyDate}
-              onChange={(e) => setMonthlyDate(e.target.value)}
-              disabled={scopeFilter !== "month"}
-            />
-            <button
-              type="button"
-              onClick={() => shiftMonth(1)}
-              className="btn-secondary text-xs py-1.5 justify-center"
-              disabled={scopeFilter !== "month"}
-            >
-              Next Month <ChevronRight className="w-4 h-4" />
-            </button>
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <select
-              className="input py-1.5 text-xs w-full"
+              className="input py-1.5 text-xs min-w-[160px]"
               value={scopeFilter}
               onChange={(e) => setScopeFilter(e.target.value as "week" | "month" | "all") }
             >
@@ -387,6 +341,56 @@ export default function PaymentsPage() {
               <option value="month">This month</option>
               <option value="all">All records</option>
             </select>
+
+            {scopeFilter === "week" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => shiftWeek(-7)}
+                  className="btn-secondary text-xs py-1.5 justify-center"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Prev Week
+                </button>
+                <input
+                  type="date"
+                  className="input py-1.5 text-xs w-full sm:w-auto"
+                  value={weeklyDate}
+                  onChange={(e) => setWeeklyDate(normalizeDateInput(e.target.value))}
+                />
+                <button
+                  type="button"
+                  onClick={() => shiftWeek(7)}
+                  className="btn-secondary text-xs py-1.5 justify-center"
+                >
+                  Next Week <ChevronRight className="w-4 h-4" />
+                </button>
+              </>
+            )}
+
+            {scopeFilter === "month" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => shiftMonth(-1)}
+                  className="btn-secondary text-xs py-1.5 justify-center"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Prev Month
+                </button>
+                <input
+                  type="month"
+                  className="input py-1.5 text-xs w-full sm:w-auto"
+                  value={monthlyDate}
+                  onChange={(e) => setMonthlyDate(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => shiftMonth(1)}
+                  className="btn-secondary text-xs py-1.5 justify-center"
+                >
+                  Next Month <ChevronRight className="w-4 h-4" />
+                </button>
+              </>
+            )}
             {refreshing && (
               <span className="flex items-center gap-2 text-xs text-gray-500">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating...
