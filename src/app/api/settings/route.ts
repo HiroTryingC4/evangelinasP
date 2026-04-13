@@ -62,10 +62,23 @@ export async function GET() {
       units: units.length > 0 ? units.map((u) => u.code) : UNITS,
       receivers: receivers.length > 0 ? receivers.map((r) => r.name) : STAFF,
       receiverPersons: receivers.length > 0 ? receivers : STAFF.map((name) => ({ name, role: "employee" })),
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     });
   } catch (e) {
     console.error("[GET /api/settings]", e);
-    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch settings" }, {
+      status: 500,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    });
   }
 }
 

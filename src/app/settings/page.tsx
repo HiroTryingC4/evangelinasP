@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data: SettingsResponse) => {
         setUnits(data.units ?? []);
