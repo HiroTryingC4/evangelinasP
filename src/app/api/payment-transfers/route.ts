@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import { bookings, paymentTransfers, persons, receiverPersons } from "@/lib/schema";
 import { asc, desc, eq } from "drizzle-orm";
+import { toYMD } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -95,8 +96,8 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
       .select({
         dpAmount: bookings.dpAmount,
         fpAmount: bookings.fpAmount,
-        dpDate: bookings.dpDate,
-        fpDate: bookings.fpDate,
+        checkIn: bookings.checkIn,
+        checkInDateKey: bookings.checkInDateKey,
         dpReceivedBy: bookings.dpReceivedBy,
         fpReceivedBy: bookings.fpReceivedBy,
       })
@@ -131,12 +132,11 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
   };
 
   for (const booking of allBookings) {
-    if (isWithinRange(booking.dpDate, startDate, endDate)) {
-      addBookingReceipt(booking.dpReceivedBy, Number(booking.dpAmount ?? 0));
-    }
-    if (isWithinRange(booking.fpDate, startDate, endDate)) {
-      addBookingReceipt(booking.fpReceivedBy, Number(booking.fpAmount ?? 0));
-    }
+    const bookingDateKey = booking.checkInDateKey || toYMD(booking.checkIn);
+    if (!isWithinRange(bookingDateKey, startDate, endDate)) continue;
+
+    addBookingReceipt(booking.dpReceivedBy, Number(booking.dpAmount ?? 0));
+    addBookingReceipt(booking.fpReceivedBy, Number(booking.fpAmount ?? 0));
   }
 
   for (const transfer of allTransfers) {
