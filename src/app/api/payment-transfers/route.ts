@@ -94,6 +94,7 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
       .orderBy(asc(receiverPersons.sortOrder), asc(receiverPersons.id)),
     db
       .select({
+        totalFee: bookings.totalFee,
         dpAmount: bookings.dpAmount,
         fpAmount: bookings.fpAmount,
         checkIn: bookings.checkIn,
@@ -131,12 +132,58 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
     account.availableBalance += amount;
   };
 
+  const ensureAccount = (name: string, role: "employee" | "host" = "employee") => {
+    const key = normalizeName(name);
+    if (!key) return null;
+    const existing = accountMap.get(key);
+    if (existing) return existing;
+
+    const created: ReceiverAccount = {
+      name,
+      role,
+      bookingReceived: 0,
+      incomingTransfers: 0,
+      outgoingTransfers: 0,
+      availableBalance: 0,
+    };
+    accountMap.set(key, created);
+    return created;
+  };
+
   for (const booking of allBookings) {
     const bookingDateKey = booking.checkInDateKey || toYMD(booking.checkIn);
     if (!isWithinRange(bookingDateKey, startDate, endDate)) continue;
 
-    addBookingReceipt(booking.dpReceivedBy, Number(booking.dpAmount ?? 0));
-    addBookingReceipt(booking.fpReceivedBy, Number(booking.fpAmount ?? 0));
+    const totalFee = Math.max(0, Number(booking.totalFee ?? 0));
+    const dpRaw = Math.max(0, Number(booking.dpAmount ?? 0));
+    const fpRaw = Math.max(0, Number(booking.fpAmount ?? 0));
+    const collectedTotal = Math.min(totalFee, dpRaw + fpRaw);
+
+    const dpCollected = Math.min(dpRaw, collectedTotal);
+    const fpCollected = Math.min(fpRaw, Math.max(0, collectedTotal - dpCollected));
+
+    const dpReceiver = String(booking.dpReceivedBy ?? "").trim();
+    const fpReceiver = String(booking.fpReceivedBy ?? "").trim();
+
+    if (dpCollected > 0) {
+      if (dpReceiver) {
+        ensureAccount(dpReceiver);
+        addBookingReceipt(dpReceiver, dpCollected);
+      } else {
+        ensureAccount("Unassigned", "employee");
+        addBookingReceipt("Unassigned", dpCollected);
+      }
+    }
+
+    if (fpCollected > 0) {
+      if (fpReceiver) {
+        ensureAccount(fpReceiver);
+        addBookingReceipt(fpReceiver, fpCollected);
+      } else {
+        ensureAccount("Unassigned", "employee");
+        addBookingReceipt("Unassigned", fpCollected);
+      }
+    }
   }
 
   for (const transfer of allTransfers) {
