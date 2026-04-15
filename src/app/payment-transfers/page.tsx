@@ -79,6 +79,7 @@ export default function PaymentTransfersPage() {
   const [historyReceiver, setHistoryReceiver] = useState("");
   const [historyRecords, setHistoryRecords] = useState<ReceiverHistoryRecord[]>([]);
   const [historyFilter, setHistoryFilter] = useState<"week" | "month" | "upcoming" | "all">("month");
+  const [historyUnits, setHistoryUnits] = useState<string[]>([]);
 
   const shiftWeek = (days: number) => {
     const base = new Date(`${weeklyDate}T12:00:00`);
@@ -391,12 +392,23 @@ export default function PaymentTransfersPage() {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    if (historyFilter === "all") return records;
+    let filtered = records;
+
+    // Apply unit filter
+    if (historyUnits.length > 0) {
+      filtered = filtered.filter((r) => {
+        if (r.paymentType === "TR") return true; // Always include transfers
+        return historyUnits.includes(String(r.unit ?? "").replace(/^Unit\s*/i, "").trim());
+      });
+    }
+
+    // Apply time filter
+    if (historyFilter === "all") return filtered;
 
     if (historyFilter === "week") {
       const weekStart = new Date(today);
       weekStart.setDate(today.getDate() - today.getDay());
-      return records.filter((r) => {
+      return filtered.filter((r) => {
         const recordDate = new Date(r.paymentDate || r.bookingDate);
         recordDate.setHours(0, 0, 0, 0);
         return recordDate >= weekStart;
@@ -405,7 +417,7 @@ export default function PaymentTransfersPage() {
 
     if (historyFilter === "month") {
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      return records.filter((r) => {
+      return filtered.filter((r) => {
         const recordDate = new Date(r.paymentDate || r.bookingDate);
         recordDate.setHours(0, 0, 0, 0);
         return recordDate >= monthStart;
@@ -415,14 +427,14 @@ export default function PaymentTransfersPage() {
     if (historyFilter === "upcoming") {
       const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
       const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-      return records.filter((r) => {
+      return filtered.filter((r) => {
         const recordDate = new Date(r.paymentDate || r.bookingDate);
         recordDate.setHours(0, 0, 0, 0);
         return recordDate >= nextMonthStart && recordDate <= nextMonthEnd;
       });
     }
 
-    return records;
+    return filtered;
   };
 
   const openReceiverHistory = async (receiverName: string) => {
@@ -431,6 +443,7 @@ export default function PaymentTransfersPage() {
     setHistoryLoading(true);
     setHistoryRecords([]);
     setHistoryFilter("month");
+    setHistoryUnits([]);
 
     try {
       const res = await fetch(`/api/payments?receiver=${encodeURIComponent(receiverName)}&scope=all&_ts=${Date.now()}`, {
@@ -1047,6 +1060,34 @@ export default function PaymentTransfersPage() {
               >
                 All Time
               </button>
+            </div>
+
+            <div className="border-b border-gray-100 px-4 py-3 flex gap-2 flex-wrap items-center">
+              <span className="text-xs font-semibold text-gray-700">Units:</span>
+              <label className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-gray-100 transition">
+                <input
+                  type="checkbox"
+                  checked={historyUnits.length === 0}
+                  onChange={() => setHistoryUnits([])}
+                />
+                All Units
+              </label>
+              {units.map((unit) => (
+                <label key={`history-unit-${unit}`} className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-gray-100 transition">
+                  <input
+                    type="checkbox"
+                    checked={historyUnits.includes(unit)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setHistoryUnits((prev) => [...prev, unit]);
+                      } else {
+                        setHistoryUnits((prev) => prev.filter((u) => u !== unit));
+                      }
+                    }}
+                  />
+                  Unit {unit}
+                </label>
+              ))}
             </div>
 
             <div className="max-h-[70vh] overflow-y-auto p-4 space-y-2">
