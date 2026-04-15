@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Send, Plus, Trash2, Edit2, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Send, Plus, Trash2, Edit2, Loader2, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { formatPHP, formatDate, formatWeekRange, getSundayToSaturdayWeek } from "@/lib/utils";
 import { subscribeBookingsChanged } from "@/lib/bookings-sync";
 
@@ -41,6 +41,23 @@ type BookingReconciliationSummary = {
   defaultReceiverName?: string;
 };
 
+type ReceiverHistoryRecord = {
+  id: string;
+  bookingId: number;
+  guestName: string;
+  unit: string;
+  paymentType: "BK" | "TR";
+  amount: number;
+  paymentDate: string | Date | null;
+  bookingDate: string | Date;
+  paymentStatus: string;
+  dpAmount?: number | string | null;
+  fpAmount?: number | string | null;
+  totalFee?: number | string | null;
+  remainingBalance: number;
+  checkInDateKey?: string | null;
+};
+
 export default function PaymentTransfersPage() {
   const [recipientOptions, setRecipientOptions] = useState<ReceiverPerson[]>([]);
   const [receiverAccounts, setReceiverAccounts] = useState<ReceiverAccount[]>([]);
@@ -57,6 +74,10 @@ export default function PaymentTransfersPage() {
   const [accountScope, setAccountScope] = useState<"all" | "month">("all");
   const [accountMonth, setAccountMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [accountUnits, setAccountUnits] = useState<string[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyReceiver, setHistoryReceiver] = useState("");
+  const [historyRecords, setHistoryRecords] = useState<ReceiverHistoryRecord[]>([]);
 
   const shiftWeek = (days: number) => {
     const base = new Date(`${weeklyDate}T12:00:00`);
@@ -347,6 +368,33 @@ export default function PaymentTransfersPage() {
       paymentMethod: "bank transfer",
     });
     setEditingId(null);
+  };
+
+  const getBookingCollectedAmount = (record: ReceiverHistoryRecord) => {
+    const total = Number(record.totalFee ?? 0);
+    const dp = Math.max(0, Number(record.dpAmount ?? 0));
+    const fp = Math.max(0, Number(record.fpAmount ?? 0));
+    return Math.min(total, dp + fp);
+  };
+
+  const openReceiverHistory = async (receiverName: string) => {
+    setHistoryReceiver(receiverName);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+
+    try {
+      const res = await fetch(`/api/payments?receiver=${encodeURIComponent(receiverName)}&scope=all&_ts=${Date.now()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      const records: ReceiverHistoryRecord[] = Array.isArray(data?.records) ? data.records : [];
+      setHistoryRecords(records);
+    } catch {
+      setHistoryRecords([]);
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   return (
@@ -779,7 +827,12 @@ export default function PaymentTransfersPage() {
               ) : (
                 <div className="space-y-2">
                   {receiverAccounts.map((account) => (
-                    <div key={account.name} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <button
+                      key={account.name}
+                      type="button"
+                      onClick={() => openReceiverHistory(account.name)}
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-left hover:bg-gray-100 transition-colors"
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-semibold text-gray-900">
                           {account.name} ({account.role === "host" ? "Host" : "Employee"})
@@ -791,7 +844,7 @@ export default function PaymentTransfersPage() {
                       <p className="text-xs text-gray-500 mt-1">
                         From bookings: {formatPHP(Number(account.bookingReceived))} | In transfers: {formatPHP(Number(account.incomingTransfers))} | Out transfers: {formatPHP(Number(account.outgoingTransfers))}
                       </p>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -867,6 +920,63 @@ export default function PaymentTransfersPage() {
           </div>
         </div>
       </div>
+
+      {historyOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setHistoryOpen(false)}>
+          <div className="w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">{historyReceiver} payment history</h3>
+                <p className="text-xs text-gray-500">Bookings and transfers tied to this receiver</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(false)}
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto p-4 space-y-2">
+              {historyLoading ? (
+                <div className="py-10 text-center text-gray-500">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                  Loading history...
+                </div>
+              ) : historyRecords.length === 0 ? (
+                <div className="py-10 text-center text-gray-500">No records found for this receiver.</div>
+              ) : (
+                historyRecords.map((record) => {
+                  const bookingCollected = record.paymentType === "BK" ? getBookingCollectedAmount(record) : 0;
+                  const amount = record.paymentType === "BK" ? bookingCollected : Number(record.amount || 0);
+                  return (
+                    <div key={record.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold text-gray-900">
+                          {record.paymentType === "BK" ? `${record.guestName} (Unit ${record.unit})` : record.guestName}
+                        </p>
+                        <p className={`text-sm font-bold ${amount < 0 ? "text-red-600" : "text-green-700"}`}>
+                          {formatPHP(amount)}
+                        </p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {record.paymentType === "BK" ? "Booking collected" : "Transfer"} • {formatDate(record.paymentDate || record.bookingDate)}
+                      </p>
+                      {record.paymentType === "BK" && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Status: {record.paymentStatus} | Remaining: {formatPHP(Number(record.remainingBalance || 0))}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
