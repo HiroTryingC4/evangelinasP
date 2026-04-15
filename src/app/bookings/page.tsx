@@ -133,10 +133,13 @@ function BookingsContent() {
     if (filterFpReceiver && b.fpReceivedBy !== filterFpReceiver) return false;
 
     if (filterWeek) {
-      const weekStart = new Date(filterWeek);
+      // Anchor week by selected date, then force Sunday-Saturday bounds.
+      const weekStart = new Date(`${filterWeek}T12:00:00`);
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setHours(0, 0, 0, 0);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
       const checkInDate = new Date(b.checkIn);
       if (checkInDate < weekStart || checkInDate > weekEnd) return false;
     }
@@ -230,7 +233,13 @@ function BookingsContent() {
             <option value="">FP receiver</option>
             {receivers.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
-          <input type="week" className="input text-xs" value={filterWeek} onChange={(e) => setFilterWeek(e.target.value)} placeholder="Week" />
+          <input
+            type="date"
+            className="input text-xs"
+            value={filterWeek}
+            onChange={(e) => setFilterWeek(e.target.value)}
+            title="Pick any date inside the week (Sunday to Saturday)"
+          />
         </div>
       </div>
 
