@@ -163,7 +163,7 @@ export default function PaymentTransfersPage() {
       // Add RIEMAR as an account option
       const allPersons = [
         { name: "RIEMAR ACCOUNT", role: "employee" as const },
-        ...receiverPersons.filter((p) => p.name.toLowerCase() !== "riemar account"),
+        ...receiverPersons.filter((p: ReceiverPerson) => p.name.toLowerCase() !== "riemar account"),
       ];
 
       setRecipientOptions(allPersons);
