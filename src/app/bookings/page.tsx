@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Filter, Pencil, Trash2, AlertTriangle, CheckCircle, Phone } from "lucide-react";
 import BookingForm from "@/components/BookingForm";
+import { emitBookingsChanged } from "@/lib/bookings-sync";
 import { formatPHP, formatDate, STATUS_COLOR, UNITS, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
@@ -13,7 +14,7 @@ function BookingsContent() {
   const [search, setSearch] = useState("");
   const [filterUnit, setFilterUnit] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [filterDateScope, setFilterDateScope] = useState("all");
+  const [filterDateScope, setFilterDateScope] = useState("upcoming");
   const [showForm, setShowForm] = useState(false);
   const [editBooking, setEditBooking] = useState<Booking | null>(null);
   const searchParams = useSearchParams();
@@ -54,6 +55,7 @@ function BookingsContent() {
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this booking? This cannot be undone.")) return;
     await fetch(`/api/bookings/${id}`, { method: "DELETE" });
+    emitBookingsChanged();
     fetchBookings();
   };
 

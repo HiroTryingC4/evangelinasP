@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, CreditCard, Users, Search, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { formatPHP, formatDate, formatWeekRange, getSundayToSaturdayWeek, STATUS_COLOR, toYMD } from "@/lib/utils";
+import { subscribeBookingsChanged } from "@/lib/bookings-sync";
 
 type PaymentRecord = {
   id: string;
@@ -213,6 +214,105 @@ export default function PaymentsPage() {
         setLoading(false);
         setRefreshing(false);
       });
+  }, [weeklyDate, scopeFilter]);
+
+  useEffect(() => {
+    return subscribeBookingsChanged(() => {
+      setRefreshing(true);
+      Promise.all([
+        fetch(`/api/bookings?view=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`/api/payment-transfers?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+      ])
+        .then(([bookings, settings, transfers]) => {
+          const bookingRowsRaw: BookingRecord[] = Array.isArray(bookings) ? bookings : [];
+          const bookingRows: PaymentRecord[] = bookingRowsRaw.map((booking) => ({
+            id: `booking-${booking.id}`,
+            bookingId: booking.id,
+            guestName: booking.guestName,
+            unit: booking.unit,
+            normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
+            paymentType: "BK",
+            amount: Number(booking.totalFee ?? 0),
+            paymentDate: booking.checkIn,
+            checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
+            method: booking.dpMethod || booking.fpMethod,
+            receivedBy: booking.dpReceivedBy || booking.fpReceivedBy,
+            bookingDate: booking.checkIn,
+            checkInTime: booking.checkInTime,
+            checkOutTime: booking.checkOutTime,
+            paymentStatus: booking.paymentStatus,
+            remainingBalance: Number(booking.remainingBalance ?? 0),
+            dpDate: booking.dpDate,
+            fpDate: booking.fpDate,
+            dpAmount: booking.dpAmount,
+            fpAmount: booking.fpAmount,
+            totalFee: booking.totalFee,
+          }));
+
+          const transferRowsRaw: TransferRecord[] = Array.isArray(transfers) ? transfers : [];
+          const transferRows: PaymentRecord[] = transferRowsRaw.flatMap((t) => {
+            const amount = Number(t.amount || 0);
+            const date = t.sourceWeekStart ?? t.transferDate ?? new Date().toISOString();
+            const sender = (t.sender ?? "").toString();
+            const recipient = (t.recipient ?? "").toString();
+            const sourceUnit = t.sourceUnit && String(t.sourceUnit).trim() ? String(t.sourceUnit) : "TRANSFER";
+
+            const out: PaymentRecord = {
+              id: `tr-out-${t.id}`,
+              bookingId: 0,
+              guestName: `Transfer to ${recipient}`,
+              unit: sourceUnit,
+              paymentType: "TR",
+              amount: -amount,
+              paymentDate: date,
+              method: t.paymentMethod,
+              receivedBy: sender,
+              bookingDate: date,
+              checkInTime: "",
+              checkOutTime: "",
+              paymentStatus: t.status || "Transferred",
+              remainingBalance: 0,
+              dpDate: null,
+              fpDate: null,
+            };
+
+            const incoming: PaymentRecord = {
+              id: `tr-in-${t.id}`,
+              bookingId: 0,
+              guestName: `Transfer from ${sender}`,
+              unit: sourceUnit,
+              paymentType: "TR",
+              amount,
+              paymentDate: date,
+              method: t.paymentMethod,
+              receivedBy: recipient,
+              bookingDate: date,
+              checkInTime: "",
+              checkOutTime: "",
+              paymentStatus: t.status || "Transferred",
+              remainingBalance: 0,
+              dpDate: null,
+              fpDate: null,
+            };
+
+            return [out, incoming];
+          });
+
+          setRecords([...bookingRows, ...transferRows]);
+
+          if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
+            setReceivers(settings.receivers);
+          }
+          if (Array.isArray(settings.units) && settings.units.length > 0) {
+            setUnits(settings.units.map((u: string) => String(u).replace(/^Unit\s*/i, "")));
+          }
+        })
+        .finally(() => {
+          setLoading(false);
+          setRefreshing(false);
+        });
+    });
   }, [weeklyDate, scopeFilter]);
 
   const toggleUnit = (unit: string) => {

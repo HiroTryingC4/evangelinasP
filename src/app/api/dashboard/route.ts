@@ -23,9 +23,8 @@ export async function GET(req: NextRequest) {
       .from(unitConfigs)
       .orderBy(asc(unitConfigs.sortOrder), asc(unitConfigs.id));
 
-    const configuredUnitCodes = configuredUnits.length > 0
-      ? configuredUnits.map((u) => u.code)
-      : DEFAULT_UNITS;
+    const configuredUnitCodes = configuredUnits.map((u) => u.code);
+    const mergedConfiguredUnits = [...configuredUnitCodes, ...DEFAULT_UNITS.filter((code) => !configuredUnitCodes.includes(code))];
 
     // All bookings ever; normalize keys in-memory so legacy/stale fields do not affect totals.
     const allRaw = await db.select().from(bookings);
@@ -38,8 +37,8 @@ export async function GET(req: NextRequest) {
     }));
 
     const bookingUnitCodes = Array.from(new Set(all.map((b) => b.normalizedUnit).filter(Boolean)));
-    const configuredSet = new Set(configuredUnitCodes);
-    const unitCodes = [...configuredUnitCodes, ...bookingUnitCodes.filter((code) => !configuredSet.has(code))];
+    const configuredSet = new Set(mergedConfiguredUnits);
+    const unitCodes = [...mergedConfiguredUnits, ...bookingUnitCodes.filter((code) => !configuredSet.has(code))];
 
     const selectedUnits = weeklyUnitsParam
       ? Array.from(new Set(
@@ -156,15 +155,19 @@ export async function GET(req: NextRequest) {
         const monthNumber = Number(key.slice(5, 7));
         return monthNumber === i + 1;
       });
+      const unit1245Bookings = mb.filter((b) => b.normalizedUnit === "1245");
       const totalRevenue = mb.reduce((s, b) => s + b.totalFee, 0);
+      const unit1245Revenue = unit1245Bookings.reduce((s, b) => s + b.totalFee, 0);
       const incomingPayment = mb.reduce((s, b) => s + getCollectedForBooking(b), 0);
       const waitingPayment = Math.max(0, totalRevenue - incomingPayment);
       return {
         month,
         revenue: totalRevenue,
+        unit1245Revenue,
         incomingPayment,
         waitingPayment,
         bookings: mb.length,
+        unit1245Bookings: unit1245Bookings.length,
       };
     });
 

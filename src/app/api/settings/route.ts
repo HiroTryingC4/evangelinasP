@@ -67,8 +67,11 @@ export async function GET() {
         .orderBy(asc(receiverPersons.sortOrder), asc(receiverPersons.id)),
     ]);
 
+    const configuredUnits = units.map((u) => u.code);
+    const mergedUnits = [...configuredUnits, ...UNITS.filter((code) => !configuredUnits.includes(code))];
+
     return NextResponse.json({
-      units: units.length > 0 ? units.map((u) => u.code) : UNITS,
+      units: mergedUnits,
       receivers: receivers.length > 0 ? receivers.map((r) => r.name) : STAFF,
       receiverPersons: receivers.length > 0 ? receivers : STAFF.map((name) => ({ name, role: "employee" })),
     }, {

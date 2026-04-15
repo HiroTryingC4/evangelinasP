@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend
 import { TrendingUp, Users, BookOpen, AlertTriangle, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { formatPHP, formatDate, formatWeekRange, UNITS } from "@/lib/utils";
+import { subscribeBookingsChanged } from "@/lib/bookings-sync";
 
 const UNIT_COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6"];
 
@@ -48,6 +49,12 @@ export default function DashboardPage() {
   useEffect(() => { fetchDashboard(); }, [from, to, weeklyDate, selectedWeeklyUnits]);
 
   useEffect(() => {
+    return subscribeBookingsChanged(() => {
+      fetchDashboard();
+    });
+  }, [from, to, weeklyDate, selectedWeeklyUnits]);
+
+  useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((d) => {
@@ -74,12 +81,14 @@ export default function DashboardPage() {
     const source = data?.monthlyRevenue ?? [];
     return source.map((row: any) => {
       const totalRevenue = Number(row.revenue ?? 0);
+      const unit1245Revenue = Number(row.unit1245Revenue ?? 0);
       const incomingPayment = Number(row.incomingPayment ?? 0);
       const waitingPayment = Number(row.waitingPayment ?? 0);
       const collectedPayment = Math.max(0, totalRevenue - waitingPayment);
 
       return {
         ...row,
+        unit1245Revenue,
         incomingPayment,
         waitingPayment,
         collectedPayment,
@@ -455,6 +464,7 @@ export default function DashboardPage() {
                   if (name === "incomingPayment") return [formatPHP(value), "Incoming payment"];
                   if (name === "waitingPayment") return [formatPHP(value), "Waiting payment"];
                   if (name === "collectedPayment") return [formatPHP(value), "Collected payment"];
+                  if (name === "unit1245Revenue") return [formatPHP(value), "Unit 1245 revenue"];
                   if (name === "chartValue") return [formatPHP(value), monthlyViewLabel];
                   return [formatPHP(value), name];
                 }}
@@ -465,11 +475,18 @@ export default function DashboardPage() {
                   <Legend />
                   <Bar dataKey="incomingPayment" name="Incoming payment" stackId="monthly" fill="#2563eb" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="waitingPayment" name="Waiting payment" stackId="monthly" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="unit1245Revenue" name="Unit 1245 revenue" fill="#ef4444" radius={[4, 4, 0, 0]} />
                 </>
               ) : monthlyView === "total" ? (
-                <Bar dataKey="chartValue" name="Total revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <>
+                  <Bar dataKey="chartValue" name="Total revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="unit1245Revenue" name="Unit 1245 revenue" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </>
               ) : (
-                <Bar dataKey="chartValue" name="Collected payment" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <>
+                  <Bar dataKey="chartValue" name="Collected payment" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="unit1245Revenue" name="Unit 1245 revenue" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </>
               )}
             </BarChart>
           </ResponsiveContainer>
@@ -501,6 +518,7 @@ export default function DashboardPage() {
                 <th className="px-4 py-3 text-left font-medium">Month</th>
                 <th className="px-4 py-3 text-left font-medium">Incoming payment</th>
                 <th className="px-4 py-3 text-left font-medium">Waiting payment</th>
+                <th className="px-4 py-3 text-left font-medium">Unit 1245</th>
                 <th className="px-4 py-3 text-left font-medium">Total</th>
                 <th className="px-4 py-3 text-left font-medium">Bookings</th>
               </tr>
@@ -511,6 +529,7 @@ export default function DashboardPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">{row.month}</td>
                   <td className="px-4 py-3 text-blue-700 font-semibold">{formatPHP(row.incomingPayment ?? 0)}</td>
                   <td className="px-4 py-3 text-amber-700 font-semibold">{formatPHP(row.waitingPayment ?? 0)}</td>
+                  <td className="px-4 py-3 text-red-700 font-semibold">{formatPHP(row.unit1245Revenue ?? 0)}</td>
                   <td className="px-4 py-3 font-semibold text-gray-900">{formatPHP(row.revenue ?? 0)}</td>
                   <td className="px-4 py-3 text-gray-600">{row.bookings ?? 0}</td>
                 </tr>

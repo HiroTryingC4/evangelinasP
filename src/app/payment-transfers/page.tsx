@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Send, Plus, Trash2, Edit2, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatPHP, formatDate, formatWeekRange, getSundayToSaturdayWeek } from "@/lib/utils";
+import { subscribeBookingsChanged } from "@/lib/bookings-sync";
 
 type Transfer = {
   id: number;
@@ -136,6 +137,12 @@ export default function PaymentTransfersPage() {
 
   useEffect(() => {
     fetchTransfers();
+  }, [weeklyDate, monthlyDate, scopeFilter, accountScope, accountMonth]);
+
+  useEffect(() => {
+    return subscribeBookingsChanged(() => {
+      fetchTransfers();
+    });
   }, [weeklyDate, monthlyDate, scopeFilter, accountScope, accountMonth]);
 
   // Calculate totals
