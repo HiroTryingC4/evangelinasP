@@ -86,7 +86,7 @@ function isWithinRange(value: string | Date | null | undefined, start?: Date, en
   return true;
 }
 
-async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
+async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date, allowedUnits?: Set<string>) {
   const [configuredReceivers, allBookings, allTransfers, allPersons] = await Promise.all([
     db
       .select({ name: receiverPersons.name, role: receiverPersons.role })
@@ -94,6 +94,7 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
       .orderBy(asc(receiverPersons.sortOrder), asc(receiverPersons.id)),
     db
       .select({
+        unit: bookings.unit,
         totalFee: bookings.totalFee,
         dpAmount: bookings.dpAmount,
         fpAmount: bookings.fpAmount,
@@ -160,6 +161,9 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
   };
 
   for (const booking of allBookings) {
+    const bookingUnit = String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim();
+    if (allowedUnits && allowedUnits.size > 0 && !allowedUnits.has(bookingUnit)) continue;
+
     const bookingDateKey = booking.checkInDateKey || toYMD(booking.checkIn);
     if (!isWithinRange(bookingDateKey, startDate, endDate)) continue;
 
@@ -259,6 +263,7 @@ export async function GET(req: NextRequest) {
     const includeAccounts = searchParams.get("includeAccounts") === "1";
     const accountScope = searchParams.get("accountScope") || "all";
     const accountMonth = searchParams.get("accountMonth");
+    const accountUnitsParam = searchParams.get("accountUnits");
 
     const weeklyAnchor = weeklyDateParam
       ? new Date(`${weeklyDateParam}T12:00:00`)
@@ -330,7 +335,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const { accounts, summary } = await buildReceiverAccountsSnapshot(accountStartDate, accountEndDate);
+    const accountUnits = accountUnitsParam
+      ? new Set(
+          accountUnitsParam
+            .split(",")
+            .map((unit) => unit.trim().replace(/^Unit\s*/i, ""))
+            .filter(Boolean)
+        )
+      : undefined;
+
+    const { accounts, summary } = await buildReceiverAccountsSnapshot(accountStartDate, accountEndDate, accountUnits);
 
     return NextResponse.json({ transfers: enriched, accounts, summary }, {
       headers: {

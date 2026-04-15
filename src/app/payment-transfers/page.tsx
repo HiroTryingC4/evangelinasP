@@ -56,6 +56,7 @@ export default function PaymentTransfersPage() {
   const [monthlyDate, setMonthlyDate] = useState(() => new Date().toISOString().slice(0, 7));
   const [accountScope, setAccountScope] = useState<"all" | "month">("all");
   const [accountMonth, setAccountMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [accountUnits, setAccountUnits] = useState<string[]>([]);
 
   const shiftWeek = (days: number) => {
     const base = new Date(`${weeklyDate}T12:00:00`);
@@ -104,8 +105,12 @@ export default function PaymentTransfersPage() {
   // Fetch transfers
   const fetchTransfers = async () => {
     try {
+      const accountUnitsParam = accountUnits.length > 0
+        ? `&accountUnits=${encodeURIComponent(accountUnits.join(","))}`
+        : "";
+
       const [transferRes, settingsRes] = await Promise.all([
-        fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&monthlyDate=${monthlyDate}&scope=${scopeFilter}&includeAccounts=1&accountScope=${accountScope}&accountMonth=${accountMonth}&_ts=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/payment-transfers?weeklyDate=${weeklyDate}&monthlyDate=${monthlyDate}&scope=${scopeFilter}&includeAccounts=1&accountScope=${accountScope}&accountMonth=${accountMonth}${accountUnitsParam}&_ts=${Date.now()}`, { cache: "no-store" }),
         fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }),
       ]);
 
@@ -150,13 +155,20 @@ export default function PaymentTransfersPage() {
 
   useEffect(() => {
     fetchTransfers();
-  }, [weeklyDate, monthlyDate, scopeFilter, accountScope, accountMonth]);
+  }, [weeklyDate, monthlyDate, scopeFilter, accountScope, accountMonth, accountUnits]);
 
   useEffect(() => {
     return subscribeBookingsChanged(() => {
       fetchTransfers();
     });
-  }, [weeklyDate, monthlyDate, scopeFilter, accountScope, accountMonth]);
+  }, [weeklyDate, monthlyDate, scopeFilter, accountScope, accountMonth, accountUnits]);
+
+  const toggleAccountUnit = (unit: string) => {
+    setAccountUnits((current) => {
+      if (current.includes(unit)) return current.filter((item) => item !== unit);
+      return [...current, unit];
+    });
+  };
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -715,6 +727,26 @@ export default function PaymentTransfersPage() {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 mb-3">
+                <label className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={accountUnits.length === 0}
+                    onChange={() => setAccountUnits([])}
+                  />
+                  All Units
+                </label>
+                {units.map((unit) => (
+                  <label key={`account-unit-${unit}`} className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={accountUnits.includes(unit)}
+                      onChange={() => toggleAccountUnit(unit)}
+                    />
+                    Unit {unit}
+                  </label>
+                ))}
+              </div>
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 mb-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Receiver total from bookings ({receiverTotals.members} members)</p>
                 <p className="text-lg font-bold text-emerald-800 mt-0.5">{formatPHP(receiverTotals.fromBookings)}</p>
@@ -725,6 +757,7 @@ export default function PaymentTransfersPage() {
               {bookingSummary && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 mb-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Collected revenue reconciliation</p>
+                  <p className="text-[11px] text-amber-700/80 mt-0.5">Scope is based on booking check-in date (not DP/FP payment date).</p>
                   <p className="text-sm text-amber-800 mt-0.5">
                     Dashboard-collected from bookings: {formatPHP(Number(bookingSummary.totalCollectedFromBookings || 0))}
                   </p>
