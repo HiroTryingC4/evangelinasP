@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, Pencil, Trash2, AlertTriangle, CheckCircle, Phone, Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import { Search, Filter, Pencil, Trash2, AlertTriangle, CheckCircle, Phone } from "lucide-react";
 import BookingForm from "@/components/BookingForm";
 import { emitBookingsChanged } from "@/lib/bookings-sync";
 import { formatPHP, formatDate, STATUS_COLOR, UNITS, toYMD } from "@/lib/utils";
@@ -68,58 +67,6 @@ function BookingsContent() {
     fetchBookings();
   };
 
-  const exportToExcel = () => {
-    if (filtered.length === 0) {
-      alert("No bookings to export.");
-      return;
-    }
-
-    const exportData = filtered.map((b) => ({
-      "Guest Name": b.guestName,
-      "Unit": b.unit,
-      "Phone": b.contactNo || "",
-      "Check In": formatDate(b.checkIn),
-      "Check In Time": b.checkInTime,
-      "Check Out": formatDate(b.checkOut),
-      "Check Out Time": b.checkOutTime,
-      "Total Fee": b.totalFee,
-      "DP Amount": b.dpAmount || 0,
-      "FP Amount": b.fpAmount || 0,
-      "Payment Status": b.paymentStatus,
-      "Remaining Balance": b.remainingBalance,
-      "DP Received By": b.dpReceivedBy || "",
-      "FP Received By": b.fpReceivedBy || "",
-      "Conflict": b.hasConflict === "✅ OK" ? "OK" : "Conflict",
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Bookings");
-
-    // Format column widths
-    ws["!cols"] = [
-      { wch: 20 },
-      { wch: 10 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 12 },
-    ];
-
-    const fileName = `bookings_${new Date().toISOString().split("T")[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-  };
-
   const filtered = bookings.filter((b) => {
     const q = search.toLowerCase();
     const matchesSearch = (
@@ -182,15 +129,8 @@ function BookingsContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">All Bookings</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{filtered.length} booking{filtered.length !== 1 ? "s" : ""} (showing {filtered.length} of {bookings.length})</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{bookings.length} total bookings</p>
         </div>
-        <button
-          onClick={exportToExcel}
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition"
-        >
-          <Download className="w-4 h-4" />
-          Transfer to Excel
-        </button>
       </div>
 
       {/* Filters */}
