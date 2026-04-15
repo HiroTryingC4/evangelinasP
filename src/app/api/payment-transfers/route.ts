@@ -112,6 +112,7 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
   let totalCollectedFromBookings = 0;
   let assignedCollectedFromBookings = 0;
   let unassignedCollectedFromBookings = 0;
+  let reassignedToDefaultFromMissing = 0;
 
   for (const receiver of configuredReceivers) {
     const key = normalizeName(receiver.name);
@@ -125,6 +126,11 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
       availableBalance: 0,
     });
   }
+
+  const defaultReceiverName =
+    configuredReceivers.find((receiver) => normalizeName(receiver.name) === "sir james")?.name ||
+    "SIR JAMES";
+  ensureAccount(defaultReceiverName, "employee");
 
   const addBookingReceipt = (name: string | null, amount: number) => {
     const key = normalizeName(name);
@@ -176,6 +182,9 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
         assignedCollectedFromBookings += dpCollected;
       } else {
         unassignedCollectedFromBookings += dpCollected;
+        addBookingReceipt(defaultReceiverName, dpCollected);
+        assignedCollectedFromBookings += dpCollected;
+        reassignedToDefaultFromMissing += dpCollected;
       }
     }
 
@@ -186,6 +195,9 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
         assignedCollectedFromBookings += fpCollected;
       } else {
         unassignedCollectedFromBookings += fpCollected;
+        addBookingReceipt(defaultReceiverName, fpCollected);
+        assignedCollectedFromBookings += fpCollected;
+        reassignedToDefaultFromMissing += fpCollected;
       }
     }
   }
@@ -230,6 +242,8 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
       totalCollectedFromBookings: roundCurrency(totalCollectedFromBookings),
       assignedCollectedFromBookings: roundCurrency(assignedCollectedFromBookings),
       unassignedCollectedFromBookings: roundCurrency(unassignedCollectedFromBookings),
+      reassignedToDefaultFromMissing: roundCurrency(reassignedToDefaultFromMissing),
+      defaultReceiverName,
     },
   };
 }

@@ -37,6 +37,8 @@ type BookingReconciliationSummary = {
   totalCollectedFromBookings: number;
   assignedCollectedFromBookings: number;
   unassignedCollectedFromBookings: number;
+  reassignedToDefaultFromMissing?: number;
+  defaultReceiverName?: string;
 };
 
 export default function PaymentTransfersPage() {
@@ -729,6 +731,11 @@ export default function PaymentTransfersPage() {
                   <p className="text-sm text-amber-800">
                     Assigned to receivers: {formatPHP(Number(bookingSummary.assignedCollectedFromBookings || 0))}
                   </p>
+                  {Number(bookingSummary.reassignedToDefaultFromMissing || 0) > 0 && (
+                    <p className="text-sm text-amber-800">
+                      Auto-assigned to {bookingSummary.defaultReceiverName || "SIR JAMES"}: {formatPHP(Number(bookingSummary.reassignedToDefaultFromMissing || 0))}
+                    </p>
+                  )}
                   <p className="text-sm font-semibold text-amber-900">
                     Missing receiver assignment: {formatPHP(Number(bookingSummary.unassignedCollectedFromBookings || 0))}
                   </p>
