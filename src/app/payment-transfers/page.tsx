@@ -80,6 +80,7 @@ export default function PaymentTransfersPage() {
   const [historyRecords, setHistoryRecords] = useState<ReceiverHistoryRecord[]>([]);
   const [historyFilter, setHistoryFilter] = useState<"week" | "month" | "upcoming" | "all">("month");
   const [historyUnits, setHistoryUnits] = useState<string[]>([]);
+  const [sourceDeductionMode, setSourceDeductionMode] = useState<"week" | "month">("week");
 
   const shiftWeek = (days: number) => {
     const base = new Date(`${weeklyDate}T12:00:00`);
@@ -103,6 +104,7 @@ export default function PaymentTransfersPage() {
     transferDate: new Date().toISOString().split("T")[0],
     sourceUnit: "",
     sourceWeekStart: new Date().toISOString().split("T")[0],
+    sourceMonth: new Date().toISOString().slice(0, 7),
     reason: "",
     paymentMethod: "bank transfer",
   });
@@ -123,6 +125,13 @@ export default function PaymentTransfersPage() {
     if (Number.isNaN(base.getTime())) return;
     base.setDate(base.getDate() + offsetDays);
     setFormData((prev) => ({ ...prev, sourceWeekStart: base.toISOString().split("T")[0] }));
+  };
+
+  const setMonthByOffset = (offsetMonths: number) => {
+    const base = new Date(`${formData.sourceMonth}-01T12:00:00`);
+    if (Number.isNaN(base.getTime())) return;
+    base.setMonth(base.getMonth() + offsetMonths);
+    setFormData((prev) => ({ ...prev, sourceMonth: base.toISOString().slice(0, 7) }));
   };
 
   // Fetch transfers
@@ -294,6 +303,10 @@ export default function PaymentTransfersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          sourceWeekStart:
+            sourceDeductionMode === "month"
+              ? `${formData.sourceMonth}-01`
+              : formData.sourceWeekStart,
           amount: parseFloat(formData.amount),
         }),
       });
@@ -312,6 +325,7 @@ export default function PaymentTransfersPage() {
         transferDate: new Date().toISOString().split("T")[0],
         sourceUnit: formData.sourceUnit,
         sourceWeekStart: formData.sourceWeekStart,
+        sourceMonth: formData.sourceMonth,
         reason: "",
         paymentMethod: "bank transfer",
       });
@@ -342,6 +356,9 @@ export default function PaymentTransfersPage() {
       sourceWeekStart: transfer.sourceWeekStart
         ? new Date(transfer.sourceWeekStart).toISOString().split("T")[0]
         : new Date().toISOString().split("T")[0],
+      sourceMonth: transfer.sourceWeekStart
+        ? new Date(transfer.sourceWeekStart).toISOString().slice(0, 7)
+        : new Date().toISOString().slice(0, 7),
       reason: transfer.reason || "",
       paymentMethod: transfer.paymentMethod || "bank transfer",
     });
@@ -376,12 +393,13 @@ export default function PaymentTransfersPage() {
 
   const handleCancel = () => {
     setFormData({
-      sender: formData.sender || "riemar",
+      sender: formData.sender || "RIEMAR ACCOUNT",
       recipient: "",
       amount: "",
       transferDate: new Date().toISOString().split("T")[0],
       sourceUnit: formData.sourceUnit,
       sourceWeekStart: formData.sourceWeekStart,
+      sourceMonth: formData.sourceMonth,
       reason: "",
       paymentMethod: "bank transfer",
     });
@@ -715,6 +733,29 @@ export default function PaymentTransfersPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Source Week (where deducted)
                   </label>
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      className={`btn-secondary text-xs py-1 px-2 ${
+                        sourceDeductionMode === "week" ? "bg-blue-100 border-blue-300 text-blue-700" : ""
+                      }`}
+                      onClick={() => setSourceDeductionMode("week")}
+                    >
+                      Week
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn-secondary text-xs py-1 px-2 ${
+                        sourceDeductionMode === "month" ? "bg-blue-100 border-blue-300 text-blue-700" : ""
+                      }`}
+                      onClick={() => setSourceDeductionMode("month")}
+                    >
+                      Month
+                    </button>
+                  </div>
+
+                  {sourceDeductionMode === "week" ? (
+                    <>
                   <input
                     type="date"
                     value={formData.sourceWeekStart}
@@ -729,6 +770,24 @@ export default function PaymentTransfersPage() {
                     <button type="button" className="btn-secondary text-xs py-1 px-2" onClick={() => setFormData({ ...formData, sourceWeekStart: new Date().toISOString().split("T")[0] })}>This Week</button>
                     <button type="button" className="btn-secondary text-xs py-1 px-2" onClick={() => setWeekByOffset(7)}>Next Week</button>
                   </div>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        type="month"
+                        value={formData.sourceMonth}
+                        onChange={(e) =>
+                          setFormData({ ...formData, sourceMonth: e.target.value })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button type="button" className="btn-secondary text-xs py-1 px-2" onClick={() => setMonthByOffset(-1)}>Prev Month</button>
+                        <button type="button" className="btn-secondary text-xs py-1 px-2" onClick={() => setFormData({ ...formData, sourceMonth: new Date().toISOString().slice(0, 7) })}>This Month</button>
+                        <button type="button" className="btn-secondary text-xs py-1 px-2" onClick={() => setMonthByOffset(1)}>Next Month</button>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Payment Method */}
