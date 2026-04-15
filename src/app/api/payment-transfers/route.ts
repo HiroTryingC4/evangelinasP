@@ -131,7 +131,6 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date, a
   const defaultReceiverName =
     configuredReceivers.find((receiver) => normalizeName(receiver.name) === "sir james")?.name ||
     "SIR JAMES";
-  ensureAccount(defaultReceiverName, "employee");
 
   const addBookingReceipt = (name: string | null, amount: number) => {
     const key = normalizeName(name);
@@ -159,6 +158,8 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date, a
     accountMap.set(key, created);
     return created;
   };
+
+  ensureAccount(defaultReceiverName, "employee");
 
   for (const booking of allBookings) {
     const bookingUnit = String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim();
