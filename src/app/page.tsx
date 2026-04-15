@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const [selectedWeeklyUnits, setSelectedWeeklyUnits] = useState<string[]>([]);
   const [selectedMonthlyUnits, setSelectedMonthlyUnits] = useState<string[]>([]);
   const [weeklyMetric, setWeeklyMetric] = useState<"revenue" | "guests">("revenue");
-  const [monthlyView, setMonthlyView] = useState<"incoming-waiting" | "total" | "collected" | "unit1245">("incoming-waiting");
+  const [monthlyView, setMonthlyView] = useState<"incoming-waiting" | "total" | "collected">("incoming-waiting");
 
   const fetchDashboard = async () => {
     const isInitialLoad = !data;
@@ -112,22 +112,10 @@ export default function DashboardPage() {
             ? totalRevenue
             : monthlyView === "collected"
               ? collectedPayment
-              : monthlyView === "unit1245"
-                ? unit1245Revenue
-                : incomingPayment,
+              : incomingPayment,
       };
     });
   }, [data?.monthlyRevenue, monthlyView]);
-
-  const monthlyUnit1245Totals = useMemo(() => {
-    return monthlyChartData.reduce((acc: { total: number; incoming: number; waiting: number; otherUnits: number }, row: any) => {
-      acc.total += Number(row.unit1245Revenue ?? 0);
-      acc.incoming += Number(row.unit1245IncomingPayment ?? 0);
-      acc.waiting += Number(row.unit1245WaitingPayment ?? 0);
-      acc.otherUnits += Number(row.otherUnitsRevenue ?? 0);
-      return acc;
-    }, { total: 0, incoming: 0, waiting: 0, otherUnits: 0 });
-  }, [monthlyChartData]);
 
   if (loading && !data) return (
     <div className="flex items-center justify-center h-64">
@@ -154,9 +142,7 @@ export default function DashboardPage() {
       ? "Total revenue"
       : monthlyView === "collected"
         ? "Collected only"
-        : monthlyView === "unit1245"
-          ? "Unit 1245 analytics"
-          : "Incoming vs waiting";
+        : "Incoming vs waiting";
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -480,13 +466,6 @@ export default function DashboardPage() {
                 >
                   Collected only
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setMonthlyView("unit1245")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${monthlyView === "unit1245" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}
-                >
-                  Unit 1245 analytics
-                </button>
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 mt-3 mb-2">
@@ -510,16 +489,6 @@ export default function DashboardPage() {
               ))}
             </div>
             <p className="text-xs text-gray-400 mt-1">View: {monthlyViewLabel}</p>
-            {monthlyView === "unit1245" && (
-              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg bg-red-50 border border-red-100 px-2.5 py-2 text-red-700">
-                  Unit 1245 total: <span className="font-semibold">{formatPHP(monthlyUnit1245Totals.total)}</span>
-                </div>
-                <div className="rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2 text-slate-700">
-                  Other units total: <span className="font-semibold">{formatPHP(monthlyUnit1245Totals.otherUnits)}</span>
-                </div>
-              </div>
-            )}
           </div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={monthlyChartData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
@@ -530,10 +499,6 @@ export default function DashboardPage() {
                   if (name === "incomingPayment") return [formatPHP(value), "Incoming payment"];
                   if (name === "waitingPayment") return [formatPHP(value), "Waiting payment"];
                   if (name === "collectedPayment") return [formatPHP(value), "Collected payment"];
-                  if (name === "unit1245Revenue") return [formatPHP(value), "Unit 1245 revenue"];
-                  if (name === "unit1245IncomingPayment") return [formatPHP(value), "Unit 1245 incoming"];
-                  if (name === "unit1245WaitingPayment") return [formatPHP(value), "Unit 1245 waiting"];
-                  if (name === "otherUnitsRevenue") return [formatPHP(value), "Other units total"];
                   if (name === "chartValue") return [formatPHP(value), monthlyViewLabel];
                   return [formatPHP(value), name];
                 }}
@@ -547,15 +512,8 @@ export default function DashboardPage() {
                 </>
               ) : monthlyView === "total" ? (
                 <Bar dataKey="chartValue" name="Total revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              ) : monthlyView === "collected" ? (
-                <Bar dataKey="chartValue" name="Collected payment" fill="#10b981" radius={[4, 4, 0, 0]} />
               ) : (
-                <>
-                  <Legend />
-                  <Bar dataKey="unit1245IncomingPayment" name="Unit 1245 incoming" stackId="unit1245" fill="#dc2626" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="unit1245WaitingPayment" name="Unit 1245 waiting" stackId="unit1245" fill="#fb7185" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="otherUnitsRevenue" name="Other units total" fill="#334155" radius={[4, 4, 0, 0]} />
-                </>
+                <Bar dataKey="chartValue" name="Collected payment" fill="#10b981" radius={[4, 4, 0, 0]} />
               )}
             </BarChart>
           </ResponsiveContainer>
@@ -587,7 +545,6 @@ export default function DashboardPage() {
                 <th className="px-4 py-3 text-left font-medium">Month</th>
                 <th className="px-4 py-3 text-left font-medium">Incoming payment</th>
                 <th className="px-4 py-3 text-left font-medium">Waiting payment</th>
-                <th className="px-4 py-3 text-left font-medium">Unit 1245</th>
                 <th className="px-4 py-3 text-left font-medium">Total</th>
                 <th className="px-4 py-3 text-left font-medium">Bookings</th>
               </tr>
@@ -598,7 +555,6 @@ export default function DashboardPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">{row.month}</td>
                   <td className="px-4 py-3 text-blue-700 font-semibold">{formatPHP(row.incomingPayment ?? 0)}</td>
                   <td className="px-4 py-3 text-amber-700 font-semibold">{formatPHP(row.waitingPayment ?? 0)}</td>
-                  <td className="px-4 py-3 text-red-700 font-semibold">{formatPHP(row.unit1245Revenue ?? 0)}</td>
                   <td className="px-4 py-3 font-semibold text-gray-900">{formatPHP(row.revenue ?? 0)}</td>
                   <td className="px-4 py-3 text-gray-600">{row.bookings ?? 0}</td>
                 </tr>
