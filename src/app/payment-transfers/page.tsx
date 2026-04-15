@@ -78,6 +78,7 @@ export default function PaymentTransfersPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyReceiver, setHistoryReceiver] = useState("");
   const [historyRecords, setHistoryRecords] = useState<ReceiverHistoryRecord[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<"week" | "month" | "upcoming" | "all">("month");
 
   const shiftWeek = (days: number) => {
     const base = new Date(`${weeklyDate}T12:00:00`);
@@ -311,6 +312,11 @@ export default function PaymentTransfersPage() {
 
       // Refresh
       await fetchTransfers();
+      
+      // If payment history modal is open, refresh it too
+      if (historyOpen && historyReceiver) {
+        await openReceiverHistory(historyReceiver);
+      }
     } catch (error) {
       console.error("Submit error:", error);
       alert("Failed to save transfer");
@@ -350,6 +356,11 @@ export default function PaymentTransfersPage() {
       }
 
       await fetchTransfers();
+      
+      // If payment history modal is open, refresh it too
+      if (historyOpen && historyReceiver) {
+        await openReceiverHistory(historyReceiver);
+      }
     } catch (error) {
       console.error("Delete error:", error);
       alert("Failed to delete transfer");
@@ -376,11 +387,50 @@ export default function PaymentTransfersPage() {
     return Number(record.amount ?? 0);
   };
 
+  const getFilteredHistoryRecords = (records: ReceiverHistoryRecord[]): ReceiverHistoryRecord[] => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    if (historyFilter === "all") return records;
+
+    if (historyFilter === "week") {
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay());
+      return records.filter((r) => {
+        const recordDate = new Date(r.paymentDate || r.bookingDate);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate >= weekStart;
+      });
+    }
+
+    if (historyFilter === "month") {
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      return records.filter((r) => {
+        const recordDate = new Date(r.paymentDate || r.bookingDate);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate >= monthStart;
+      });
+    }
+
+    if (historyFilter === "upcoming") {
+      const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+      return records.filter((r) => {
+        const recordDate = new Date(r.paymentDate || r.bookingDate);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate >= nextMonthStart && recordDate <= nextMonthEnd;
+      });
+    }
+
+    return records;
+  };
+
   const openReceiverHistory = async (receiverName: string) => {
     setHistoryReceiver(receiverName);
     setHistoryOpen(true);
     setHistoryLoading(true);
     setHistoryRecords([]);
+    setHistoryFilter("month");
 
     try {
       const res = await fetch(`/api/payments?receiver=${encodeURIComponent(receiverName)}&scope=all&_ts=${Date.now()}`, {
@@ -825,26 +875,38 @@ export default function PaymentTransfersPage() {
                 <p className="text-sm text-gray-500">No receiver balances yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {receiverAccounts.map((account) => (
-                    <button
-                      key={account.name}
-                      type="button"
-                      onClick={() => openReceiverHistory(account.name)}
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-left hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-semibold text-gray-900">
-                          {account.name} ({account.role === "host" ? "Host" : "Employee"})
+                  {receiverAccounts.map((account) => {
+                    const recordCount = historyRecords.length > 0 && historyReceiver === account.name
+                      ? historyRecords.length
+                      : undefined;
+                    return (
+                      <button
+                        key={account.name}
+                        type="button"
+                        onClick={() => openReceiverHistory(account.name)}
+                        className="w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-left hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold text-gray-900">
+                            {account.name} ({account.role === "host" ? "Host" : "Employee"})
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className={`text-sm font-bold ${Number(account.availableBalance) < 0 ? "text-red-600" : "text-green-700"}`}>
+                              {formatPHP(Number(account.availableBalance))}
+                            </p>
+                            {recordCount !== undefined && (
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
+                                {recordCount}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          From bookings: {formatPHP(Number(account.bookingReceived))} | In transfers: {formatPHP(Number(account.incomingTransfers))} | Out transfers: {formatPHP(Number(account.outgoingTransfers))}
                         </p>
-                        <p className={`text-sm font-bold ${Number(account.availableBalance) < 0 ? "text-red-600" : "text-green-700"}`}>
-                          {formatPHP(Number(account.availableBalance))}
-                        </p>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        From bookings: {formatPHP(Number(account.bookingReceived))} | In transfers: {formatPHP(Number(account.incomingTransfers))} | Out transfers: {formatPHP(Number(account.outgoingTransfers))}
-                      </p>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -926,7 +988,9 @@ export default function PaymentTransfersPage() {
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
               <div>
                 <h3 className="text-base font-bold text-gray-900">{historyReceiver} payment history</h3>
-                <p className="text-xs text-gray-500">Bookings and transfers tied to this receiver</p>
+                <p className="text-xs text-gray-500">
+                  {getFilteredHistoryRecords(historyRecords).length} record{getFilteredHistoryRecords(historyRecords).length !== 1 ? "s" : ""} • Bookings and transfers tied to this receiver
+                </p>
               </div>
               <button
                 type="button"
@@ -938,16 +1002,63 @@ export default function PaymentTransfersPage() {
               </button>
             </div>
 
+            <div className="border-b border-gray-100 px-4 py-3 flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setHistoryFilter("week")}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                  historyFilter === "week"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                This Week
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryFilter("month")}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                  historyFilter === "month"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                This Month
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryFilter("upcoming")}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                  historyFilter === "upcoming"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Next Month
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryFilter("all")}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                  historyFilter === "all"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                All Time
+              </button>
+            </div>
+
             <div className="max-h-[70vh] overflow-y-auto p-4 space-y-2">
               {historyLoading ? (
                 <div className="py-10 text-center text-gray-500">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                   Loading history...
                 </div>
-              ) : historyRecords.length === 0 ? (
-                <div className="py-10 text-center text-gray-500">No records found for this receiver.</div>
+              ) : getFilteredHistoryRecords(historyRecords).length === 0 ? (
+                <div className="py-10 text-center text-gray-500">No records found for this period.</div>
               ) : (
-                historyRecords.map((record) => {
+                getFilteredHistoryRecords(historyRecords).map((record) => {
                   const bookingCollected = record.paymentType === "BK" ? getBookingCollectedAmount(record) : 0;
                   const amount = record.paymentType === "BK" ? bookingCollected : Number(record.amount || 0);
                   return (
