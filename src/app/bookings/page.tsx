@@ -15,6 +15,11 @@ function BookingsContent() {
   const [filterUnit, setFilterUnit] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterDateScope, setFilterDateScope] = useState("upcoming");
+  const [filterDpReceiver, setFilterDpReceiver] = useState("");
+  const [filterFpReceiver, setFilterFpReceiver] = useState("");
+  const [filterWeek, setFilterWeek] = useState("");
+  const [filterMonth, setFilterMonth] = useState("");
+  const [receivers, setReceivers] = useState<string[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editBooking, setEditBooking] = useState<Booking | null>(null);
   const searchParams = useSearchParams();
@@ -39,6 +44,9 @@ function BookingsContent() {
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d.units) && d.units.length > 0) setUnits(d.units);
+        if (Array.isArray(d.receiverPersons)) {
+          setReceivers(d.receiverPersons.map((p: any) => p.name));
+        }
       })
       .catch(() => {});
   }, []);
@@ -61,11 +69,33 @@ function BookingsContent() {
 
   const filtered = bookings.filter((b) => {
     const q = search.toLowerCase();
-    return (
+    const matchesSearch = (
       b.guestName.toLowerCase().includes(q) ||
       b.unit.includes(q) ||
       (b.contactNo ?? "").includes(q)
     );
+
+    if (!matchesSearch) return false;
+
+    if (filterDpReceiver && b.dpReceivedBy !== filterDpReceiver) return false;
+    if (filterFpReceiver && b.fpReceivedBy !== filterFpReceiver) return false;
+
+    if (filterWeek) {
+      const weekStart = new Date(filterWeek);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      const checkInDate = new Date(b.checkIn);
+      if (checkInDate < weekStart || checkInDate > weekEnd) return false;
+    }
+
+    if (filterMonth) {
+      const [year, month] = filterMonth.split("-");
+      const checkInDate = new Date(b.checkIn);
+      if (checkInDate.getFullYear() !== Number(year) || (checkInDate.getMonth() + 1) !== Number(month)) return false;
+    }
+
+    return true;
   });
 
   const timeToMinutes = (time: string) => {
@@ -104,32 +134,44 @@ function BookingsContent() {
       </div>
 
       {/* Filters */}
-      <div className="card p-3 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:gap-3">
-        <div className="relative flex-1">
+      <div className="card p-3 sm:p-4 space-y-2">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
-            className="input pl-9"
+            className="input pl-9 w-full"
             placeholder="Search guest, unit, contact..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
-          <select className="input" value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <select className="input text-xs" value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)}>
             <option value="">All units</option>
             {units.map((u) => <option key={u} value={u}>Unit {u}</option>)}
           </select>
-          <select className="input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+          <select className="input text-xs" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="">All status</option>
             <option value="Fully Paid">Fully Paid</option>
             <option value="DP Paid">DP Paid</option>
             <option value="No DP">No DP</option>
           </select>
-          <select className="input" value={filterDateScope} onChange={(e) => setFilterDateScope(e.target.value)}>
+          <select className="input text-xs" value={filterDateScope} onChange={(e) => setFilterDateScope(e.target.value)}>
             <option value="all">All dates</option>
             <option value="upcoming">Upcoming/current</option>
             <option value="past">Past records</option>
           </select>
+          <input type="month" className="input text-xs" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} placeholder="Month" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <select className="input text-xs" value={filterDpReceiver} onChange={(e) => setFilterDpReceiver(e.target.value)}>
+            <option value="">DP receiver</option>
+            {receivers.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <select className="input text-xs" value={filterFpReceiver} onChange={(e) => setFilterFpReceiver(e.target.value)}>
+            <option value="">FP receiver</option>
+            {receivers.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <input type="week" className="input text-xs" value={filterWeek} onChange={(e) => setFilterWeek(e.target.value)} placeholder="Week" />
         </div>
       </div>
 
@@ -182,6 +224,12 @@ function BookingsContent() {
                             : <span className="text-red-600 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> Conflict</span>
                           }
                         </span>
+                        {b.dpReceivedBy && (
+                          <span><span className="text-gray-400">DP To</span> <span className="font-medium text-blue-600">{b.dpReceivedBy}</span></span>
+                        )}
+                        {b.fpReceivedBy && (
+                          <span><span className="text-gray-400">FP To</span> <span className="font-medium text-purple-600">{b.fpReceivedBy}</span></span>
+                        )}
                       </div>
 
                       <div className="flex gap-2 border-t border-gray-100 pt-2">
