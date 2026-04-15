@@ -160,6 +160,7 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date, a
   };
 
   ensureAccount(defaultReceiverName, "employee");
+  ensureAccount("RIEMAR ACCOUNT", "employee");
 
   for (const booking of allBookings) {
     const bookingUnit = String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim();

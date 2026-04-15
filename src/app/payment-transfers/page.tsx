@@ -160,13 +160,19 @@ export default function PaymentTransfersPage() {
         ? settings.receivers.map((name: string) => ({ name, role: "employee" as const }))
         : [];
 
-      setRecipientOptions(receiverPersons);
+      // Add RIEMAR as an account option
+      const allPersons = [
+        { name: "RIEMAR ACCOUNT", role: "employee" as const },
+        ...receiverPersons.filter((p) => p.name.toLowerCase() !== "riemar account"),
+      ];
+
+      setRecipientOptions(allPersons);
       if (Array.isArray(settings.units) && settings.units.length > 0) {
         setUnits(settings.units.map((u: string) => String(u).replace(/^Unit\s*/i, "")));
       }
       setFormData((prev) => ({
         ...prev,
-        sender: prev.sender || "riemar",
+        sender: prev.sender || "RIEMAR ACCOUNT",
       }));
     } catch (error) {
       console.error("Failed to fetch transfers:", error);
