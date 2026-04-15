@@ -33,9 +33,16 @@ type ReceiverAccount = {
   availableBalance: number;
 };
 
+type BookingReconciliationSummary = {
+  totalCollectedFromBookings: number;
+  assignedCollectedFromBookings: number;
+  unassignedCollectedFromBookings: number;
+};
+
 export default function PaymentTransfersPage() {
   const [recipientOptions, setRecipientOptions] = useState<ReceiverPerson[]>([]);
   const [receiverAccounts, setReceiverAccounts] = useState<ReceiverAccount[]>([]);
+  const [bookingSummary, setBookingSummary] = useState<BookingReconciliationSummary | null>(null);
   const [units, setUnits] = useState<string[]>([]);
 
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -109,9 +116,13 @@ export default function PaymentTransfersPage() {
       const accounts = !Array.isArray(transferPayload) && Array.isArray(transferPayload?.accounts)
         ? transferPayload.accounts
         : [];
+      const summary = !Array.isArray(transferPayload) && transferPayload?.summary
+        ? transferPayload.summary
+        : null;
 
       setTransfers(list);
       setReceiverAccounts(accounts);
+      setBookingSummary(summary);
 
       const receiverPersons = Array.isArray(settings.receiverPersons)
         ? settings.receiverPersons
@@ -709,6 +720,20 @@ export default function PaymentTransfersPage() {
                   Available now: {formatPHP(receiverTotals.availableBalance)} | In transfers: {formatPHP(receiverTotals.incomingTransfers)} | Out transfers: {formatPHP(receiverTotals.outgoingTransfers)}
                 </p>
               </div>
+              {bookingSummary && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Collected revenue reconciliation</p>
+                  <p className="text-sm text-amber-800 mt-0.5">
+                    Dashboard-collected from bookings: {formatPHP(Number(bookingSummary.totalCollectedFromBookings || 0))}
+                  </p>
+                  <p className="text-sm text-amber-800">
+                    Assigned to receivers: {formatPHP(Number(bookingSummary.assignedCollectedFromBookings || 0))}
+                  </p>
+                  <p className="text-sm font-semibold text-amber-900">
+                    Missing receiver assignment: {formatPHP(Number(bookingSummary.unassignedCollectedFromBookings || 0))}
+                  </p>
+                </div>
+              )}
               {receiverAccounts.length === 0 ? (
                 <p className="text-sm text-gray-500">No receiver balances yet.</p>
               ) : (

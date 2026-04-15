@@ -109,6 +109,9 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
 
   const personMap = new Map(allPersons.map((p) => [p.id, normalizeName(p.name)]));
   const accountMap = new Map<string, ReceiverAccount>();
+  let totalCollectedFromBookings = 0;
+  let assignedCollectedFromBookings = 0;
+  let unassignedCollectedFromBookings = 0;
 
   for (const receiver of configuredReceivers) {
     const key = normalizeName(receiver.name);
@@ -161,6 +164,7 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
 
     const dpCollected = Math.min(dpRaw, collectedTotal);
     const fpCollected = Math.min(fpRaw, Math.max(0, collectedTotal - dpCollected));
+    totalCollectedFromBookings += collectedTotal;
 
     const dpReceiver = String(booking.dpReceivedBy ?? "").trim();
     const fpReceiver = String(booking.fpReceivedBy ?? "").trim();
@@ -169,6 +173,9 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
       if (dpReceiver) {
         ensureAccount(dpReceiver);
         addBookingReceipt(dpReceiver, dpCollected);
+        assignedCollectedFromBookings += dpCollected;
+      } else {
+        unassignedCollectedFromBookings += dpCollected;
       }
     }
 
@@ -176,6 +183,9 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
       if (fpReceiver) {
         ensureAccount(fpReceiver);
         addBookingReceipt(fpReceiver, fpCollected);
+        assignedCollectedFromBookings += fpCollected;
+      } else {
+        unassignedCollectedFromBookings += fpCollected;
       }
     }
   }
@@ -216,6 +226,11 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
   return {
     accountByName: new Map(accounts.map((account) => [normalizeName(account.name), account])),
     accounts,
+    summary: {
+      totalCollectedFromBookings: roundCurrency(totalCollectedFromBookings),
+      assignedCollectedFromBookings: roundCurrency(assignedCollectedFromBookings),
+      unassignedCollectedFromBookings: roundCurrency(unassignedCollectedFromBookings),
+    },
   };
 }
 
@@ -301,9 +316,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const { accounts } = await buildReceiverAccountsSnapshot(accountStartDate, accountEndDate);
+    const { accounts, summary } = await buildReceiverAccountsSnapshot(accountStartDate, accountEndDate);
 
-    return NextResponse.json({ transfers: enriched, accounts }, {
+    return NextResponse.json({ transfers: enriched, accounts, summary }, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
         Pragma: "no-cache",
