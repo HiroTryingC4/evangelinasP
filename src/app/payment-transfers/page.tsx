@@ -180,6 +180,33 @@ export default function PaymentTransfersPage() {
     return receiverAccounts.find((account) => account.name.trim().toLowerCase() === senderKey) ?? null;
   }, [formData.sender, receiverAccounts]);
 
+  const receiverTotals = useMemo(() => {
+    const members = receiverAccounts.length;
+    const fromBookings = receiverAccounts.reduce(
+      (sum, account) => sum + Number(account.bookingReceived || 0),
+      0
+    );
+    const incomingTransfers = receiverAccounts.reduce(
+      (sum, account) => sum + Number(account.incomingTransfers || 0),
+      0
+    );
+    const outgoingTransfers = receiverAccounts.reduce(
+      (sum, account) => sum + Number(account.outgoingTransfers || 0),
+      0
+    );
+    const availableBalance = receiverAccounts.reduce(
+      (sum, account) => sum + Number(account.availableBalance || 0),
+      0
+    );
+    return {
+      members,
+      fromBookings,
+      incomingTransfers,
+      outgoingTransfers,
+      availableBalance,
+    };
+  }, [receiverAccounts]);
+
   const amountNumber = Number(formData.amount || 0);
   const hasInsufficientFunds = Boolean(
     senderAccount && amountNumber > 0 && amountNumber > Number(senderAccount.availableBalance || 0)
@@ -674,6 +701,13 @@ export default function PaymentTransfersPage() {
                     disabled={accountScope !== "month"}
                   />
                 </div>
+              </div>
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Receiver total from bookings ({receiverTotals.members} members)</p>
+                <p className="text-lg font-bold text-emerald-800 mt-0.5">{formatPHP(receiverTotals.fromBookings)}</p>
+                <p className="text-[11px] text-emerald-700/80 mt-0.5">
+                  Available now: {formatPHP(receiverTotals.availableBalance)} | In transfers: {formatPHP(receiverTotals.incomingTransfers)} | Out transfers: {formatPHP(receiverTotals.outgoingTransfers)}
+                </p>
               </div>
               {receiverAccounts.length === 0 ? (
                 <p className="text-sm text-gray-500">No receiver balances yet.</p>

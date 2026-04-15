@@ -169,9 +169,6 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
       if (dpReceiver) {
         ensureAccount(dpReceiver);
         addBookingReceipt(dpReceiver, dpCollected);
-      } else {
-        ensureAccount("Unassigned", "employee");
-        addBookingReceipt("Unassigned", dpCollected);
       }
     }
 
@@ -179,9 +176,6 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
       if (fpReceiver) {
         ensureAccount(fpReceiver);
         addBookingReceipt(fpReceiver, fpCollected);
-      } else {
-        ensureAccount("Unassigned", "employee");
-        addBookingReceipt("Unassigned", fpCollected);
       }
     }
   }
@@ -209,13 +203,15 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date) {
     }
   }
 
-  const accounts = Array.from(accountMap.values()).map((account) => ({
-    ...account,
-    bookingReceived: roundCurrency(account.bookingReceived),
-    incomingTransfers: roundCurrency(account.incomingTransfers),
-    outgoingTransfers: roundCurrency(account.outgoingTransfers),
-    availableBalance: roundCurrency(account.availableBalance),
-  }));
+  const accounts = Array.from(accountMap.values())
+    .filter((account) => normalizeName(account.name) !== "unassigned")
+    .map((account) => ({
+      ...account,
+      bookingReceived: roundCurrency(account.bookingReceived),
+      incomingTransfers: roundCurrency(account.incomingTransfers),
+      outgoingTransfers: roundCurrency(account.outgoingTransfers),
+      availableBalance: roundCurrency(account.availableBalance),
+    }));
 
   return {
     accountByName: new Map(accounts.map((account) => [normalizeName(account.name), account])),
