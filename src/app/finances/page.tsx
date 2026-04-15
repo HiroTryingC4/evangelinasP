@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Trash2, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatPHP, formatDate, formatWeekRange, UNITS } from "@/lib/utils";
 
+const MONTHLY_NET_UNITS = new Set(["1116", "1118", "1558", "1845"]);
+
 function toYMD(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -257,7 +259,8 @@ export default function FinancesPage() {
     .filter((e) => inSelectedMonth(e.expenseDate))
     .reduce((s, e) => s + Number(e.amount || 0), 0);
 
-  const monthlyBookingRevenue = bookingsByRevenueScope
+  const monthlyBookingRevenue = bookings
+    .filter((b) => MONTHLY_NET_UNITS.has(String(b.unit).replace(/^Unit\s*/i, "")))
     .filter((b) => inSelectedMonth(b.checkIn))
     .reduce((s, b) => s + (Number(b.totalFee) || 0), 0);
   const monthlyRevenue = monthlyBookingRevenue + monthlyIncomeTotal;
@@ -338,7 +341,7 @@ export default function FinancesPage() {
               <p className="text-xs text-gray-400 mt-1">
                 {formatWeekRange(weekStart, weekEnd)}
               </p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Revenue scope below applies to both weekly and monthly net.</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Revenue scope below applies to weekly net only.</p>
             </div>
             <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400">Click to collapse</div>
           </div>
@@ -458,7 +461,7 @@ export default function FinancesPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
           <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-3 col-span-2 lg:col-span-1">
             <p className="text-[11px] uppercase text-indigo-700">
-              Monthly Revenue ({selectedRevenueUnits.length > 0 ? `${selectedRevenueUnits.length} Unit${selectedRevenueUnits.length > 1 ? "s" : ""}` : "All Units"} + External)
+              Monthly Revenue (Units 1116, 1118, 1558, 1845 + External)
             </p>
             <p className="text-lg font-bold text-indigo-800 mt-0.5">{formatPHP(monthlyRevenue)}</p>
           </div>
