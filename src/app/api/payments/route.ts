@@ -35,29 +35,101 @@ export async function GET(req: NextRequest) {
 
     const personMap = new Map(allPersons.map((p) => [p.id, p.name]));
 
-    const records = allBookings.map((booking) => ({
-      id: `booking-${booking.id}`,
-      bookingId: booking.id,
-      guestName: booking.guestName,
-      unit: booking.unit,
-      normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
-      paymentType: "BK" as const,
-      amount: Number(booking.totalFee ?? 0),
-      paymentDate: booking.checkIn,
-      checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
-      method: booking.dpMethod || booking.fpMethod,
-      receivedBy: booking.dpReceivedBy || booking.fpReceivedBy,
-      bookingDate: booking.checkIn,
-      checkInTime: booking.checkInTime,
-      checkOutTime: booking.checkOutTime,
-      paymentStatus: booking.paymentStatus,
-      remainingBalance: booking.remainingBalance,
-      dpDate: booking.dpDate,
-      fpDate: booking.fpDate,
-      dpAmount: booking.dpAmount,
-      fpAmount: booking.fpAmount,
-      totalFee: booking.totalFee,
-    }));
+    const records = allBookings.flatMap((booking) => {
+      const totalFee = Math.max(0, Number(booking.totalFee ?? 0));
+      const dpRaw = Math.max(0, Number(booking.dpAmount ?? 0));
+      const fpRaw = Math.max(0, Number(booking.fpAmount ?? 0));
+      const collectedTotal = Math.min(totalFee, dpRaw + fpRaw);
+      
+      const dpCollected = Math.min(dpRaw, collectedTotal);
+      const fpCollected = Math.min(fpRaw, Math.max(0, collectedTotal - dpCollected));
+
+      const bookingRecords = [];
+
+      // Create separate records for DP and FP portions if they exist
+      if (dpCollected > 0 && booking.dpReceivedBy) {
+        bookingRecords.push({
+          id: `booking-${booking.id}-dp`,
+          bookingId: booking.id,
+          guestName: booking.guestName,
+          unit: booking.unit,
+          normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
+          paymentType: "BK" as const,
+          amount: dpCollected,
+          paymentDate: booking.checkIn,
+          checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
+          method: booking.dpMethod,
+          receivedBy: booking.dpReceivedBy,
+          bookingDate: booking.checkIn,
+          checkInTime: booking.checkInTime,
+          checkOutTime: booking.checkOutTime,
+          paymentStatus: booking.paymentStatus,
+          remainingBalance: booking.remainingBalance,
+          dpDate: booking.dpDate,
+          fpDate: booking.fpDate,
+          dpAmount: booking.dpAmount,
+          fpAmount: booking.fpAmount,
+          totalFee: booking.totalFee,
+          portionType: "DP" as const,
+        });
+      }
+
+      if (fpCollected > 0 && booking.fpReceivedBy) {
+        bookingRecords.push({
+          id: `booking-${booking.id}-fp`,
+          bookingId: booking.id,
+          guestName: booking.guestName,
+          unit: booking.unit,
+          normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
+          paymentType: "BK" as const,
+          amount: fpCollected,
+          paymentDate: booking.checkIn,
+          checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
+          method: booking.fpMethod,
+          receivedBy: booking.fpReceivedBy,
+          bookingDate: booking.checkIn,
+          checkInTime: booking.checkInTime,
+          checkOutTime: booking.checkOutTime,
+          paymentStatus: booking.paymentStatus,
+          remainingBalance: booking.remainingBalance,
+          dpDate: booking.dpDate,
+          fpDate: booking.fpDate,
+          dpAmount: booking.dpAmount,
+          fpAmount: booking.fpAmount,
+          totalFee: booking.totalFee,
+          portionType: "FP" as const,
+        });
+      }
+
+      // If no DP or FP receivers, create a single record with full amount
+      if (bookingRecords.length === 0) {
+        bookingRecords.push({
+          id: `booking-${booking.id}`,
+          bookingId: booking.id,
+          guestName: booking.guestName,
+          unit: booking.unit,
+          normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
+          paymentType: "BK" as const,
+          amount: collectedTotal,
+          paymentDate: booking.checkIn,
+          checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
+          method: booking.dpMethod || booking.fpMethod,
+          receivedBy: "",
+          bookingDate: booking.checkIn,
+          checkInTime: booking.checkInTime,
+          checkOutTime: booking.checkOutTime,
+          paymentStatus: booking.paymentStatus,
+          remainingBalance: booking.remainingBalance,
+          dpDate: booking.dpDate,
+          fpDate: booking.fpDate,
+          dpAmount: booking.dpAmount,
+          fpAmount: booking.fpAmount,
+          totalFee: booking.totalFee,
+        });
+      }
+
+      return bookingRecords;
+    });
 
     const transferRecords = allTransfers.flatMap((transfer) => {
       const sender = personMap.get(transfer.senderId) ?? "";

@@ -371,10 +371,9 @@ export default function PaymentTransfersPage() {
   };
 
   const getBookingCollectedAmount = (record: ReceiverHistoryRecord) => {
-    const total = Number(record.totalFee ?? 0);
-    const dp = Math.max(0, Number(record.dpAmount ?? 0));
-    const fp = Math.max(0, Number(record.fpAmount ?? 0));
-    return Math.min(total, dp + fp);
+    // The API now provides split amounts for each portion (DP/FP)
+    // So we can directly use the amount field from the record
+    return Number(record.amount ?? 0);
   };
 
   const openReceiverHistory = async (receiverName: string) => {
@@ -963,6 +962,7 @@ export default function PaymentTransfersPage() {
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
                         {record.paymentType === "BK" ? "Booking collected" : "Transfer"} • {formatDate(record.paymentDate || record.bookingDate)}
+                        {record.paymentType === "BK" && (record as any).portionType && ` (${(record as any).portionType === "DP" ? "DP/Downpayment" : "FP/Full Payment"})`}
                       </p>
                       {record.paymentType === "BK" && (
                         <p className="text-xs text-gray-500 mt-0.5">
