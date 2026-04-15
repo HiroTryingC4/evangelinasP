@@ -24,8 +24,9 @@ export default function DashboardPage() {
   const [to, setTo] = useState(`${new Date().getFullYear()}-12-31`);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
   const [selectedWeeklyUnits, setSelectedWeeklyUnits] = useState<string[]>([]);
+  const [selectedMonthlyUnits, setSelectedMonthlyUnits] = useState<string[]>([]);
   const [weeklyMetric, setWeeklyMetric] = useState<"revenue" | "guests">("revenue");
-  const [monthlyView, setMonthlyView] = useState<"incoming-waiting" | "total" | "collected">("incoming-waiting");
+  const [monthlyView, setMonthlyView] = useState<"incoming-waiting" | "total" | "collected" | "unit1245">("incoming-waiting");
 
   const fetchDashboard = async () => {
     const isInitialLoad = !data;
@@ -35,6 +36,7 @@ export default function DashboardPage() {
     const params = new URLSearchParams({ from, to });
     params.set("weeklyDate", weeklyDate);
     if (selectedWeeklyUnits.length > 0) params.set("weeklyUnits", selectedWeeklyUnits.join(","));
+    if (selectedMonthlyUnits.length > 0) params.set("monthlyUnits", selectedMonthlyUnits.join(","));
     params.set("_ts", Date.now().toString());
     try {
       const res = await fetch(`/api/dashboard?${params.toString()}`, { cache: "no-store" });
@@ -46,13 +48,13 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => { fetchDashboard(); }, [from, to, weeklyDate, selectedWeeklyUnits]);
+  useEffect(() => { fetchDashboard(); }, [from, to, weeklyDate, selectedWeeklyUnits, selectedMonthlyUnits]);
 
   useEffect(() => {
     return subscribeBookingsChanged(() => {
       fetchDashboard();
     });
-  }, [from, to, weeklyDate, selectedWeeklyUnits]);
+  }, [from, to, weeklyDate, selectedWeeklyUnits, selectedMonthlyUnits]);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -77,11 +79,21 @@ export default function DashboardPage() {
     });
   };
 
+  const toggleMonthlyUnit = (unitCode: string) => {
+    setSelectedMonthlyUnits((prev) => {
+      if (prev.includes(unitCode)) return prev.filter((u) => u !== unitCode);
+      return [...prev, unitCode];
+    });
+  };
+
   const monthlyChartData = useMemo(() => {
     const source = data?.monthlyRevenue ?? [];
     return source.map((row: any) => {
       const totalRevenue = Number(row.revenue ?? 0);
       const unit1245Revenue = Number(row.unit1245Revenue ?? 0);
+      const unit1245IncomingPayment = Number(row.unit1245IncomingPayment ?? 0);
+      const unit1245WaitingPayment = Number(row.unit1245WaitingPayment ?? 0);
+      const otherUnitsRevenue = Number(row.otherUnitsRevenue ?? Math.max(0, totalRevenue - unit1245Revenue));
       const incomingPayment = Number(row.incomingPayment ?? 0);
       const waitingPayment = Number(row.waitingPayment ?? 0);
       const collectedPayment = Math.max(0, totalRevenue - waitingPayment);
@@ -89,6 +101,9 @@ export default function DashboardPage() {
       return {
         ...row,
         unit1245Revenue,
+        unit1245IncomingPayment,
+        unit1245WaitingPayment,
+        otherUnitsRevenue,
         incomingPayment,
         waitingPayment,
         collectedPayment,
@@ -97,10 +112,22 @@ export default function DashboardPage() {
             ? totalRevenue
             : monthlyView === "collected"
               ? collectedPayment
-              : incomingPayment,
+              : monthlyView === "unit1245"
+                ? unit1245Revenue
+                : incomingPayment,
       };
     });
   }, [data?.monthlyRevenue, monthlyView]);
+
+  const monthlyUnit1245Totals = useMemo(() => {
+    return monthlyChartData.reduce((acc: { total: number; incoming: number; waiting: number; otherUnits: number }, row: any) => {
+      acc.total += Number(row.unit1245Revenue ?? 0);
+      acc.incoming += Number(row.unit1245IncomingPayment ?? 0);
+      acc.waiting += Number(row.unit1245WaitingPayment ?? 0);
+      acc.otherUnits += Number(row.otherUnitsRevenue ?? 0);
+      return acc;
+    }, { total: 0, incoming: 0, waiting: 0, otherUnits: 0 });
+  }, [monthlyChartData]);
 
   if (loading && !data) return (
     <div className="flex items-center justify-center h-64">
@@ -127,7 +154,9 @@ export default function DashboardPage() {
       ? "Total revenue"
       : monthlyView === "collected"
         ? "Collected only"
-        : "Incoming vs waiting";
+        : monthlyView === "unit1245"
+          ? "Unit 1245 analytics"
+          : "Incoming vs waiting";
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -451,9 +480,46 @@ export default function DashboardPage() {
                 >
                   Collected only
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setMonthlyView("unit1245")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${monthlyView === "unit1245" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"}`}
+                >
+                  Unit 1245 analytics
+                </button>
               </div>
             </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 mt-3 mb-2">
+              <label className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedMonthlyUnits.length === 0}
+                  onChange={() => setSelectedMonthlyUnits([])}
+                />
+                All Units
+              </label>
+              {units.map((u) => (
+                <label key={`monthly-${u}`} className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedMonthlyUnits.includes(u)}
+                    onChange={() => toggleMonthlyUnit(u)}
+                  />
+                  Unit {u}
+                </label>
+              ))}
+            </div>
             <p className="text-xs text-gray-400 mt-1">View: {monthlyViewLabel}</p>
+            {monthlyView === "unit1245" && (
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg bg-red-50 border border-red-100 px-2.5 py-2 text-red-700">
+                  Unit 1245 total: <span className="font-semibold">{formatPHP(monthlyUnit1245Totals.total)}</span>
+                </div>
+                <div className="rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2 text-slate-700">
+                  Other units total: <span className="font-semibold">{formatPHP(monthlyUnit1245Totals.otherUnits)}</span>
+                </div>
+              </div>
+            )}
           </div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={monthlyChartData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
@@ -465,6 +531,9 @@ export default function DashboardPage() {
                   if (name === "waitingPayment") return [formatPHP(value), "Waiting payment"];
                   if (name === "collectedPayment") return [formatPHP(value), "Collected payment"];
                   if (name === "unit1245Revenue") return [formatPHP(value), "Unit 1245 revenue"];
+                  if (name === "unit1245IncomingPayment") return [formatPHP(value), "Unit 1245 incoming"];
+                  if (name === "unit1245WaitingPayment") return [formatPHP(value), "Unit 1245 waiting"];
+                  if (name === "otherUnitsRevenue") return [formatPHP(value), "Other units total"];
                   if (name === "chartValue") return [formatPHP(value), monthlyViewLabel];
                   return [formatPHP(value), name];
                 }}
@@ -475,17 +544,17 @@ export default function DashboardPage() {
                   <Legend />
                   <Bar dataKey="incomingPayment" name="Incoming payment" stackId="monthly" fill="#2563eb" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="waitingPayment" name="Waiting payment" stackId="monthly" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="unit1245Revenue" name="Unit 1245 revenue" fill="#ef4444" radius={[4, 4, 0, 0]} />
                 </>
               ) : monthlyView === "total" ? (
-                <>
-                  <Bar dataKey="chartValue" name="Total revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="unit1245Revenue" name="Unit 1245 revenue" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                </>
+                <Bar dataKey="chartValue" name="Total revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              ) : monthlyView === "collected" ? (
+                <Bar dataKey="chartValue" name="Collected payment" fill="#10b981" radius={[4, 4, 0, 0]} />
               ) : (
                 <>
-                  <Bar dataKey="chartValue" name="Collected payment" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="unit1245Revenue" name="Unit 1245 revenue" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Legend />
+                  <Bar dataKey="unit1245IncomingPayment" name="Unit 1245 incoming" stackId="unit1245" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="unit1245WaitingPayment" name="Unit 1245 waiting" stackId="unit1245" fill="#fb7185" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="otherUnitsRevenue" name="Other units total" fill="#334155" radius={[4, 4, 0, 0]} />
                 </>
               )}
             </BarChart>

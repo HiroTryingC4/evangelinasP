@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
     const to   = searchParams.get("to")   || `${year}-12-31`;
     const weeklyDateParam = searchParams.get("weeklyDate");
     const weeklyUnitsParam = searchParams.get("weeklyUnits");
+    const monthlyUnitsParam = searchParams.get("monthlyUnits");
 
     const configuredUnits = await db
       .select({ code: unitConfigs.code })
@@ -43,6 +44,15 @@ export async function GET(req: NextRequest) {
     const selectedUnits = weeklyUnitsParam
       ? Array.from(new Set(
           weeklyUnitsParam
+            .split(",")
+            .map((u) => u.trim().replace(/^Unit\s*/i, ""))
+            .filter((u) => unitCodes.includes(u))
+        ))
+      : [];
+
+    const selectedMonthlyUnits = monthlyUnitsParam
+      ? Array.from(new Set(
+          monthlyUnitsParam
             .split(",")
             .map((u) => u.trim().replace(/^Unit\s*/i, ""))
             .filter((u) => unitCodes.includes(u))
@@ -149,8 +159,11 @@ export async function GET(req: NextRequest) {
 
     // Monthly revenue (filtered)
     const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const monthlyBase = selectedMonthlyUnits.length > 0
+      ? filtered.filter((b) => selectedMonthlyUnits.includes(b.normalizedUnit))
+      : filtered;
     const monthlyRevenue = MONTHS.map((month, i) => {
-      const mb = filtered.filter((b) => {
+      const mb = monthlyBase.filter((b) => {
         const key = b.checkInKey;
         const monthNumber = Number(key.slice(5, 7));
         return monthNumber === i + 1;
@@ -160,10 +173,16 @@ export async function GET(req: NextRequest) {
       const unit1245Revenue = unit1245Bookings.reduce((s, b) => s + b.totalFee, 0);
       const incomingPayment = mb.reduce((s, b) => s + getCollectedForBooking(b), 0);
       const waitingPayment = Math.max(0, totalRevenue - incomingPayment);
+      const unit1245IncomingPayment = unit1245Bookings.reduce((s, b) => s + getCollectedForBooking(b), 0);
+      const unit1245WaitingPayment = Math.max(0, unit1245Revenue - unit1245IncomingPayment);
+      const otherUnitsRevenue = Math.max(0, totalRevenue - unit1245Revenue);
       return {
         month,
         revenue: totalRevenue,
         unit1245Revenue,
+        unit1245IncomingPayment,
+        unit1245WaitingPayment,
+        otherUnitsRevenue,
         incomingPayment,
         waitingPayment,
         bookings: mb.length,
