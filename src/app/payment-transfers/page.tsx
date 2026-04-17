@@ -96,6 +96,13 @@ export default function PaymentTransfersPage() {
     setMonthlyDate(base.toISOString().slice(0, 7));
   };
 
+  const shiftAccountMonth = (months: number) => {
+    const base = new Date(`${accountMonth}-01T12:00:00`);
+    if (Number.isNaN(base.getTime())) return;
+    base.setMonth(base.getMonth() + months);
+    setAccountMonth(base.toISOString().slice(0, 7));
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     sender: "",
@@ -893,6 +900,14 @@ export default function PaymentTransfersPage() {
                     <option value="month">By month</option>
                     <option value="all">All time</option>
                   </select>
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs py-1.5 justify-center"
+                    onClick={() => shiftAccountMonth(-1)}
+                    disabled={accountScope !== "month"}
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Prev
+                  </button>
                   <input
                     type="month"
                     className="input py-1.5 text-xs"
@@ -900,6 +915,14 @@ export default function PaymentTransfersPage() {
                     onChange={(e) => setAccountMonth(e.target.value)}
                     disabled={accountScope !== "month"}
                   />
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs py-1.5 justify-center"
+                    onClick={() => shiftAccountMonth(1)}
+                    disabled={accountScope !== "month"}
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 mb-3">
