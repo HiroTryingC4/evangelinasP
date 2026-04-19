@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, CreditCard, Users, Search, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { formatPHP, formatDate, formatWeekRange, getSundayToSaturdayWeek, STATUS_COLOR, toYMD } from "@/lib/utils";
@@ -66,6 +66,15 @@ type BookingRecord = {
   paymentStatus: string;
 };
 
+type ReceiverAccount = {
+  name: string;
+  role: "employee" | "host";
+  bookingReceived: number;
+  incomingTransfers: number;
+  outgoingTransfers: number;
+  availableBalance: number;
+};
+
 export default function PaymentsPage() {
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [receiverFilters, setReceiverFilters] = useState<string[]>([]);
@@ -82,6 +91,12 @@ export default function PaymentsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
   const [monthlyDate, setMonthlyDate] = useState(() => toYMD(new Date()).slice(0, 7));
+  const [accountScope, setAccountScope] = useState<"all" | "month">("month");
+  const [accountMonth, setAccountMonth] = useState(() => toYMD(new Date()).slice(0, 7));
+  const [receiverAccountsSnapshot, setReceiverAccountsSnapshot] = useState<ReceiverAccount[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [selectedReceiverAccount, setSelectedReceiverAccount] = useState<string | null>(null);
+  const receiverBalancesRef = useRef<HTMLDivElement | null>(null);
 
   const normalizeDateInput = (value: string): string => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -93,6 +108,14 @@ export default function PaymentsPage() {
       return `${year}-${month}-${day}`;
     }
     return toYMD(new Date());
+  };
+
+  const normalizeName = (value: string | null | undefined) => String(value ?? "").trim().toLowerCase();
+
+  const goToReceiverAccount = (name: string) => {
+    const normalized = normalizeName(name);
+    setSelectedReceiverAccount(normalized);
+    receiverBalancesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const shiftWeek = (days: number) => {
@@ -109,6 +132,13 @@ export default function PaymentsPage() {
     setMonthlyDate(toYMD(base).slice(0, 7));
   };
 
+  const shiftAccountMonth = (months: number) => {
+    const base = new Date(`${accountMonth}-01T12:00:00`);
+    if (Number.isNaN(base.getTime())) return;
+    base.setMonth(base.getMonth() + months);
+    setAccountMonth(toYMD(base).slice(0, 7));
+  };
+
   const formatMonthHalfLabel = (value: string, half: "first" | "second") => {
     const base = new Date(`${value}-01T12:00:00`);
     if (Number.isNaN(base.getTime())) return "";
@@ -117,6 +147,41 @@ export default function PaymentsPage() {
     const endDay = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
     return `${base.toLocaleDateString("en-PH", opts)} 16-${endDay}`;
   };
+
+  const formatMonthLabel = (value: string) => {
+    const base = new Date(`${value}-01T12:00:00`);
+    if (Number.isNaN(base.getTime())) return "";
+    return base.toLocaleDateString("en-PH", { month: "long", year: "numeric" });
+  };
+
+  useEffect(() => {
+    if (accountScope === "month") {
+      setAccountMonth(monthlyDate);
+    }
+  }, [accountScope, monthlyDate]);
+
+  useEffect(() => {
+    const fetchReceiverAccounts = async () => {
+      try {
+        setAccountsLoading(true);
+        const accountMonthParam = accountScope === "month" ? `&accountMonth=${encodeURIComponent(accountMonth)}` : "";
+        const res = await fetch(`/api/payment-transfers?includeAccounts=1&accountScope=${accountScope}${accountMonthParam}&_ts=${Date.now()}`, { cache: "no-store" });
+        const payload = await res.json();
+        if (!res.ok) {
+          console.error("Failed to load receiver account balances", payload);
+          setReceiverAccountsSnapshot([]);
+          return;
+        }
+        setReceiverAccountsSnapshot(Array.isArray(payload.accounts) ? payload.accounts : []);
+      } catch (error) {
+        console.error("Failed to load receiver account balances", error);
+        setReceiverAccountsSnapshot([]);
+      } finally {
+        setAccountsLoading(false);
+      }
+    };
+    fetchReceiverAccounts();
+  }, [accountScope, accountMonth]);
 
   const toggleReceiver = (receiver: string) => {
     setReceiverFilters((current) => {
@@ -408,6 +473,26 @@ export default function PaymentsPage() {
     return { outstandingCount, totalAmount, paidAmount, remainingAmount };
   }, [filtered]);
 
+  const receiverTotals = useMemo(() => {
+    return receiverAccountsSnapshot.reduce(
+      (acc, account) => {
+        acc.members += 1;
+        acc.bookingReceived += Number(account.bookingReceived || 0);
+        acc.incomingTransfers += Number(account.incomingTransfers || 0);
+        acc.outgoingTransfers += Number(account.outgoingTransfers || 0);
+        acc.availableBalance += Number(account.availableBalance || 0);
+        return acc;
+      },
+      {
+        members: 0,
+        bookingReceived: 0,
+        incomingTransfers: 0,
+        outgoingTransfers: 0,
+        availableBalance: 0,
+      }
+    );
+  }, [receiverAccountsSnapshot]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -651,6 +736,85 @@ export default function PaymentsPage() {
               </div>
             </div>
           )}
+
+          <div className="card p-4 sm:p-5" ref={receiverBalancesRef}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Receiver Account Balances</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Connected balances for this, previous, and next month</p>
+              </div>
+              <select
+                className="input py-1.5 text-xs"
+                value={accountScope}
+                onChange={(e) => setAccountScope(e.target.value as "all" | "month")}
+              >
+                <option value="month">By month</option>
+                <option value="all">All time</option>
+              </select>
+            </div>
+            {accountScope === "month" && (
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => shiftAccountMonth(-1)}
+                  className="btn-secondary text-xs py-1.5 justify-center"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Prev Month
+                </button>
+                <input
+                  type="month"
+                  className="input py-1.5 text-xs w-full sm:w-auto"
+                  value={accountMonth}
+                  onChange={(e) => setAccountMonth(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => shiftAccountMonth(1)}
+                  className="btn-secondary text-xs py-1.5 justify-center"
+                >
+                  Next Month <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            <div className="rounded-lg border border-gray-200 bg-slate-50 px-3 py-3 mb-3">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Receiver totals</p>
+              <p className="text-xl font-semibold text-gray-900 mt-1">{formatPHP(receiverTotals.availableBalance)}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Bookings: {formatPHP(receiverTotals.bookingReceived)} · In: {formatPHP(receiverTotals.incomingTransfers)} · Out: {formatPHP(receiverTotals.outgoingTransfers)}
+              </p>
+            </div>
+            {accountsLoading ? (
+              <div className="text-sm text-gray-500">Loading balances…</div>
+            ) : receiverAccountsSnapshot.length === 0 ? (
+              <div className="text-sm text-gray-500">No receiver balances available.</div>
+            ) : (
+              <div className="space-y-2">
+                {receiverAccountsSnapshot.map((account) => {
+                  const accountKey = normalizeName(account.name);
+                  const accountSelected = selectedReceiverAccount === accountKey;
+                  return (
+                    <div
+                      key={account.name}
+                      className={`rounded-lg border p-3 ${accountSelected ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-gray-900">{account.name}</p>
+                          <p className="text-xs text-gray-500">{account.role === "host" ? "Host" : "Employee"}</p>
+                        </div>
+                        <p className={`text-sm font-semibold ${account.availableBalance < 0 ? "text-red-600" : "text-green-700"}`}>
+                          {formatPHP(account.availableBalance)}
+                        </p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Bookings: {formatPHP(account.bookingReceived)} · In: {formatPHP(account.incomingTransfers)} · Out: {formatPHP(account.outgoingTransfers)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="xl:col-span-7">
@@ -701,6 +865,15 @@ export default function PaymentsPage() {
                       </>
                     )}
                 </div>
+                {record.receivedBy ? (
+                  <button
+                    type="button"
+                    onClick={() => goToReceiverAccount(record.receivedBy ?? "")}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    View receiver balance
+                  </button>
+                ) : null}
                   {record.paymentType === "BK" && (
                   <div className="mt-1 text-xs">
                     Paid: <span className="font-semibold text-green-700">{formatPHP(getPaidAmount(record))}</span>
