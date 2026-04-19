@@ -284,6 +284,7 @@ export async function GET(req: NextRequest) {
     const monthBase = Number.isNaN(monthAnchor.getTime()) ? new Date() : monthAnchor;
     const monthStart = new Date(monthBase.getFullYear(), monthBase.getMonth(), 1, 0, 0, 0, 0);
     const monthEnd = new Date(monthBase.getFullYear(), monthBase.getMonth() + 1, 0, 23, 59, 59, 999);
+    const monthHalfEnd = new Date(monthBase.getFullYear(), monthBase.getMonth(), 15, 23, 59, 59, 999);
 
     let query = db.select().from(paymentTransfers);
 
@@ -309,6 +310,7 @@ export async function GET(req: NextRequest) {
         const d = new Date(t.transferDate ?? t.createdAt ?? new Date());
         if (scope === "week") return d >= weekStart && d <= weekEnd;
         if (scope === "month") return d >= monthStart && d <= monthEnd;
+        if (scope === "month-half") return d >= monthStart && d <= monthHalfEnd;
         return true;
       });
 

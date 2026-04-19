@@ -73,7 +73,7 @@ export default function PaymentsPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [balanceFilter, setBalanceFilter] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "all">("week");
+  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "all">("week");
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [compactMode, setCompactMode] = useState(false);
@@ -108,6 +108,12 @@ export default function PaymentsPage() {
     if (Number.isNaN(base.getTime())) return;
     base.setMonth(base.getMonth() + months);
     setMonthlyDate(toYMD(base).slice(0, 7));
+  };
+
+  const formatMonthHalfLabel = (value: string) => {
+    const base = new Date(`${value}-01T12:00:00`);
+    if (Number.isNaN(base.getTime())) return "";
+    return `${base.toLocaleDateString("en-PH", { month: "long", year: "numeric" })} 1-15`;
   };
 
   const toggleReceiver = (receiver: string) => {
@@ -335,11 +341,15 @@ export default function PaymentsPage() {
           ? (record.checkInDateKey || toYMD(record.bookingDate))
           : toYMD(record.paymentDate ?? record.bookingDate);
         if (recordDateKey < weekStartKey || recordDateKey > weekEndKey) return false;
-      } else if (scopeFilter === "month") {
+      } else if (scopeFilter === "month" || scopeFilter === "month-half") {
         const recordDateKey = record.paymentType === "BK"
           ? (record.checkInDateKey || toYMD(record.bookingDate))
           : toYMD(record.paymentDate ?? record.bookingDate);
         if (!recordDateKey.startsWith(monthKey)) return false;
+        if (scopeFilter === "month-half") {
+          const day = Number(recordDateKey.slice(8, 10));
+          if (day < 1 || day > 15) return false;
+        }
       }
 
       if (receiverFilters.length > 0) {
@@ -428,17 +438,20 @@ export default function PaymentsPage() {
                 ? "All payment records"
                 : scopeFilter === "month"
                   ? new Date(`${monthlyDate}-01T12:00:00`).toLocaleDateString("en-PH", { month: "long", year: "numeric" })
-                  : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
+                  : scopeFilter === "month-half"
+                    ? formatMonthHalfLabel(monthlyDate)
+                    : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <select
               className="input py-1.5 text-xs min-w-[160px]"
               value={scopeFilter}
-              onChange={(e) => setScopeFilter(e.target.value as "week" | "month" | "all") }
+              onChange={(e) => setScopeFilter(e.target.value as "week" | "month" | "month-half" | "all") }
             >
               <option value="week">This week</option>
               <option value="month">This month</option>
+              <option value="month-half">First half of month</option>
               <option value="all">All records</option>
             </select>
 
@@ -467,7 +480,7 @@ export default function PaymentsPage() {
               </>
             )}
 
-            {scopeFilter === "month" && (
+            {(scopeFilter === "month" || scopeFilter === "month-half") && (
               <>
                 <button
                   type="button"
