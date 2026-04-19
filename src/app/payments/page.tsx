@@ -343,7 +343,7 @@ export default function PaymentsPage() {
           ? (record.checkInDateKey || toYMD(record.bookingDate))
           : toYMD(record.paymentDate ?? record.bookingDate);
         if (recordDateKey < weekStartKey || recordDateKey > weekEndKey) return false;
-      } else if (scopeFilter === "month" || scopeFilter === "month-half") {
+      } else if (scopeFilter === "month" || scopeFilter === "month-half" || scopeFilter === "month-second-half") {
         const recordDateKey = record.paymentType === "BK"
           ? (record.checkInDateKey || toYMD(record.bookingDate))
           : toYMD(record.paymentDate ?? record.bookingDate);
