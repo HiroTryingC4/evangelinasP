@@ -127,23 +127,6 @@ export const persons = pgTable("persons", {
   balance: numeric("balance", { precision: 12, scale: 2 }).notNull().default("0"), // running balance
   notes: text("notes"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
-});
-
-export const paymentTransfers = pgTable("payment_transfers", {
-  id: serial("id").primaryKey(),
-  senderId: integer("sender_id").notNull(), // person sending money (riemar)
-  recipientId: integer("recipient_id").notNull(), // person receiving money (sir mike, james, etc)
-  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-  transferDate: timestamp("transfer_date", { mode: "date" }).notNull(),
-  sourceUnit: text("source_unit"), // which unit the money came from
-  sourceWeekStart: timestamp("source_week_start", { mode: "date" }), // week bucket start (Sunday)
-  reason: text("reason"), // why the transfer was made
-  paymentMethod: text("payment_method"), // cash, gcash, bank transfer, etc.
-  status: text("status").notNull().default("transferred"), // transferred, pending, etc.
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
 });
 
 export type Booking    = typeof bookings.$inferSelect;

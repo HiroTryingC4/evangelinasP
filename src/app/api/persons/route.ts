@@ -10,7 +10,7 @@ export async function GET() {
     const allPersons = await db
       .select()
       .from(persons)
-      .orderBy(desc(persons.updatedAt));
+      .orderBy(desc(persons.createdAt));
 
     return NextResponse.json(allPersons);
   } catch (error) {

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { bookings, paymentTransfers, persons, receiverPersons } from "@/lib/schema";
+import { bookings, persons, receiverPersons } from "@/lib/schema";
 import { and, eq, sql } from "drizzle-orm";
 
 async function getPersonIdByName(name: string) {
@@ -120,16 +120,6 @@ async function main() {
   for (const row of aliasToCanonical) {
     const aliasId = await getPersonIdByName(row.alias);
     if (!aliasId || aliasId === row.canonicalId) continue;
-
-    await db
-      .update(paymentTransfers)
-      .set({ senderId: row.canonicalId })
-      .where(eq(paymentTransfers.senderId, aliasId));
-
-    await db
-      .update(paymentTransfers)
-      .set({ recipientId: row.canonicalId })
-      .where(eq(paymentTransfers.recipientId, aliasId));
 
     await db.delete(persons).where(eq(persons.id, aliasId));
   }

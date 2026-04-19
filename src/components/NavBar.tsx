@@ -10,7 +10,6 @@ const links = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/bookings", label: "Bookings", icon: BookOpen },
   { href: "/payments", label: "Payments", icon: CreditCard },
-  { href: "/payment-transfers", label: "Transfers", icon: Send },
   { href: "/finances", label: "Finances", icon: Wallet },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
