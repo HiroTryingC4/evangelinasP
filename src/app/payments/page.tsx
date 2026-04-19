@@ -73,9 +73,8 @@ export default function PaymentsPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [balanceFilter, setBalanceFilter] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "all">("week");
+  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "month-second-half" | "all">("week");
   const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
   const [compactMode, setCompactMode] = useState(false);
   const [receivers, setReceivers] = useState<string[]>([]);
   const [units, setUnits] = useState<string[]>([]);
@@ -110,10 +109,13 @@ export default function PaymentsPage() {
     setMonthlyDate(toYMD(base).slice(0, 7));
   };
 
-  const formatMonthHalfLabel = (value: string) => {
+  const formatMonthHalfLabel = (value: string, half: "first" | "second") => {
     const base = new Date(`${value}-01T12:00:00`);
     if (Number.isNaN(base.getTime())) return "";
-    return `${base.toLocaleDateString("en-PH", { month: "long", year: "numeric" })} 1-15`;
+    const opts: Intl.DateTimeFormatOptions = { month: "long", year: "numeric" };
+    if (half === "first") return `${base.toLocaleDateString("en-PH", opts)} 1-15`;
+    const endDay = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+    return `${base.toLocaleDateString("en-PH", opts)} 16-${endDay}`;
   };
 
   const toggleReceiver = (receiver: string) => {
@@ -350,6 +352,10 @@ export default function PaymentsPage() {
           const day = Number(recordDateKey.slice(8, 10));
           if (day < 1 || day > 15) return false;
         }
+        if (scopeFilter === "month-second-half") {
+          const day = Number(recordDateKey.slice(8, 10));
+          if (day < 16) return false;
+        }
       }
 
       if (receiverFilters.length > 0) {
@@ -366,13 +372,6 @@ export default function PaymentsPage() {
       if (balanceFilter === "with" && record.remainingBalance <= 0) return false;
       if (balanceFilter === "settled" && record.remainingBalance > 0) return false;
 
-      if (dateFilter) {
-        const ymd = record.paymentType === "BK"
-          ? (record.checkInDateKey || toYMD(record.bookingDate))
-          : toYMD(record.paymentDate ?? record.bookingDate);
-        if (ymd !== dateFilter) return false;
-      }
-
       if (!q) return true;
       return (
         record.guestName.toLowerCase().includes(q) ||
@@ -380,7 +379,7 @@ export default function PaymentsPage() {
         (record.receivedBy ?? "").toLowerCase().includes(q)
       );
     });
-  }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search, dateFilter, scopeFilter, weeklyDate, monthlyDate]);
+  }, [records, receiverFilters, unitFilters, typeFilter, statusFilter, balanceFilter, search, scopeFilter, weeklyDate, monthlyDate]);
 
   const getPaidAmount = (record: PaymentRecord) => {
     if (record.paymentType !== "BK") return 0;
@@ -439,19 +438,22 @@ export default function PaymentsPage() {
                 : scopeFilter === "month"
                   ? new Date(`${monthlyDate}-01T12:00:00`).toLocaleDateString("en-PH", { month: "long", year: "numeric" })
                   : scopeFilter === "month-half"
-                    ? formatMonthHalfLabel(monthlyDate)
-                    : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
+                    ? formatMonthHalfLabel(monthlyDate, "first")
+                    : scopeFilter === "month-second-half"
+                      ? formatMonthHalfLabel(monthlyDate, "second")
+                      : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <select
               className="input py-1.5 text-xs min-w-[160px]"
               value={scopeFilter}
-              onChange={(e) => setScopeFilter(e.target.value as "week" | "month" | "month-half" | "all") }
+              onChange={(e) => setScopeFilter(e.target.value as "week" | "month" | "month-half" | "month-second-half" | "all") }
             >
               <option value="week">This week</option>
               <option value="month">This month</option>
               <option value="month-half">First half of month</option>
+              <option value="month-second-half">Second half of month</option>
               <option value="all">All records</option>
             </select>
 
@@ -480,7 +482,7 @@ export default function PaymentsPage() {
               </>
             )}
 
-            {(scopeFilter === "month" || scopeFilter === "month-half") && (
+            {(scopeFilter === "month" || scopeFilter === "month-half" || scopeFilter === "month-second-half") && (
               <>
                 <button
                   type="button"
@@ -575,20 +577,6 @@ export default function PaymentsPage() {
                 <option value="with">With balance</option>
                 <option value="settled">Fully settled</option>
               </select>
-              <input
-                type="date"
-                className="input"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                placeholder="Filter by date"
-              />
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setDateFilter("")}
-              >
-                Clear Date
-              </button>
             </div>
           </div>
 

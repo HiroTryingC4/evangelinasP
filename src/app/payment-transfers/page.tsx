@@ -68,7 +68,7 @@ export default function PaymentTransfersPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "all">("all");
+  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "month-second-half" | "all">("all");
   const [weeklyDate, setWeeklyDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [monthlyDate, setMonthlyDate] = useState(() => new Date().toISOString().slice(0, 7));
   const [accountScope, setAccountScope] = useState<"all" | "month">("all");
@@ -127,11 +127,13 @@ export default function PaymentTransfersPage() {
     return `${start.toLocaleDateString(undefined, opts)} - ${end.toLocaleDateString(undefined, opts)}`;
   };
 
-  const formatMonthHalfLabel = (value: string) => {
+  const formatMonthHalfLabel = (value: string, half: "first" | "second") => {
     const base = new Date(`${value}-01T12:00:00`);
     if (Number.isNaN(base.getTime())) return "";
     const opts: Intl.DateTimeFormatOptions = { month: "long", year: "numeric" };
-    return `${base.toLocaleDateString("en-PH", opts)} 1-15`;
+    if (half === "first") return `${base.toLocaleDateString("en-PH", opts)} 1-15`;
+    const endDay = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+    return `${base.toLocaleDateString("en-PH", opts)} 16-${endDay}`;
   };
 
   const setWeekByOffset = (offsetDays: number) => {
@@ -524,19 +526,22 @@ export default function PaymentTransfersPage() {
                   : scopeFilter === "month"
                     ? new Date(`${monthlyDate}-01T12:00:00`).toLocaleDateString("en-PH", { month: "long", year: "numeric" })
                     : scopeFilter === "month-half"
-                      ? formatMonthHalfLabel(monthlyDate)
-                      : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
+                      ? formatMonthHalfLabel(monthlyDate, "first")
+                      : scopeFilter === "month-second-half"
+                        ? formatMonthHalfLabel(monthlyDate, "second")
+                        : formatWeekRange(getSundayToSaturdayWeek(weeklyDate).startDate, getSundayToSaturdayWeek(weeklyDate).endDate)}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <select
                 className="input py-1.5 text-xs min-w-[160px]"
                 value={scopeFilter}
-                onChange={(e) => setScopeFilter(e.target.value as "week" | "month" | "month-half" | "all")}
+                onChange={(e) => setScopeFilter(e.target.value as "week" | "month" | "month-half" | "month-second-half" | "all")}
               >
                 <option value="week">This week</option>
                 <option value="month">This month</option>
                 <option value="month-half">First half of month</option>
+                <option value="month-second-half">Second half of month</option>
                 <option value="all">All transfers</option>
               </select>
 
@@ -565,7 +570,7 @@ export default function PaymentTransfersPage() {
                 </>
               )}
 
-              {(scopeFilter === "month" || scopeFilter === "month-half") && (
+              {(scopeFilter === "month" || scopeFilter === "month-half" || scopeFilter === "month-second-half") && (
                 <>
                   <button
                     type="button"

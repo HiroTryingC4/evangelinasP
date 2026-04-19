@@ -285,6 +285,7 @@ export async function GET(req: NextRequest) {
     const monthStart = new Date(monthBase.getFullYear(), monthBase.getMonth(), 1, 0, 0, 0, 0);
     const monthEnd = new Date(monthBase.getFullYear(), monthBase.getMonth() + 1, 0, 23, 59, 59, 999);
     const monthHalfEnd = new Date(monthBase.getFullYear(), monthBase.getMonth(), 15, 23, 59, 59, 999);
+    const monthSecondHalfStart = new Date(monthBase.getFullYear(), monthBase.getMonth(), 16, 0, 0, 0, 0);
 
     let query = db.select().from(paymentTransfers);
 
@@ -311,6 +312,7 @@ export async function GET(req: NextRequest) {
         if (scope === "week") return d >= weekStart && d <= weekEnd;
         if (scope === "month") return d >= monthStart && d <= monthEnd;
         if (scope === "month-half") return d >= monthStart && d <= monthHalfEnd;
+        if (scope === "month-second-half") return d >= monthSecondHalfStart && d <= monthEnd;
         return true;
       });
 
