@@ -30,18 +30,6 @@ type PaymentRecord = {
   totalFee?: number | string | null;
 };
 
-type TransferRecord = {
-  id: number;
-  sender?: string;
-  recipient?: string;
-  amount: string | number;
-  transferDate: string | Date;
-  sourceUnit?: string | null;
-  sourceWeekStart?: string | Date | null;
-  paymentMethod: string | null;
-  status: string;
-};
-
 type BookingRecord = {
   id: number;
   guestName: string;
@@ -165,7 +153,7 @@ export default function PaymentsPage() {
       try {
         setAccountsLoading(true);
         const accountMonthParam = accountScope === "month" ? `&accountMonth=${encodeURIComponent(accountMonth)}` : "";
-        const res = await fetch(`/api/payment-transfers?includeAccounts=1&accountScope=${accountScope}${accountMonthParam}&_ts=${Date.now()}`, { cache: "no-store" });
+        const res = await fetch(`/api/payment-transfers?includeAccounts=1&accountScope=${accountScope}${accountMonthParam}&excludeTransfers=1&_ts=${Date.now()}`, { cache: "no-store" });
         const payload = await res.json();
         if (!res.ok) {
           console.error("Failed to load receiver account balances", payload);
@@ -197,9 +185,8 @@ export default function PaymentsPage() {
     Promise.all([
       fetch(`/api/bookings?view=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
       fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
-      fetch(`/api/payment-transfers?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
     ])
-      .then(([bookings, settings, transfers]) => {
+      .then(([bookings, settings]) => {
         const bookingRowsRaw: BookingRecord[] = Array.isArray(bookings) ? bookings : [];
         const bookingRows: PaymentRecord[] = bookingRowsRaw.map((booking) => ({
           id: `booking-${booking.id}`,
@@ -225,56 +212,7 @@ export default function PaymentsPage() {
           totalFee: booking.totalFee,
         }));
 
-        const transferRowsRaw: TransferRecord[] = Array.isArray(transfers) ? transfers : [];
-        const transferRows: PaymentRecord[] = transferRowsRaw.flatMap((t) => {
-          const amount = Number(t.amount || 0);
-          const date = t.sourceWeekStart ?? t.transferDate ?? new Date().toISOString();
-          const sender = (t.sender ?? "").toString();
-          const recipient = (t.recipient ?? "").toString();
-          const sourceUnit = t.sourceUnit && String(t.sourceUnit).trim() ? String(t.sourceUnit) : "TRANSFER";
-
-          const out: PaymentRecord = {
-            id: `tr-out-${t.id}`,
-            bookingId: 0,
-            guestName: `Transfer to ${recipient}`,
-            unit: sourceUnit,
-            paymentType: "TR",
-            amount: -amount,
-            paymentDate: date,
-            method: t.paymentMethod,
-            receivedBy: sender,
-            bookingDate: date,
-            checkInTime: "",
-            checkOutTime: "",
-            paymentStatus: t.status || "Transferred",
-            remainingBalance: 0,
-            dpDate: null,
-            fpDate: null,
-          };
-
-          const incoming: PaymentRecord = {
-            id: `tr-in-${t.id}`,
-            bookingId: 0,
-            guestName: `Transfer from ${sender}`,
-            unit: sourceUnit,
-            paymentType: "TR",
-            amount,
-            paymentDate: date,
-            method: t.paymentMethod,
-            receivedBy: recipient,
-            bookingDate: date,
-            checkInTime: "",
-            checkOutTime: "",
-            paymentStatus: t.status || "Transferred",
-            remainingBalance: 0,
-            dpDate: null,
-            fpDate: null,
-          };
-
-          return [out, incoming];
-        });
-
-        setRecords([...bookingRows, ...transferRows]);
+        setRecords(bookingRows);
 
         if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
           setReceivers(settings.receivers);
@@ -295,9 +233,8 @@ export default function PaymentsPage() {
       Promise.all([
         fetch(`/api/bookings?view=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
         fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
-        fetch(`/api/payment-transfers?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
       ])
-        .then(([bookings, settings, transfers]) => {
+        .then(([bookings, settings]) => {
           const bookingRowsRaw: BookingRecord[] = Array.isArray(bookings) ? bookings : [];
           const bookingRows: PaymentRecord[] = bookingRowsRaw.map((booking) => ({
             id: `booking-${booking.id}`,
@@ -323,56 +260,7 @@ export default function PaymentsPage() {
             totalFee: booking.totalFee,
           }));
 
-          const transferRowsRaw: TransferRecord[] = Array.isArray(transfers) ? transfers : [];
-          const transferRows: PaymentRecord[] = transferRowsRaw.flatMap((t) => {
-            const amount = Number(t.amount || 0);
-            const date = t.sourceWeekStart ?? t.transferDate ?? new Date().toISOString();
-            const sender = (t.sender ?? "").toString();
-            const recipient = (t.recipient ?? "").toString();
-            const sourceUnit = t.sourceUnit && String(t.sourceUnit).trim() ? String(t.sourceUnit) : "TRANSFER";
-
-            const out: PaymentRecord = {
-              id: `tr-out-${t.id}`,
-              bookingId: 0,
-              guestName: `Transfer to ${recipient}`,
-              unit: sourceUnit,
-              paymentType: "TR",
-              amount: -amount,
-              paymentDate: date,
-              method: t.paymentMethod,
-              receivedBy: sender,
-              bookingDate: date,
-              checkInTime: "",
-              checkOutTime: "",
-              paymentStatus: t.status || "Transferred",
-              remainingBalance: 0,
-              dpDate: null,
-              fpDate: null,
-            };
-
-            const incoming: PaymentRecord = {
-              id: `tr-in-${t.id}`,
-              bookingId: 0,
-              guestName: `Transfer from ${sender}`,
-              unit: sourceUnit,
-              paymentType: "TR",
-              amount,
-              paymentDate: date,
-              method: t.paymentMethod,
-              receivedBy: recipient,
-              bookingDate: date,
-              checkInTime: "",
-              checkOutTime: "",
-              paymentStatus: t.status || "Transferred",
-              remainingBalance: 0,
-              dpDate: null,
-              fpDate: null,
-            };
-
-            return [out, incoming];
-          });
-
-          setRecords([...bookingRows, ...transferRows]);
+          setRecords(bookingRows);
 
           if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
             setReceivers(settings.receivers);
@@ -428,10 +316,8 @@ export default function PaymentsPage() {
         if (!receiverSet.has((record.receivedBy ?? "").toLowerCase())) return false;
       }
 
-      // Keep transfer records visible even when unit filters are active,
-      // so sender deductions are reflected in totals.
       const normalizedUnit = String(record.normalizedUnit ?? record.unit ?? "").replace(/^Unit\s*/i, "").trim();
-      if (unitFilters.length > 0 && record.unit !== "TRANSFER" && !unitFilters.includes(normalizedUnit)) return false;
+      if (unitFilters.length > 0 && !unitFilters.includes(normalizedUnit)) return false;
       if (typeFilter && record.paymentType !== typeFilter) return false;
       if (statusFilter && record.paymentStatus !== statusFilter) return false;
       if (balanceFilter === "with" && record.remainingBalance <= 0) return false;
@@ -648,7 +534,6 @@ export default function PaymentsPage() {
               <select className="input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                 <option value="">All types</option>
                 <option value="BK">Booking</option>
-                <option value="TR">Transfer</option>
               </select>
               <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="">All payment status</option>

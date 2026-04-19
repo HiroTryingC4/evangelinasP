@@ -86,7 +86,7 @@ function isWithinRange(value: string | Date | null | undefined, start?: Date, en
   return true;
 }
 
-async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date, allowedUnits?: Set<string>) {
+async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date, allowedUnits?: Set<string>, excludeTransfers: boolean = false) {
   const [configuredReceivers, allBookings, allTransfers, allPersons] = await Promise.all([
     db
       .select({ name: receiverPersons.name, role: receiverPersons.role })
@@ -208,26 +208,28 @@ async function buildReceiverAccountsSnapshot(startDate?: Date, endDate?: Date, a
     }
   }
 
-  for (const transfer of allTransfers) {
-    const transferDate = transfer.transferDate ?? transfer.createdAt;
-    if (!isWithinRange(transferDate, startDate, endDate)) continue;
+  if (!excludeTransfers) {
+    for (const transfer of allTransfers) {
+      const transferDate = transfer.transferDate ?? transfer.createdAt;
+      if (!isWithinRange(transferDate, startDate, endDate)) continue;
 
-    const amount = Number(transfer.amount ?? 0);
-    if (amount <= 0) continue;
+      const amount = Number(transfer.amount ?? 0);
+      if (amount <= 0) continue;
 
-    const senderKey = personMap.get(transfer.senderId) ?? "";
-    const recipientKey = personMap.get(transfer.recipientId) ?? "";
+      const senderKey = personMap.get(transfer.senderId) ?? "";
+      const recipientKey = personMap.get(transfer.recipientId) ?? "";
 
-    const senderAccount = accountMap.get(senderKey);
-    if (senderAccount) {
-      senderAccount.outgoingTransfers += amount;
-      senderAccount.availableBalance -= amount;
-    }
+      const senderAccount = accountMap.get(senderKey);
+      if (senderAccount) {
+        senderAccount.outgoingTransfers += amount;
+        senderAccount.availableBalance -= amount;
+      }
 
-    const recipientAccount = accountMap.get(recipientKey);
-    if (recipientAccount) {
-      recipientAccount.incomingTransfers += amount;
-      recipientAccount.availableBalance += amount;
+      const recipientAccount = accountMap.get(recipientKey);
+      if (recipientAccount) {
+        recipientAccount.incomingTransfers += amount;
+        recipientAccount.availableBalance += amount;
+      }
     }
   }
 
@@ -266,6 +268,7 @@ export async function GET(req: NextRequest) {
     const accountScope = searchParams.get("accountScope") || "all";
     const accountMonth = searchParams.get("accountMonth");
     const accountUnitsParam = searchParams.get("accountUnits");
+    const excludeTransfers = searchParams.get("excludeTransfers") === "1";
 
     const weeklyAnchor = weeklyDateParam
       ? new Date(`${weeklyDateParam}T12:00:00`)
@@ -350,7 +353,7 @@ export async function GET(req: NextRequest) {
         )
       : undefined;
 
-    const { accounts, summary } = await buildReceiverAccountsSnapshot(accountStartDate, accountEndDate, accountUnits);
+    const { accounts, summary } = await buildReceiverAccountsSnapshot(accountStartDate, accountEndDate, accountUnits, excludeTransfers);
 
     return NextResponse.json({ transfers: enriched, accounts, summary }, {
       headers: {
