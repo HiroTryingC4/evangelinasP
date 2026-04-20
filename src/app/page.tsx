@@ -165,7 +165,7 @@ export default function DashboardPage() {
       </div>
 
       {/* TODAY + WEEK quick links */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Link href="/today" className="card p-4 hover:shadow-md transition-shadow group">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Today&apos;s Guests</span>
@@ -181,6 +181,14 @@ export default function DashboardPage() {
           </div>
           <div className="text-xl sm:text-2xl font-bold text-blue-700">{formatPHP(weekRevenueDisplay)}</div>
           <div className="text-xs text-gray-400 mt-1">{weekGuestsDisplay} guests this week ({weekScopeLabel})</div>
+        </Link>
+        <Link href="/payments" className="card p-4 hover:shadow-md transition-shadow group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payments</span>
+            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+          </div>
+          <div className="text-xl sm:text-2xl font-bold text-gray-900">{formatPHP(summary.collectedRevenue ?? 0)}</div>
+          <div className="text-xs text-gray-400 mt-1">Go to payment records</div>
         </Link>
       </div>
 

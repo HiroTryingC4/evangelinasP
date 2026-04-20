@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CalendarDays, CreditCard, Users, Search, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { formatPHP, formatDate, formatWeekRange, getSundayToSaturdayWeek, STATUS_COLOR, toYMD } from "@/lib/utils";
@@ -17,6 +18,9 @@ type PaymentRecord = {
   paymentDate: string | Date | null;
   method: string | null;
   receivedBy: string | null;
+  receiverNames?: string[];
+  dpReceivedBy?: string | null;
+  fpReceivedBy?: string | null;
   bookingDate: string | Date;
   checkInTime: string;
   checkOutTime: string;
@@ -28,6 +32,7 @@ type PaymentRecord = {
   dpAmount?: number | string | null;
   fpAmount?: number | string | null;
   totalFee?: number | string | null;
+  portionType?: "DP" | "FP";
 };
 
 type BookingRecord = {
@@ -64,23 +69,6 @@ type ReceiverAccount = {
 };
 
 export default function PaymentsPage() {
-  const [records, setRecords] = useState<PaymentRecord[]>([]);
-  const [receiverFilters, setReceiverFilters] = useState<string[]>([]);
-  const [unitFilters, setUnitFilters] = useState<string[]>([]);
-  const [typeFilter, setTypeFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [balanceFilter, setBalanceFilter] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "month-second-half" | "all">("all");
-  const [search, setSearch] = useState("");
-  const [compactMode, setCompactMode] = useState(false);
-  const [receivers, setReceivers] = useState<string[]>([]);
-  const [units, setUnits] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
-  const [monthlyDate, setMonthlyDate] = useState(() => toYMD(new Date()).slice(0, 7));
-  const [accountsLoading, setAccountsLoading] = useState(false);
-
   const normalizeDateInput = (value: string): string => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
     const slash = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -91,6 +79,65 @@ export default function PaymentsPage() {
       return `${year}-${month}-${day}`;
     }
     return toYMD(new Date());
+  };
+
+  const [records, setRecords] = useState<PaymentRecord[]>([]);
+  const searchParams = useSearchParams();
+  const [receiverFilters, setReceiverFilters] = useState<string[]>([]);
+  const [unitFilters, setUnitFilters] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [balanceFilter, setBalanceFilter] = useState("");
+  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "month-second-half" | "all">(() => {
+    const scope = searchParams.get("scope");
+    return scope === "week" || scope === "month" || scope === "month-half" || scope === "month-second-half" || scope === "all"
+      ? scope
+      : "all";
+  });
+  const [search, setSearch] = useState("");
+  const [compactMode, setCompactMode] = useState(false);
+  const [receivers, setReceivers] = useState<string[]>([]);
+  const [units, setUnits] = useState<string[]>([]);
+  const [weeklyDate, setWeeklyDate] = useState(() => {
+    const value = searchParams.get("weeklyDate");
+    return value ? normalizeDateInput(value) : toYMD(new Date());
+  });
+  const [monthlyDate, setMonthlyDate] = useState(() => {
+    const value = searchParams.get("monthlyDate");
+    return value ? value : toYMD(new Date()).slice(0, 7);
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+
+  const loadPayments = async (isInitialLoad = false) => {
+    if (!isInitialLoad) setRefreshing(true);
+
+    const params = new URLSearchParams({ scope: scopeFilter, _ts: Date.now().toString() });
+    if (scopeFilter === "week") {
+      params.set("weeklyDate", weeklyDate);
+    }
+    if (scopeFilter === "month" || scopeFilter === "month-half" || scopeFilter === "month-second-half") {
+      params.set("monthlyDate", monthlyDate);
+    }
+
+    const [paymentData, settings] = await Promise.all([
+      fetch(`/api/payments?${params.toString()}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+    ]);
+
+    const paymentRecords: PaymentRecord[] = Array.isArray(paymentData.records) ? paymentData.records : [];
+    setRecords(paymentRecords);
+
+    if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
+      setReceivers(settings.receivers);
+    }
+    if (Array.isArray(settings.units) && settings.units.length > 0) {
+      setUnits(settings.units.map((u: string) => String(u).replace(/^Unit\s*/i, "")));
+    }
+
+    setLoading(false);
+    setRefreshing(false);
   };
 
   const normalizeName = (value: string | null | undefined) => String(value ?? "").trim().toLowerCase();
@@ -133,53 +180,14 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     const isInitialLoad = records.length === 0 && loading;
-    if (!isInitialLoad) setRefreshing(true);
-
-    Promise.all([
-      fetch(`/api/payments?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
-      fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
-    ])
-      .then(([paymentData, settings]) => {
-        const paymentRecords: PaymentRecord[] = Array.isArray(paymentData.records) ? paymentData.records : [];
-        setRecords(paymentRecords);
-
-        if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
-          setReceivers(settings.receivers);
-        }
-        if (Array.isArray(settings.units) && settings.units.length > 0) {
-          setUnits(settings.units.map((u: string) => String(u).replace(/^Unit\s*/i, "")));
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-        setRefreshing(false);
-      });
-  }, [weeklyDate, scopeFilter]);
+    loadPayments(isInitialLoad);
+  }, [scopeFilter, weeklyDate, monthlyDate]);
 
   useEffect(() => {
     return subscribeBookingsChanged(() => {
-      setRefreshing(true);
-      Promise.all([
-        fetch(`/api/payments?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
-        fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
-      ])
-        .then(([paymentData, settings]) => {
-          const paymentRecords: PaymentRecord[] = Array.isArray(paymentData.records) ? paymentData.records : [];
-          setRecords(paymentRecords);
-
-          if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
-            setReceivers(settings.receivers);
-          }
-          if (Array.isArray(settings.units) && settings.units.length > 0) {
-            setUnits(settings.units.map((u: string) => String(u).replace(/^Unit\s*/i, "")));
-          }
-        })
-        .finally(() => {
-          setLoading(false);
-          setRefreshing(false);
-        });
+      loadPayments();
     });
-  }, []);
+  }, [scopeFilter, weeklyDate, monthlyDate]);
 
   const toggleUnit = (unit: string) => {
     setUnitFilters((current) => {
@@ -217,8 +225,12 @@ export default function PaymentsPage() {
       }
 
       if (receiverFilters.length > 0) {
-        const receiverSet = new Set(receiverFilters.map((r) => r.toLowerCase()));
-        if (!receiverSet.has((record.receivedBy ?? "").toLowerCase())) return false;
+        const recordReceivers = new Set(
+          (record.receiverNames ?? [record.receivedBy ?? ""]) 
+            .filter(Boolean)
+            .map((name) => name.toLowerCase())
+        );
+        if (!receiverFilters.some((filter) => recordReceivers.has(filter.toLowerCase()))) return false;
       }
 
       const normalizedUnit = String(record.normalizedUnit ?? record.unit ?? "").replace(/^Unit\s*/i, "").trim();
@@ -547,7 +559,7 @@ export default function PaymentsPage() {
                         <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />Check-in: {formatDate(record.bookingDate)}</span>
                         <span>DP: {formatDate(record.dpDate)}</span>
                         <span>FP: {formatDate(record.fpDate)}</span>
-                        <span>Received by: <span className="font-semibold text-gray-700">{record.receivedBy ?? "—"}</span></span>
+                        <span>Received by: <span className="font-semibold text-gray-700">{record.receiverNames?.length ? record.receiverNames.join(", ") : record.receivedBy ?? "—"}</span></span>
                       </>
                     ) : (
                       <>
