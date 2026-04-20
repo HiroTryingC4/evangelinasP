@@ -1,3 +1,6 @@
+import { config } from "dotenv";
+config({ path: ".env.local" });
+
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
@@ -449,15 +452,15 @@ const aprilUpdates = [
     hasConflict: "0 Conflict",
   },
   {
-    guestName: "Kevin Gambian",
+    guestName: "Kevin Gamban",
     unit: "1116",
-    totalFee: 2000,
+    totalFee: 1999,
     dpAmount: 350,
     dpReceivedBy: "REIMAR",
     fpAmount: 650,
     fpReceivedBy: "REIMAR",
-    remainingBalance: 1000,
-    paymentStatus: "1000 Conflict",
+    remainingBalance: 999,
+    paymentStatus: "Partial Payment",
     hasConflict: "0 Conflict",
   },
   {
