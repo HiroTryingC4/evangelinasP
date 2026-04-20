@@ -136,36 +136,12 @@ export default function PaymentsPage() {
     if (!isInitialLoad) setRefreshing(true);
 
     Promise.all([
-      fetch(`/api/bookings?view=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/payments?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
       fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
     ])
-      .then(([bookings, settings]) => {
-        const bookingRowsRaw: BookingRecord[] = Array.isArray(bookings) ? bookings : [];
-        const bookingRows: PaymentRecord[] = bookingRowsRaw.map((booking) => ({
-          id: `booking-${booking.id}`,
-          bookingId: booking.id,
-          guestName: booking.guestName,
-          unit: booking.unit,
-          normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
-          paymentType: "BK",
-          amount: Number(booking.totalFee ?? 0),
-          paymentDate: booking.checkIn,
-          checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
-          method: booking.dpMethod || booking.fpMethod,
-          receivedBy: booking.dpReceivedBy || booking.fpReceivedBy,
-          bookingDate: booking.checkIn,
-          checkInTime: booking.checkInTime,
-          checkOutTime: booking.checkOutTime,
-          paymentStatus: booking.paymentStatus,
-          remainingBalance: Number(booking.remainingBalance ?? 0),
-          dpDate: booking.dpDate,
-          fpDate: booking.fpDate,
-          dpAmount: booking.dpAmount,
-          fpAmount: booking.fpAmount,
-          totalFee: booking.totalFee,
-        }));
-
-        setRecords(bookingRows);
+      .then(([paymentData, settings]) => {
+        const paymentRecords: PaymentRecord[] = Array.isArray(paymentData.records) ? paymentData.records : [];
+        setRecords(paymentRecords);
 
         if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
           setReceivers(settings.receivers);
@@ -184,36 +160,12 @@ export default function PaymentsPage() {
     return subscribeBookingsChanged(() => {
       setRefreshing(true);
       Promise.all([
-        fetch(`/api/bookings?view=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`/api/payments?scope=all&_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
         fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
       ])
-        .then(([bookings, settings]) => {
-          const bookingRowsRaw: BookingRecord[] = Array.isArray(bookings) ? bookings : [];
-          const bookingRows: PaymentRecord[] = bookingRowsRaw.map((booking) => ({
-            id: `booking-${booking.id}`,
-            bookingId: booking.id,
-            guestName: booking.guestName,
-            unit: booking.unit,
-            normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
-            paymentType: "BK",
-            amount: Number(booking.totalFee ?? 0),
-            paymentDate: booking.checkIn,
-            checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
-            method: booking.dpMethod || booking.fpMethod,
-            receivedBy: booking.dpReceivedBy || booking.fpReceivedBy,
-            bookingDate: booking.checkIn,
-            checkInTime: booking.checkInTime,
-            checkOutTime: booking.checkOutTime,
-            paymentStatus: booking.paymentStatus,
-            remainingBalance: Number(booking.remainingBalance ?? 0),
-            dpDate: booking.dpDate,
-            fpDate: booking.fpDate,
-            dpAmount: booking.dpAmount,
-            fpAmount: booking.fpAmount,
-            totalFee: booking.totalFee,
-          }));
-
-          setRecords(bookingRows);
+        .then(([paymentData, settings]) => {
+          const paymentRecords: PaymentRecord[] = Array.isArray(paymentData.records) ? paymentData.records : [];
+          setRecords(paymentRecords);
 
           if (Array.isArray(settings.receivers) && settings.receivers.length > 0) {
             setReceivers(settings.receivers);
@@ -227,7 +179,7 @@ export default function PaymentsPage() {
           setRefreshing(false);
         });
     });
-  }, [weeklyDate, scopeFilter]);
+  }, []);
 
   const toggleUnit = (unit: string) => {
     setUnitFilters((current) => {
