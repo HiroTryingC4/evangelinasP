@@ -327,7 +327,7 @@ function BookingsContent() {
         <BookingForm
           booking={editBooking}
           onClose={() => { setShowForm(false); setEditBooking(null); router.replace("/bookings"); }}
-          onSaved={fetchBookings}
+          onSaved={() => { emitBookingsChanged(); fetchBookings(); }}
         />
       )}
     </div>
