@@ -192,6 +192,17 @@ function PaymentsContent() {
     });
   }, [scopeFilter, weeklyDate, monthlyDate]);
 
+  // Refresh payments when page becomes visible (handles tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadPayments();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [scopeFilter, weeklyDate, monthlyDate]);
+
   const toggleUnit = (unit: string) => {
     setUnitFilters((current) => {
       if (current.includes(unit)) return current.filter((item) => item !== unit);
