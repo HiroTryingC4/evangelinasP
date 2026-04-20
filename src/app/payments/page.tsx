@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CalendarDays, CreditCard, Users, Search, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
@@ -68,7 +68,7 @@ type ReceiverAccount = {
   availableBalance: number;
 };
 
-export default function PaymentsPage() {
+function PaymentsContent() {
   const normalizeDateInput = (value: string): string => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
     const slash = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -81,31 +81,34 @@ export default function PaymentsPage() {
     return toYMD(new Date());
   };
 
-  const [records, setRecords] = useState<PaymentRecord[]>([]);
   const searchParams = useSearchParams();
+  const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [receiverFilters, setReceiverFilters] = useState<string[]>([]);
   const [unitFilters, setUnitFilters] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [balanceFilter, setBalanceFilter] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "month-second-half" | "all">(() => {
-    const scope = searchParams.get("scope");
-    return scope === "week" || scope === "month" || scope === "month-half" || scope === "month-second-half" || scope === "all"
-      ? scope
-      : "all";
-  });
+  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "month-second-half" | "all">("all");
   const [search, setSearch] = useState("");
   const [compactMode, setCompactMode] = useState(false);
   const [receivers, setReceivers] = useState<string[]>([]);
   const [units, setUnits] = useState<string[]>([]);
-  const [weeklyDate, setWeeklyDate] = useState(() => {
-    const value = searchParams.get("weeklyDate");
-    return value ? normalizeDateInput(value) : toYMD(new Date());
-  });
-  const [monthlyDate, setMonthlyDate] = useState(() => {
-    const value = searchParams.get("monthlyDate");
-    return value ? value : toYMD(new Date()).slice(0, 7);
-  });
+  const [weeklyDate, setWeeklyDate] = useState(toYMD(new Date()));
+  const [monthlyDate, setMonthlyDate] = useState(toYMD(new Date()).slice(0, 7));
+  const [mounted, setMounted] = useState(false);
+
+  // Read search params after component mounts
+  useEffect(() => {
+    const scope = searchParams.get("scope");
+    if (scope === "week" || scope === "month" || scope === "month-half" || scope === "month-second-half") {
+      setScopeFilter(scope);
+    }
+    const weekValue = searchParams.get("weeklyDate");
+    if (weekValue) setWeeklyDate(normalizeDateInput(weekValue));
+    const monthValue = searchParams.get("monthlyDate");
+    if (monthValue) setMonthlyDate(monthValue);
+    setMounted(true);
+  }, [searchParams]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -276,7 +279,7 @@ export default function PaymentsPage() {
     return { outstandingCount, totalAmount, paidAmount, remainingAmount };
   }, [filtered]);
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -593,5 +596,17 @@ export default function PaymentsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    }>
+      <PaymentsContent />
+    </Suspense>
   );
 }
