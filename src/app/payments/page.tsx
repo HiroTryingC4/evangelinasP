@@ -70,7 +70,7 @@ export default function PaymentsPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [balanceFilter, setBalanceFilter] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "month-second-half" | "all">("week");
+  const [scopeFilter, setScopeFilter] = useState<"week" | "month" | "month-half" | "month-second-half" | "all">("all");
   const [search, setSearch] = useState("");
   const [compactMode, setCompactMode] = useState(false);
   const [receivers, setReceivers] = useState<string[]>([]);
