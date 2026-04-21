@@ -285,10 +285,21 @@ function PaymentsContent() {
 
   const totals = useMemo(() => {
     const bookingRecords = filtered.filter((r) => r.paymentType === "BK");
-    const totalAmount = bookingRecords.reduce((sum, record) => sum + getBookingTotal(record), 0);
-    const paidAmount = bookingRecords.reduce((sum, record) => sum + getPaidAmount(record), 0);
-    const remainingAmount = bookingRecords.reduce((sum, record) => sum + Number(record.remainingBalance ?? 0), 0);
-    const outstandingCount = filtered.filter((r) => r.remainingBalance > 0).length;
+    
+    // Group records by bookingId to avoid double-counting DP/FP splits
+    const bookingMap = new Map<number, PaymentRecord>();
+    bookingRecords.forEach((record) => {
+      if (!bookingMap.has(record.bookingId)) {
+        bookingMap.set(record.bookingId, record);
+      }
+    });
+    
+    const uniqueBookings = Array.from(bookingMap.values());
+    const totalAmount = uniqueBookings.reduce((sum, record) => sum + getBookingTotal(record), 0);
+    const paidAmount = uniqueBookings.reduce((sum, record) => sum + getPaidAmount(record), 0);
+    const remainingAmount = uniqueBookings.reduce((sum, record) => sum + Number(record.remainingBalance ?? 0), 0);
+    const outstandingCount = filtered.filter((r) => r.remainingBalance > 0 && r.paymentType === "BK").length;
+    
     return { outstandingCount, totalAmount, paidAmount, remainingAmount };
   }, [filtered]);
 
