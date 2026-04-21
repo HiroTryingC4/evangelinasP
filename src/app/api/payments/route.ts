@@ -39,6 +39,10 @@ export async function GET(req: NextRequest) {
     ]);
 
     console.log(`[Payments API] Fetched ${allBookings.length} bookings at ${new Date().toISOString()}`);
+    
+    // Log the last 5 bookings to see what's newest
+    const last5 = allBookings.slice(0, 5).map(b => ({ id: b.id, name: b.guestName, updated: b.updatedAt }));
+    console.log('[Payments API] Last 5 bookings:', JSON.stringify(last5));
 
     const personMap = new Map(allPersons.map((p) => [p.id, p.name]));
 
