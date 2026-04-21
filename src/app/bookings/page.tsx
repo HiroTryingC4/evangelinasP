@@ -179,6 +179,26 @@ function BookingsContent() {
     (a, b) => new Date(a).getTime() - new Date(b).getTime()
   );
 
+  // Calculate booking count per guest
+  const guestBookingCounts = bookings.reduce((counts, booking) => {
+    const name = booking.guestName.toLowerCase();
+    counts[name] = (counts[name] || 0) + 1;
+    return counts;
+  }, {} as Record<string, number>);
+
+  const getBookingCountBadge = (guestName: string) => {
+    const count = guestBookingCounts[guestName.toLowerCase()] || 1;
+    if (count === 1) {
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">1st booking</span>;
+    } else if (count === 2) {
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">2nd booking</span>;
+    } else if (count === 3) {
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">3rd booking</span>;
+    } else {
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">Returning ({count}x)</span>;
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -268,7 +288,10 @@ function BookingsContent() {
                     <div key={b.id} className="card p-3 sm:p-4">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{b.guestName}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-gray-900 truncate">{b.guestName}</p>
+                            {getBookingCountBadge(b.guestName)}
+                          </div>
                           {b.contactNo && (
                             <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                               <Phone className="w-3 h-3" />{b.contactNo}
