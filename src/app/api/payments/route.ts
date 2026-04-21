@@ -93,6 +93,8 @@ export async function GET(req: NextRequest) {
     });
 
     const allRecords = records;
+    
+    console.log(`[Payments API] Created ${allRecords.length} payment records from ${allBookings.length} bookings`);
 
     const filtered = allRecords.filter((record) => {
       if (type && record.paymentType !== type) return false;
@@ -117,6 +119,8 @@ export async function GET(req: NextRequest) {
 
       return true;
     });
+    
+    console.log(`[Payments API] After filtering: ${filtered.length} records (scope: ${scope}, type: ${type}, receiver: ${receiver})`);
 
     filtered.sort((a, b) => {
       const dateAKey = a.paymentType === "BK"
