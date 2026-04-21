@@ -5,6 +5,7 @@ import { bookings, persons } from "@/lib/schema";
 import { toYMD } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0; // Disable all caching
 
 // Debug: Force recompile
 console.log("[Payments API] Loaded at", new Date().toISOString());
@@ -33,8 +34,9 @@ export async function GET(req: NextRequest) {
 
     const monthKey = monthlyDateParam || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
 
+    // Force fresh query with explicit ordering
     const [allBookings, allPersons] = await Promise.all([
-      db.select().from(bookings).orderBy(desc(bookings.updatedAt), desc(bookings.id)),
+      db.select().from(bookings).orderBy(desc(bookings.id)),
       db.select().from(persons),
     ]);
 
