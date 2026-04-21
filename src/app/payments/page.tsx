@@ -184,13 +184,15 @@ function PaymentsContent() {
   useEffect(() => {
     const isInitialLoad = records.length === 0 && loading;
     loadPayments(isInitialLoad);
-  }, [scopeFilter, weeklyDate, monthlyDate]);
+  }, [scopeFilter, weeklyDate, monthlyDate, loading, records.length]);
 
   useEffect(() => {
-    return subscribeBookingsChanged(() => {
-      loadPayments();
+    const unsubscribe = subscribeBookingsChanged(() => {
+      console.log("[Payments] Bookings changed, refreshing payments...");
+      loadPayments(false);
     });
-  }, [scopeFilter, weeklyDate, monthlyDate]);
+    return unsubscribe;
+  }, []);
 
   // Refresh payments when page becomes visible (handles tab switching)
   useEffect(() => {
