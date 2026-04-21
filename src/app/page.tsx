@@ -123,6 +123,12 @@ export default function DashboardPage() {
     </div>
   );
 
+  if (!data) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-gray-500">No data available</div>
+    </div>
+  );
+
   const {
     summary,
     revenuePerUnit,

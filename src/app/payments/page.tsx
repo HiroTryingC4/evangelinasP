@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CalendarDays, CreditCard, Users, Search, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
@@ -113,7 +113,7 @@ function PaymentsContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(false);
 
-  const loadPayments = async (isInitialLoad = false) => {
+  const loadPayments = useCallback(async (isInitialLoad = false) => {
     if (!isInitialLoad) setRefreshing(true);
 
     const params = new URLSearchParams({ scope: scopeFilter, _ts: Date.now().toString() });
@@ -141,7 +141,7 @@ function PaymentsContent() {
 
     setLoading(false);
     setRefreshing(false);
-  };
+  }, [scopeFilter, weeklyDate, monthlyDate]);
 
   const normalizeName = (value: string | null | undefined) => String(value ?? "").trim().toLowerCase();
 
@@ -188,22 +188,35 @@ function PaymentsContent() {
 
   useEffect(() => {
     const unsubscribe = subscribeBookingsChanged(() => {
-      console.log("[Payments] Bookings changed, refreshing payments...");
+      console.log("[Payments] ✅ Bookings changed event received! Refreshing payments...");
       loadPayments(false);
     });
-    return unsubscribe;
-  }, []);
+    console.log("[Payments] 📡 Subscribed to bookings changes");
+    return () => {
+      console.log("[Payments] 🔌 Unsubscribed from bookings changes");
+      unsubscribe();
+    };
+  }, [loadPayments]);
+
+  // Backup: Poll for new bookings every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log("[Payments] 🔄 Auto-polling for updates...");
+      loadPayments(false);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [loadPayments]);
 
   // Refresh payments when page becomes visible (handles tab switching)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        loadPayments();
+        loadPayments(false);
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [scopeFilter, weeklyDate, monthlyDate]);
+  }, [loadPayments]);
 
   const toggleUnit = (unit: string) => {
     setUnitFilters((current) => {
@@ -318,9 +331,18 @@ function PaymentsContent() {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Payment Records</h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Track who received each down payment and full payment</p>
         </div>
-        <Link href="/settings" className="btn-secondary w-fit">
-          <Users className="w-4 h-4" /> Manage receivers
-        </Link>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => loadPayments(false)} 
+            disabled={refreshing}
+            className="btn-secondary w-fit"
+          >
+            {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
+          </button>
+          <Link href="/settings" className="btn-secondary w-fit">
+            <Users className="w-4 h-4" /> Manage receivers
+          </Link>
+        </div>
       </div>
 
       <div className="card p-4 sm:p-5">
@@ -584,9 +606,12 @@ function PaymentsContent() {
                     {record.paymentType === "BK" ? (
                       <>
                         <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />Check-in: {formatDate(record.bookingDate)}</span>
-                        <span>DP: {formatDate(record.dpDate)}</span>
-                        <span>FP: {formatDate(record.fpDate)}</span>
-                        <span>Received by: <span className="font-semibold text-gray-700">{record.receiverNames?.length ? record.receiverNames.join(", ") : record.receivedBy ?? "—"}</span></span>
+                        {Number(record.dpAmount ?? 0) > 0 && (
+                          <span>DP: {formatDate(record.dpDate)} → <span className="font-semibold text-gray-700">{record.dpReceivedBy ?? "—"}</span></span>
+                        )}
+                        {Number(record.fpAmount ?? 0) > 0 && (
+                          <span>FP: {formatDate(record.fpDate)} → <span className="font-semibold text-gray-700">{record.fpReceivedBy ?? "—"}</span></span>
+                        )}
                       </>
                     ) : (
                       <>
