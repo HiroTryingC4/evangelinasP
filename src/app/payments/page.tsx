@@ -116,7 +116,13 @@ function PaymentsContent() {
   const loadPayments = useCallback(async (isInitialLoad = false) => {
     if (!isInitialLoad) setRefreshing(true);
 
-    const params = new URLSearchParams({ scope: scopeFilter, _ts: Date.now().toString() });
+    // Force fresh data with timestamp
+    const timestamp = Date.now();
+    const params = new URLSearchParams({ 
+      scope: scopeFilter, 
+      _ts: timestamp.toString(),
+      _cache: Math.random().toString(36).substring(7) // Extra cache buster
+    });
     if (scopeFilter === "week") {
       params.set("weeklyDate", weeklyDate);
     }
@@ -125,8 +131,14 @@ function PaymentsContent() {
     }
 
     const [paymentData, settings] = await Promise.all([
-      fetch(`/api/payments?${params.toString()}`, { cache: "no-store" }).then((r) => r.json()),
-      fetch(`/api/settings?_ts=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/payments?${params.toString()}`, { 
+        cache: "no-store",
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      }).then((r) => r.json()),
+      fetch(`/api/settings?_ts=${timestamp}`, { cache: "no-store" }).then((r) => r.json()),
     ]);
 
     const paymentRecords: PaymentRecord[] = Array.isArray(paymentData.records) ? paymentData.records : [];
