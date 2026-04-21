@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { X, AlertTriangle, CheckCircle, Loader2, CalendarDays, Clock } from "lucide-react";
+import { emitBookingsChanged } from "@/lib/bookings-sync";
 import { UNITS, PAYMENT_METHODS, STAFF, calcPaymentStatus, calcRemaining, formatPHP, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
@@ -171,6 +172,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
         const errorText = await res.text();
         throw new Error(errorText || `HTTP ${res.status}`);
       }
+      emitBookingsChanged();
       onSaved();
       onClose();
     } catch (e) {

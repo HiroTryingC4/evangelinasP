@@ -37,43 +37,107 @@ export async function GET(req: NextRequest) {
 
     const personMap = new Map(allPersons.map((p) => [p.id, p.name]));
 
-    const records = allBookings.map((booking) => {
+    const records = allBookings.flatMap((booking) => {
       const totalFee = Math.max(0, Number(booking.totalFee ?? 0));
       const dpRaw = Math.max(0, Number(booking.dpAmount ?? 0));
       const fpRaw = Math.max(0, Number(booking.fpAmount ?? 0));
-      const collectedTotal = Math.min(totalFee, dpRaw + fpRaw);
+      const checkInDateKey = booking.checkInDateKey || toYMD(booking.checkIn);
+      
+      const paymentRecords = [];
 
-      const receivers = Array.from(new Set([
-        String(booking.dpReceivedBy ?? "").trim(),
-        String(booking.fpReceivedBy ?? "").trim(),
-      ].filter(Boolean)));
+      // Create DP record if there's a down payment
+      if (dpRaw > 0) {
+        paymentRecords.push({
+          id: `booking-${booking.id}-dp`,
+          bookingId: booking.id,
+          guestName: booking.guestName,
+          unit: booking.unit,
+          normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
+          paymentType: "BK" as const,
+          portionType: "DP" as const,
+          amount: dpRaw,
+          paymentDate: booking.dpDate || booking.checkIn,
+          checkInDateKey,
+          method: booking.dpMethod,
+          receivedBy: String(booking.dpReceivedBy ?? "").trim() || null,
+          receiverNames: String(booking.dpReceivedBy ?? "").trim() ? [String(booking.dpReceivedBy).trim()] : [],
+          dpReceivedBy: booking.dpReceivedBy,
+          fpReceivedBy: booking.fpReceivedBy,
+          bookingDate: booking.checkIn,
+          checkInTime: booking.checkInTime,
+          checkOutTime: booking.checkOutTime,
+          paymentStatus: booking.paymentStatus,
+          remainingBalance: booking.remainingBalance,
+          dpDate: booking.dpDate,
+          fpDate: booking.fpDate,
+          dpAmount: booking.dpAmount,
+          fpAmount: booking.fpAmount,
+          totalFee: booking.totalFee,
+        });
+      }
 
-      return {
-        id: `booking-${booking.id}`,
-        bookingId: booking.id,
-        guestName: booking.guestName,
-        unit: booking.unit,
-        normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
-        paymentType: "BK" as const,
-        amount: collectedTotal,
-        paymentDate: booking.checkIn,
-        checkInDateKey: booking.checkInDateKey || toYMD(booking.checkIn),
-        method: booking.fpMethod || booking.dpMethod,
-        receivedBy: receivers.join(", ") || null,
-        receiverNames: receivers,
-        dpReceivedBy: booking.dpReceivedBy,
-        fpReceivedBy: booking.fpReceivedBy,
-        bookingDate: booking.checkIn,
-        checkInTime: booking.checkInTime,
-        checkOutTime: booking.checkOutTime,
-        paymentStatus: booking.paymentStatus,
-        remainingBalance: booking.remainingBalance,
-        dpDate: booking.dpDate,
-        fpDate: booking.fpDate,
-        dpAmount: booking.dpAmount,
-        fpAmount: booking.fpAmount,
-        totalFee: booking.totalFee,
-      };
+      // Create FP record if there's a full payment
+      if (fpRaw > 0) {
+        paymentRecords.push({
+          id: `booking-${booking.id}-fp`,
+          bookingId: booking.id,
+          guestName: booking.guestName,
+          unit: booking.unit,
+          normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
+          paymentType: "BK" as const,
+          portionType: "FP" as const,
+          amount: fpRaw,
+          paymentDate: booking.fpDate || booking.checkIn,
+          checkInDateKey,
+          method: booking.fpMethod,
+          receivedBy: String(booking.fpReceivedBy ?? "").trim() || null,
+          receiverNames: String(booking.fpReceivedBy ?? "").trim() ? [String(booking.fpReceivedBy).trim()] : [],
+          dpReceivedBy: booking.dpReceivedBy,
+          fpReceivedBy: booking.fpReceivedBy,
+          bookingDate: booking.checkIn,
+          checkInTime: booking.checkInTime,
+          checkOutTime: booking.checkOutTime,
+          paymentStatus: booking.paymentStatus,
+          remainingBalance: booking.remainingBalance,
+          dpDate: booking.dpDate,
+          fpDate: booking.fpDate,
+          dpAmount: booking.dpAmount,
+          fpAmount: booking.fpAmount,
+          totalFee: booking.totalFee,
+        });
+      }
+
+      // If no DP or FP but has total fee (to track the booking in payments)
+      if (dpRaw === 0 && fpRaw === 0 && totalFee > 0) {
+        paymentRecords.push({
+          id: `booking-${booking.id}`,
+          bookingId: booking.id,
+          guestName: booking.guestName,
+          unit: booking.unit,
+          normalizedUnit: String(booking.unit ?? "").replace(/^Unit\s*/i, "").trim(),
+          paymentType: "BK" as const,
+          amount: 0,
+          paymentDate: booking.checkIn,
+          checkInDateKey,
+          method: null,
+          receivedBy: null,
+          receiverNames: [],
+          dpReceivedBy: booking.dpReceivedBy,
+          fpReceivedBy: booking.fpReceivedBy,
+          bookingDate: booking.checkIn,
+          checkInTime: booking.checkInTime,
+          checkOutTime: booking.checkOutTime,
+          paymentStatus: booking.paymentStatus,
+          remainingBalance: booking.remainingBalance,
+          dpDate: booking.dpDate,
+          fpDate: booking.fpDate,
+          dpAmount: booking.dpAmount,
+          fpAmount: booking.fpAmount,
+          totalFee: booking.totalFee,
+        });
+      }
+
+      return paymentRecords;
     });
 
     const allRecords = records;
