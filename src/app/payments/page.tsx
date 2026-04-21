@@ -614,16 +614,18 @@ function PaymentsContent() {
                   </span>
                 </div>
                 <p className={`${compactMode ? "text-sm" : ""} font-semibold text-gray-900 truncate`}>{record.guestName}</p>
-                <div className={`${compactMode ? "mt-0.5" : "mt-1"} flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500`}>
+                <div className={`${compactMode ? "mt-0.5" : "mt-1"} flex flex-col gap-1 text-xs text-gray-500`}>
                     {record.paymentType === "BK" ? (
                       <>
                         <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />Check-in: {formatDate(record.bookingDate)}</span>
-                        {Number(record.dpAmount ?? 0) > 0 && (
-                          <span>DP: {formatDate(record.dpDate)} → <span className="font-semibold text-gray-700">{record.dpReceivedBy ?? "—"}</span></span>
-                        )}
-                        {Number(record.fpAmount ?? 0) > 0 && (
-                          <span>FP: {formatDate(record.fpDate)} → <span className="font-semibold text-gray-700">{record.fpReceivedBy ?? "—"}</span></span>
-                        )}
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          {Number(record.dpAmount ?? 0) > 0 && (
+                            <span className="text-blue-700 font-medium">DP: ₱{Number(record.dpAmount ?? 0).toLocaleString()} → {record.dpReceivedBy ?? "—"}</span>
+                          )}
+                          {Number(record.fpAmount ?? 0) > 0 && (
+                            <span className="text-green-700 font-medium">FP: ₱{Number(record.fpAmount ?? 0).toLocaleString()} → {record.fpReceivedBy ?? "—"}</span>
+                          )}
+                        </div>
                       </>
                     ) : (
                       <>
