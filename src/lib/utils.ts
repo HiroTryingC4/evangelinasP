@@ -148,7 +148,7 @@ export function getSundayToSaturdayWeek(date: string | Date) {
 
 export const UNITS = ["1116", "1118", "1245", "1558", "1845", "2208", "2209"];
 export const PAYMENT_METHODS = ["Cash", "GCash", "Bank Transfer"];
-export const STAFF = ["SIR JAMES", "SIR MIKE", "RIEMAR"];
+export const STAFF = ["SIR JAMES", "SIR MIKE", "RIEMAR", "NONE", "JAYJAY"];
 
 export const STATUS_COLOR: Record<string, string> = {
   "Fully Paid": "bg-green-100 text-green-800",
