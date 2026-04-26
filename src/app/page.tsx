@@ -17,6 +17,7 @@ function toYMD(date: Date): string {
 
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
+  const [error, setError] = useState("");
   const [units, setUnits] = useState<string[]>(UNITS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,8 +41,13 @@ export default function DashboardPage() {
     params.set("_ts", Date.now().toString());
     try {
       const res = await fetch(`/api/dashboard?${params.toString()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Dashboard API ${res.status}`);
       const json = await res.json();
       setData(json);
+      setError("");
+    } catch {
+      setError("Failed to load dashboard data. Please refresh.");
+      setData(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -125,7 +131,7 @@ export default function DashboardPage() {
 
   if (!data) return (
     <div className="flex items-center justify-center h-64">
-      <div className="text-gray-500">No data available</div>
+      <div className="text-gray-500">{error || "No data available"}</div>
     </div>
   );
 
@@ -135,9 +141,26 @@ export default function DashboardPage() {
     monthlyRevenue,
     outstanding,
     today: todayData,
-    weekly,
-    weeklyAnalysis,
+    weekly: weeklyRaw,
+    weeklyAnalysis: weeklyAnalysisRaw,
   } = data;
+
+  const weekly = weeklyRaw ?? {
+    revenue: 0,
+    guests: 0,
+    perUnit: [] as any[],
+    startDate: toYMD(new Date()),
+    endDate: toYMD(new Date()),
+  };
+
+  const weeklyAnalysis = weeklyAnalysisRaw ?? {
+    label: "All Units",
+    revenue: 0,
+    guests: 0,
+    startDate: weekly.startDate,
+    endDate: weekly.endDate,
+    days: [] as any[],
+  };
 
   const weekRevenueDisplay = weeklyAnalysis?.revenue ?? weekly?.revenue ?? 0;
   const weekGuestsDisplay = weeklyAnalysis?.guests ?? weekly?.guests ?? 0;

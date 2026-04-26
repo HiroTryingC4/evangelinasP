@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { ensureBookingSourceColumn } from "@/lib/db-health";
 import { bookings } from "@/lib/schema";
 import { and, eq, gt, lt, ne } from "drizzle-orm";
 import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToPHDate, toYMD, normalizeBookingSource } from "@/lib/utils";
@@ -16,6 +17,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await ensureBookingSourceColumn();
+
     const [booking] = await db
       .select()
       .from(bookings)
@@ -37,6 +40,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    await ensureBookingSourceColumn();
+
     const body = await req.json();
 
     const dp    = Number(body.dpAmount)  || 0;
@@ -133,6 +138,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    await ensureBookingSourceColumn();
+
     await db.delete(bookings).where(eq(bookings.id, Number(params.id)));
     return NextResponse.json({ success: true });
   } catch (e) {

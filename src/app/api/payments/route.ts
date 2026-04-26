@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { desc } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { ensureBookingSourceColumn } from "@/lib/db-health";
 import { bookings, persons } from "@/lib/schema";
 import { toYMD } from "@/lib/utils";
 
@@ -12,6 +13,8 @@ console.log("[Payments API] Loaded at", new Date().toISOString());
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureBookingSourceColumn();
+
     const { searchParams } = req.nextUrl;
     const type = searchParams.get("type");
     const receiver = searchParams.get("receiver");

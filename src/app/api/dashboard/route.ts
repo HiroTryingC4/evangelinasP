@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { ensureBookingSourceColumn } from "@/lib/db-health";
 import { bookings, unitConfigs } from "@/lib/schema";
 import { asc } from "drizzle-orm";
 import { UNITS as DEFAULT_UNITS, getSundayToSaturdayWeek, toYMD } from "@/lib/utils";
@@ -9,6 +10,8 @@ export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureBookingSourceColumn();
+
     const { searchParams } = req.nextUrl;
 
     // Date filter defaults to current year

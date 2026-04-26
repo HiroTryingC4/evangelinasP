@@ -19,7 +19,10 @@ export default function TodayPage() {
 
   useEffect(() => {
     fetch(`/api/dashboard?_ts=${Date.now()}`, { cache: "no-store" })
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Dashboard API ${r.status}`);
+        return r.json();
+      })
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => { setError("Failed to load. Please refresh."); setLoading(false); });
   }, []);
@@ -42,7 +45,14 @@ export default function TodayPage() {
     <div className="card p-6 text-center text-red-600">{error}</div>
   );
 
-  const { today: todayData, weekly } = data;
+  const todayData = data?.today ?? { date: todayStr, guests: [] as any[] };
+  const weekly = data?.weekly ?? {
+    startDate: todayStr,
+    endDate: todayStr,
+    revenue: 0,
+    guests: 0,
+    perUnit: [] as any[],
+  };
   const guests = todayData?.guests ?? [];
   const todayKey = todayData?.date ?? toYMD(new Date());
   const checkIns = guests.filter((g: any) => {
@@ -104,7 +114,7 @@ export default function TodayPage() {
               </div>
               <div className="space-y-2">
                 {checkIns.map((g: any) => (
-                  <GuestCard key={g.id} guest={g} type="checkin" todayStr={todayData.date} />
+                  <GuestCard key={g.id} guest={g} type="checkin" todayStr={todayData.date ?? todayKey} />
                 ))}
               </div>
             </div>
@@ -121,7 +131,7 @@ export default function TodayPage() {
               </div>
               <div className="space-y-2">
                 {checkOuts.map((g: any) => (
-                  <GuestCard key={g.id} guest={g} type="checkout" todayStr={todayData.date} />
+                  <GuestCard key={g.id} guest={g} type="checkout" todayStr={todayData.date ?? todayKey} />
                 ))}
               </div>
             </div>

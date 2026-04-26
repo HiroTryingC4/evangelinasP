@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { ensureBookingSourceColumn } from "@/lib/db-health";
 import { bookings } from "@/lib/schema";
 import { eq, and, lt, gt, asc } from "drizzle-orm";
 import { calcPaymentStatus, calcRemaining, parseYMDToPHDate, toYMD, hasUnitTimeConflict, normalizeBookingSource } from "@/lib/utils";
@@ -15,6 +16,8 @@ export const dynamic = "force-dynamic";
 // GET /api/bookings?unit=1558&status=DP+Paid
 export async function GET(req: NextRequest) {
   try {
+    await ensureBookingSourceColumn();
+
     const { searchParams } = req.nextUrl;
     const unit   = searchParams.get("unit");
     const status = searchParams.get("status");
@@ -57,6 +60,8 @@ export async function GET(req: NextRequest) {
 // POST /api/bookings
 export async function POST(req: NextRequest) {
   try {
+    await ensureBookingSourceColumn();
+
     const body = await req.json();
 
     const dp    = Number(body.dpAmount)  || 0;
