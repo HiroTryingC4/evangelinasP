@@ -11,6 +11,7 @@ type MethodName = "Cash" | "GCash" | "Bank Transfer";
 const SOURCE_ORDER: SourceName[] = ["Direct", "TikTok", "Facebook", "Airbnb"];
 const METHOD_ORDER: MethodName[] = ["Cash", "GCash", "Bank Transfer"];
 const CORE_UNITS = new Set(["1116", "1118", "1558", "1845"]);
+const BELOW_UNITS = new Set(["2208", "2209", "1245"]);
 
 type WeeklyRow = {
   dayKey: string;
@@ -244,7 +245,7 @@ export default function SourceReportPage() {
   );
 
   const otherBookings = useMemo(
-    () => bookings.filter((b) => !CORE_UNITS.has(String(b.unit ?? "").replace(/^Unit\s*/i, "").trim())),
+    () => bookings.filter((b) => BELOW_UNITS.has(String(b.unit ?? "").replace(/^Unit\s*/i, "").trim())),
     [bookings]
   );
 
@@ -429,7 +430,7 @@ export default function SourceReportPage() {
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
           <div>
             <p className="text-sm font-semibold text-gray-900">Other units record (below core units)</p>
-            <p className="text-xs text-gray-500 mt-0.5">All units except 1116, 1118, 1558, 1845</p>
+            <p className="text-xs text-gray-500 mt-0.5">Units 2208, 2209, and 1245 only</p>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium inline-flex items-center gap-1">
