@@ -31,6 +31,8 @@ type WeeklyReport = {
   };
 };
 
+type ReceiverFilter = "__all__" | string;
+
 function addDays(baseYMD: string, days: number): string {
   const date = new Date(`${baseYMD}T12:00:00`);
   date.setDate(date.getDate() + days);
@@ -62,17 +64,73 @@ function getMethodAmounts(booking: Booking): Record<MethodName, number> {
   return amounts;
 }
 
-function buildWeeklyReport(sourceBookings: Booking[], weekStart: string, weekEnd: string): WeeklyReport {
+function normalizeReceiver(value: string | null | undefined): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function bookingMatchesReceiver(booking: Booking, selectedReceiver: ReceiverFilter): boolean {
+  if (selectedReceiver === "__all__") return true;
+
+  const selected = normalizeReceiver(selectedReceiver);
+  const dpReceiver = normalizeReceiver(booking.dpReceivedBy);
+  const fpReceiver = normalizeReceiver(booking.fpReceivedBy);
+
+  return dpReceiver === selected || fpReceiver === selected;
+}
+
+function getMethodAmountsForReceiver(
+  booking: Booking,
+  selectedReceiver: ReceiverFilter
+): Record<MethodName, number> {
+  if (selectedReceiver === "__all__") return getMethodAmounts(booking);
+
+  const selected = normalizeReceiver(selectedReceiver);
+  const dpReceiver = normalizeReceiver(booking.dpReceivedBy);
+  const fpReceiver = normalizeReceiver(booking.fpReceivedBy);
+  const dpIncluded = dpReceiver === selected;
+  const fpIncluded = fpReceiver === selected;
+
+  const dpMethod = String(booking.dpMethod ?? "").trim().toLowerCase();
+  const fpMethod = String(booking.fpMethod ?? "").trim().toLowerCase();
+
+  const amounts: Record<MethodName, number> = {
+    Cash: 0,
+    GCash: 0,
+    "Bank Transfer": 0,
+  };
+
+  const addAmount = (method: string, amount: number) => {
+    const safeAmount = Math.max(0, amount);
+    if (!safeAmount) return;
+
+    if (method === "cash") amounts.Cash += safeAmount;
+    else if (method === "gcash") amounts.GCash += safeAmount;
+    else if (method === "bank transfer") amounts["Bank Transfer"] += safeAmount;
+  };
+
+  if (dpIncluded) addAmount(dpMethod, Number(booking.dpAmount ?? 0));
+  if (fpIncluded) addAmount(fpMethod, Number(booking.fpAmount ?? 0));
+
+  return amounts;
+}
+
+function buildWeeklyReport(
+  sourceBookings: Booking[],
+  weekStart: string,
+  weekEnd: string,
+  selectedReceiver: ReceiverFilter
+): WeeklyReport {
   const rows = Array.from({ length: 7 }, (_, index) => {
     const dayKey = addDays(weekStart, index);
     const dayBookings = sourceBookings.filter((b) => (b.checkInDateKey || toYMD(b.checkIn)) === dayKey);
+    const dayRelevantBookings = dayBookings.filter((b) => bookingMatchesReceiver(b, selectedReceiver));
 
     const bySource = SOURCE_ORDER.reduce((acc, source) => {
       acc[source] = 0;
       return acc;
     }, {} as Record<SourceName, number>);
 
-    dayBookings.forEach((b) => {
+    dayRelevantBookings.forEach((b) => {
       const source = normalizeBookingSource(b.bookingSource) as SourceName;
       bySource[source] += 1;
     });
@@ -82,8 +140,8 @@ function buildWeeklyReport(sourceBookings: Booking[], weekStart: string, weekEnd
       return acc;
     }, {} as Record<MethodName, number>);
 
-    dayBookings.forEach((b) => {
-      const amounts = getMethodAmounts(b);
+    dayRelevantBookings.forEach((b) => {
+      const amounts = getMethodAmountsForReceiver(b, selectedReceiver);
       METHOD_ORDER.forEach((method) => {
         methodTotals[method] += amounts[method];
       });
@@ -98,7 +156,7 @@ function buildWeeklyReport(sourceBookings: Booking[], weekStart: string, weekEnd
         month: "short",
         day: "numeric",
       }),
-      bookings: dayBookings.length,
+      bookings: dayRelevantBookings.length,
       bySource,
       methods: methodTotals,
       paidTotal,
@@ -127,9 +185,11 @@ function buildWeeklyReport(sourceBookings: Booking[], weekStart: string, weekEnd
     return key >= weekStart && key <= weekEnd;
   });
 
-  weekBookings.forEach((b) => {
+  const weekRelevantBookings = weekBookings.filter((b) => bookingMatchesReceiver(b, selectedReceiver));
+
+  weekRelevantBookings.forEach((b) => {
     const source = normalizeBookingSource(b.bookingSource) as SourceName;
-    const amounts = getMethodAmounts(b);
+    const amounts = getMethodAmountsForReceiver(b, selectedReceiver);
     totals[source].bookings += 1;
     METHOD_ORDER.forEach((method) => {
       totals[source].methods[method] += amounts[method];
@@ -144,7 +204,7 @@ function buildWeeklyReport(sourceBookings: Booking[], weekStart: string, weekEnd
     summary: {
       totals,
       methodTotals,
-      totalBookings: weekBookings.length,
+      totalBookings: weekRelevantBookings.length,
       totalPaid,
     },
   };
@@ -154,6 +214,7 @@ export default function SourceReportPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
+  const [selectedReceiver, setSelectedReceiver] = useState<ReceiverFilter>("__all__");
 
   useEffect(() => {
     fetch("/api/bookings?view=all", { cache: "no-store" })
@@ -166,6 +227,17 @@ export default function SourceReportPage() {
 
   const week = useMemo(() => getSundayToSaturdayWeek(weeklyDate), [weeklyDate]);
 
+  const receivers = useMemo(() => {
+    const all = bookings.flatMap((b) => [b.dpReceivedBy, b.fpReceivedBy]);
+    return Array.from(
+      new Set(
+        all
+          .map((v) => String(v ?? "").trim())
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+  }, [bookings]);
+
   const coreBookings = useMemo(
     () => bookings.filter((b) => CORE_UNITS.has(String(b.unit ?? "").replace(/^Unit\s*/i, "").trim())),
     [bookings]
@@ -177,13 +249,13 @@ export default function SourceReportPage() {
   );
 
   const coreReport = useMemo(
-    () => buildWeeklyReport(coreBookings, week.startDate, week.endDate),
-    [coreBookings, week.endDate, week.startDate]
+    () => buildWeeklyReport(coreBookings, week.startDate, week.endDate, selectedReceiver),
+    [coreBookings, selectedReceiver, week.endDate, week.startDate]
   );
 
   const otherReport = useMemo(
-    () => buildWeeklyReport(otherBookings, week.startDate, week.endDate),
-    [otherBookings, week.endDate, week.startDate]
+    () => buildWeeklyReport(otherBookings, week.startDate, week.endDate, selectedReceiver),
+    [otherBookings, selectedReceiver, week.endDate, week.startDate]
   );
 
   const shiftWeek = (days: number) => {
@@ -209,7 +281,18 @@ export default function SourceReportPage() {
           <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Sunday to Saturday source counts and payment-method records</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            className="input text-xs w-auto"
+            value={selectedReceiver}
+            onChange={(e) => setSelectedReceiver(e.target.value)}
+            title="Filter report by receiver"
+          >
+            <option value="__all__">All receivers combined</option>
+            {receivers.map((receiver) => (
+              <option key={receiver} value={receiver}>{receiver}</option>
+            ))}
+          </select>
           <button
             type="button"
             onClick={() => shiftWeek(-7)}
