@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { eq, and, lt, gt, asc } from "drizzle-orm";
-import { calcPaymentStatus, calcRemaining, parseYMDToPHDate, toYMD, hasUnitTimeConflict } from "@/lib/utils";
+import { calcPaymentStatus, calcRemaining, parseYMDToPHDate, toYMD, hasUnitTimeConflict, normalizeBookingSource } from "@/lib/utils";
 
 function normalizeDateKey(value: unknown): string {
   const raw = String(value ?? "").trim();
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
     const checkOut = parseYMDToPHDate(body.checkOut);
     const checkInDateKey = normalizeDateKey(body.checkIn);
     const checkOutDateKey = normalizeDateKey(body.checkOut);
+    const bookingSource = normalizeBookingSource(body.bookingSource);
 
     // Pre-filter candidates by date overlap, then perform time-aware conflict check.
     const conflicts = await db
@@ -111,6 +112,7 @@ export async function POST(req: NextRequest) {
       .values({
         guestName:        body.guestName?.trim(),
         contactNo:        body.contactNo?.trim() || null,
+        bookingSource,
         unit:             unitCode,
         checkIn,
         checkInDateKey,

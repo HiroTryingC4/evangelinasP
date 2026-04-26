@@ -149,6 +149,16 @@ export function getSundayToSaturdayWeek(date: string | Date) {
 export const UNITS = ["1116", "1118", "1245", "1558", "1845", "2208", "2209"];
 export const PAYMENT_METHODS = ["Cash", "GCash", "Bank Transfer"];
 export const STAFF = ["SIR JAMES", "SIR MIKE", "RIEMAR", "NONE", "JAYJAY"];
+export const BOOKING_SOURCES = ["Direct", "TikTok", "Facebook", "Airbnb"] as const;
+
+export function normalizeBookingSource(value: unknown): string {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "tiktok" || raw === "tik tok") return "TikTok";
+  if (raw === "facebook" || raw === "fb") return "Facebook";
+  if (raw === "airbnb" || raw === "air bnb") return "Airbnb";
+  if (raw === "direct" || raw === "walk-in" || raw === "walk in") return "Direct";
+  return "Direct";
+}
 
 export const STATUS_COLOR: Record<string, string> = {
   "Fully Paid": "bg-green-100 text-green-800",

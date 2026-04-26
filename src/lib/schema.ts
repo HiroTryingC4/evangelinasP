@@ -14,6 +14,7 @@ export const bookings = pgTable("bookings", {
   // Guest info
   guestName:  text("guest_name").notNull(),
   contactNo:  text("contact_no"),
+  bookingSource: text("booking_source").notNull().default("Direct"),
 
   // Unit & schedule
   unit:         text("unit").notNull(),           // "1116", "1118", etc.

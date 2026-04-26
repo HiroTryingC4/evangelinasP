@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { and, eq, gt, lt, ne } from "drizzle-orm";
-import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToPHDate, toYMD } from "@/lib/utils";
+import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToPHDate, toYMD, normalizeBookingSource } from "@/lib/utils";
 
 function normalizeDateKey(value: unknown): string {
   const raw = String(value ?? "").trim();
@@ -49,6 +49,7 @@ export async function PUT(
     const checkOutDate = parseYMDToPHDate(body.checkOut);
     const checkInDateKey = normalizeDateKey(body.checkIn);
     const checkOutDateKey = normalizeDateKey(body.checkOut);
+    const bookingSource = normalizeBookingSource(body.bookingSource);
 
     // Re-check conflicts on edit, excluding this booking.
     const conflicts = await db
@@ -90,6 +91,7 @@ export async function PUT(
       .set({
         guestName:        body.guestName?.trim(),
         contactNo:        body.contactNo?.trim() || null,
+        bookingSource,
         unit:             unitCode,
         checkIn:          checkInDate,
         checkInDateKey,

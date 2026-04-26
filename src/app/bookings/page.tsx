@@ -5,8 +5,45 @@ import { Search, Filter, Pencil, Trash2, AlertTriangle, CheckCircle, Phone, Down
 import * as XLSX from "xlsx";
 import BookingForm from "@/components/BookingForm";
 import { emitBookingsChanged } from "@/lib/bookings-sync";
-import { formatPHP, formatDate, STATUS_COLOR, UNITS, toYMD } from "@/lib/utils";
+import { formatPHP, formatDate, STATUS_COLOR, UNITS, toYMD, normalizeBookingSource } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
+
+function BookingSourceBadge({ source }: { source: string | null | undefined }) {
+  const normalized = normalizeBookingSource(source);
+
+  if (normalized === "TikTok") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-black px-2 py-0.5 text-[10px] font-semibold text-white">
+        <span className="text-cyan-300">♪</span>
+        TikTok
+      </span>
+    );
+  }
+
+  if (normalized === "Facebook") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+        <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">f</span>
+        Facebook
+      </span>
+    );
+  }
+
+  if (normalized === "Airbnb") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+        <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">A</span>
+        Airbnb
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+      Direct
+    </span>
+  );
+}
 
 function BookingsContent() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -16,6 +53,7 @@ function BookingsContent() {
   const [filterUnit, setFilterUnit] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterDateScope, setFilterDateScope] = useState("upcoming");
+  const [filterSource, setFilterSource] = useState("");
   const [filterDpReceiver, setFilterDpReceiver] = useState("");
   const [filterFpReceiver, setFilterFpReceiver] = useState("");
   const [filterWeek, setFilterWeek] = useState("");
@@ -76,6 +114,7 @@ function BookingsContent() {
 
     const exportData = filtered.map((b) => ({
       "Guest Name": b.guestName,
+      "Source": normalizeBookingSource(b.bookingSource),
       "Unit": b.unit,
       "Phone": b.contactNo || "",
       "Check In": formatDate(b.checkIn),
@@ -98,6 +137,7 @@ function BookingsContent() {
 
     ws["!cols"] = [
       { wch: 20 },
+      { wch: 12 },
       { wch: 10 },
       { wch: 15 },
       { wch: 12 },
@@ -128,6 +168,8 @@ function BookingsContent() {
     );
 
     if (!matchesSearch) return false;
+
+    if (filterSource && normalizeBookingSource(b.bookingSource) !== filterSource) return false;
 
     if (filterDpReceiver && b.dpReceivedBy !== filterDpReceiver) return false;
     if (filterFpReceiver && b.fpReceivedBy !== filterFpReceiver) return false;
@@ -244,7 +286,14 @@ function BookingsContent() {
           </select>
           <input type="month" className="input text-xs" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} placeholder="Month" />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <select className="input text-xs" value={filterSource} onChange={(e) => setFilterSource(e.target.value)}>
+            <option value="">All sources</option>
+            <option value="Direct">Direct</option>
+            <option value="TikTok">TikTok</option>
+            <option value="Facebook">Facebook</option>
+            <option value="Airbnb">Airbnb</option>
+          </select>
           <select className="input text-xs" value={filterDpReceiver} onChange={(e) => setFilterDpReceiver(e.target.value)}>
             <option value="">DP receiver</option>
             {receivers.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -290,6 +339,7 @@ function BookingsContent() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold text-gray-900 truncate">{b.guestName}</p>
+                            <BookingSourceBadge source={b.bookingSource} />
                             {getBookingCountBadge(b.guestName)}
                           </div>
                           {b.contactNo && (

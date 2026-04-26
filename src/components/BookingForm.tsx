@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { X, AlertTriangle, CheckCircle, Loader2, CalendarDays, Clock } from "lucide-react";
 import { emitBookingsChanged } from "@/lib/bookings-sync";
-import { UNITS, PAYMENT_METHODS, STAFF, calcPaymentStatus, calcRemaining, formatPHP, toYMD } from "@/lib/utils";
+import { UNITS, PAYMENT_METHODS, STAFF, BOOKING_SOURCES, calcPaymentStatus, calcRemaining, formatPHP, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
 }
 
 const EMPTY = {
-  guestName: "", contactNo: "", unit: "1558",
+  guestName: "", contactNo: "", unit: "1558", bookingSource: "Direct",
   checkIn: "", checkInTime: "2:00 PM",
   checkOut: "", checkOutTime: "12:00 PM",
   hoursStayed: "",
@@ -68,6 +68,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
       guestName:    booking.guestName     ?? "",
       contactNo:    booking.contactNo     ?? "",
       unit:         booking.unit          ?? "1558",
+      bookingSource: booking.bookingSource ?? "Direct",
       checkIn:      booking.checkInDateKey || (booking.checkIn ? toYMD(booking.checkIn) : ""),
       checkInTime:  booking.checkInTime   ?? "2:00 PM",
       checkOut:     booking.checkOutDateKey || (booking.checkOut ? toYMD(booking.checkOut) : ""),
@@ -221,6 +222,12 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
               <label className="label">Unit *</label>
               <select className="input" value={form.unit} onChange={set("unit")}>
                 {units.map((u) => <option key={u} value={u}>Unit {u}</option>)}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label">Booking source</label>
+              <select className="input" value={form.bookingSource} onChange={set("bookingSource")}>
+                {BOOKING_SOURCES.map((source) => <option key={source} value={source}>{source}</option>)}
               </select>
             </div>
           </div>
