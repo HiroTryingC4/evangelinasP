@@ -12,6 +12,14 @@ const SOURCE_ORDER: SourceName[] = ["Direct", "TikTok", "Facebook", "Airbnb"];
 const METHOD_ORDER: MethodName[] = ["Cash", "GCash", "Bank Transfer"];
 const CORE_UNITS = new Set(["1116", "1118", "1558", "1845"]);
 const BELOW_UNITS = new Set(["2208", "2209", "1245"]);
+const WEEKLY_MANUAL_EXPENSES_STORAGE_KEY = "source-report:weekly-manual-expenses";
+const LEGACY_WEEKLY_MINUS_STORAGE_KEY = "source-report:weekly-minus";
+
+type ManualExpenseEntry = {
+  id: string;
+  amount: number;
+  comment: string;
+};
 
 type WeeklyRow = {
   dayKey: string;
@@ -38,6 +46,14 @@ function addDays(baseYMD: string, days: number): string {
   const date = new Date(`${baseYMD}T12:00:00`);
   date.setDate(date.getDate() + days);
   return toYMD(date);
+}
+
+function parseManualAmount(value: string): number {
+  const normalized = value.replace(/[^0-9.]/g, "").trim();
+  if (!normalized) return 0;
+  const amount = Number(normalized);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  return amount;
 }
 
 function getMethodAmounts(booking: Booking): Record<MethodName, number> {
@@ -216,6 +232,9 @@ export default function SourceReportPage() {
   const [loading, setLoading] = useState(true);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
   const [selectedReceiver, setSelectedReceiver] = useState<ReceiverFilter>("__all__");
+  const [weeklyExpensesByScope, setWeeklyExpensesByScope] = useState<Record<string, ManualExpenseEntry[]>>({});
+  const [newExpenseAmount, setNewExpenseAmount] = useState("");
+  const [newExpenseComment, setNewExpenseComment] = useState("");
 
   useEffect(() => {
     fetch("/api/bookings?view=all", { cache: "no-store" })
@@ -225,6 +244,47 @@ export default function SourceReportPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(WEEKLY_MANUAL_EXPENSES_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, ManualExpenseEntry[]>;
+        if (parsed && typeof parsed === "object") {
+          setWeeklyExpensesByScope(parsed);
+          return;
+        }
+      }
+
+      // Migrate old one-value weekly minus data to manual expense entries.
+      const legacyRaw = window.localStorage.getItem(LEGACY_WEEKLY_MINUS_STORAGE_KEY);
+      if (!legacyRaw) return;
+      const legacyParsed = JSON.parse(legacyRaw) as Record<string, string>;
+      if (!legacyParsed || typeof legacyParsed !== "object") return;
+
+      const migrated: Record<string, ManualExpenseEntry[]> = {};
+      Object.entries(legacyParsed).forEach(([scope, amountInput]) => {
+        const amount = parseManualAmount(String(amountInput ?? ""));
+        if (!amount) return;
+        migrated[scope] = [{
+          id: `legacy-${scope}`,
+          amount,
+          comment: "Legacy manual minus",
+        }];
+      });
+      setWeeklyExpensesByScope(migrated);
+    } catch {
+      setWeeklyExpensesByScope({});
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(WEEKLY_MANUAL_EXPENSES_STORAGE_KEY, JSON.stringify(weeklyExpensesByScope));
+    } catch {
+      // Ignore storage failures so report rendering never breaks.
+    }
+  }, [weeklyExpensesByScope]);
 
   const week = useMemo(() => getSundayToSaturdayWeek(weeklyDate), [weeklyDate]);
 
@@ -258,6 +318,11 @@ export default function SourceReportPage() {
     () => buildWeeklyReport(otherBookings, week.startDate, week.endDate, selectedReceiver),
     [otherBookings, selectedReceiver, week.endDate, week.startDate]
   );
+
+  const weeklyExpenseScopeKey = `${week.startDate}:${week.endDate}:${selectedReceiver}`;
+  const weeklyManualExpenses = weeklyExpensesByScope[weeklyExpenseScopeKey] ?? [];
+  const weeklyManualExpenseTotal = weeklyManualExpenses.reduce((sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)), 0);
+  const adjustedCoreTotalPaid = Math.max(0, coreReport.summary.totalPaid - weeklyManualExpenseTotal);
 
   const shiftWeek = (days: number) => {
     const base = new Date(`${weeklyDate}T12:00:00`);
@@ -372,6 +437,102 @@ export default function SourceReportPage() {
             <p className="text-xs text-purple-700 uppercase tracking-wide">Total Paid</p>
             <p className="text-lg font-bold text-purple-800 mt-0.5">{formatPHP(coreReport.summary.totalPaid)}</p>
           </div>
+        </div>
+
+        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <p className="text-xs text-amber-800 font-semibold uppercase tracking-wide">Manual Weekly Expenses (direct minus)</p>
+
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-2">
+            <input
+              type="text"
+              inputMode="decimal"
+              className="input"
+              placeholder="Amount"
+              value={newExpenseAmount}
+              onChange={(e) => setNewExpenseAmount(e.target.value)}
+            />
+            <input
+              type="text"
+              className="input"
+              placeholder="Comment (example: electricity, water, snacks)"
+              value={newExpenseComment}
+              onChange={(e) => setNewExpenseComment(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn-secondary text-xs py-1.5 px-3"
+              onClick={() => {
+                const amount = parseManualAmount(newExpenseAmount);
+                const comment = newExpenseComment.trim();
+                if (!amount || !comment) return;
+
+                setWeeklyExpensesByScope((prev) => {
+                  const current = prev[weeklyExpenseScopeKey] ?? [];
+                  const nextEntry: ManualExpenseEntry = {
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    amount,
+                    comment,
+                  };
+
+                  return {
+                    ...prev,
+                    [weeklyExpenseScopeKey]: [...current, nextEntry],
+                  };
+                });
+
+                setNewExpenseAmount("");
+                setNewExpenseComment("");
+              }}
+            >
+              Add expense
+            </button>
+          </div>
+
+          <div className="mt-2 text-xs sm:text-sm text-amber-900 space-y-0.5">
+            <p>Manual expenses total: <span className="font-semibold">{formatPHP(weeklyManualExpenseTotal)}</span></p>
+            <p>Adjusted total paid: <span className="font-semibold">{formatPHP(adjustedCoreTotalPaid)}</span></p>
+            <p className="text-[11px] text-amber-700">Local report-only minus. This does not sync to Finances.</p>
+          </div>
+
+          {weeklyManualExpenses.length > 0 ? (
+            <div className="mt-2 rounded-md border border-amber-100 bg-white overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-amber-50 text-amber-900">
+                  <tr>
+                    <th className="text-left px-2 py-1.5 font-semibold">Comment</th>
+                    <th className="text-right px-2 py-1.5 font-semibold">Amount</th>
+                    <th className="text-right px-2 py-1.5 font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeklyManualExpenses.map((entry) => (
+                    <tr key={entry.id} className="border-t border-amber-100">
+                      <td className="px-2 py-1.5 text-amber-900">{entry.comment}</td>
+                      <td className="px-2 py-1.5 text-right font-medium text-amber-900">-{formatPHP(entry.amount)}</td>
+                      <td className="px-2 py-1.5 text-right">
+                        <button
+                          type="button"
+                          className="text-[11px] text-red-600 hover:text-red-700"
+                          onClick={() => {
+                            setWeeklyExpensesByScope((prev) => {
+                              const current = prev[weeklyExpenseScopeKey] ?? [];
+                              const next = current.filter((item) => item.id !== entry.id);
+                              return {
+                                ...prev,
+                                [weeklyExpenseScopeKey]: next,
+                              };
+                            });
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
       </div>
 
