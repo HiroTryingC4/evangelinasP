@@ -323,6 +323,15 @@ export default function SourceReportPage() {
   const weeklyManualExpenses = weeklyExpensesByScope[weeklyExpenseScopeKey] ?? [];
   const weeklyManualExpenseTotal = weeklyManualExpenses.reduce((sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)), 0);
   const adjustedCoreTotalPaid = Math.max(0, coreReport.summary.totalPaid - weeklyManualExpenseTotal);
+  const selectedWeekLabel = `${new Date(`${week.startDate}T12:00:00`).toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })} to ${new Date(`${week.endDate}T12:00:00`).toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
 
   const shiftWeek = (days: number) => {
     const base = new Date(`${weeklyDate}T12:00:00`);
@@ -441,6 +450,7 @@ export default function SourceReportPage() {
 
         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
           <p className="text-xs text-amber-800 font-semibold uppercase tracking-wide">Manual Weekly Expenses (direct minus)</p>
+          <p className="mt-0.5 text-[11px] text-amber-700">Deducted for week: {selectedWeekLabel}</p>
 
           <div className="mt-2 grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-2">
             <input
@@ -499,6 +509,7 @@ export default function SourceReportPage() {
               <table className="w-full text-xs">
                 <thead className="bg-amber-50 text-amber-900">
                   <tr>
+                    <th className="text-left px-2 py-1.5 font-semibold">Week</th>
                     <th className="text-left px-2 py-1.5 font-semibold">Comment</th>
                     <th className="text-right px-2 py-1.5 font-semibold">Amount</th>
                     <th className="text-right px-2 py-1.5 font-semibold">Action</th>
@@ -507,6 +518,7 @@ export default function SourceReportPage() {
                 <tbody>
                   {weeklyManualExpenses.map((entry) => (
                     <tr key={entry.id} className="border-t border-amber-100">
+                      <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">{selectedWeekLabel}</td>
                       <td className="px-2 py-1.5 text-amber-900">{entry.comment}</td>
                       <td className="px-2 py-1.5 text-right font-medium text-amber-900">-{formatPHP(entry.amount)}</td>
                       <td className="px-2 py-1.5 text-right">
