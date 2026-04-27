@@ -403,24 +403,29 @@ export default function SourceReportPage() {
             {new Date(`${week.endDate}T12:00:00`).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium inline-flex items-center gap-1">
-              <BarChart3 className="w-3.5 h-3.5" />
-              {coreReport.summary.totalBookings} bookings
-            </span>
-            <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium inline-flex items-center gap-1">
-              <Wallet className="w-3.5 h-3.5" />
-              {formatPHP(coreReport.summary.totalPaid)} Total paid
-            </span>
-          </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium inline-flex items-center gap-1">
+                <BarChart3 className="w-3.5 h-3.5" />
+                {coreReport.summary.totalBookings} bookings
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium inline-flex items-center gap-1">
+                  <Wallet className="w-3.5 h-3.5" />
+                  {formatPHP(coreReport.summary.totalPaid)} Total paid
+                </span>
+                <span className="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-700 font-medium inline-flex items-center gap-1">
+                  Adjusted {formatPHP(adjustedCoreTotalPaid)}
+                </span>
+              </div>
+            </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {SOURCE_ORDER.map((source) => (
-            <div key={source} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">{source}</p>
-              <p className="text-lg font-bold text-gray-900 mt-0.5">{coreReport.summary.totals[source].bookings}</p>
-              <div className="mt-1 space-y-0.5 text-[11px]">
+            <div key={source} className="rounded-lg border border-gray-200 bg-gray-50 p-2">
+              <p className="text-[11px] text-gray-500 uppercase tracking-wide">{source}</p>
+              <p className="text-base font-bold text-gray-900 mt-0.5">{coreReport.summary.totals[source].bookings}</p>
+              <div className="mt-1 space-y-0.5 text-[10px]">
                 <p className="text-gray-600">Cash {formatPHP(coreReport.summary.totals[source].methods.Cash)}</p>
                 <p className="text-green-700 font-medium">GCash {formatPHP(coreReport.summary.totals[source].methods.GCash)}</p>
                 <p className="text-blue-700">Bank {formatPHP(coreReport.summary.totals[source].methods["Bank Transfer"])}</p>
@@ -445,6 +450,7 @@ export default function SourceReportPage() {
           <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
             <p className="text-xs text-purple-700 uppercase tracking-wide">Total Paid</p>
             <p className="text-lg font-bold text-purple-800 mt-0.5">{formatPHP(coreReport.summary.totalPaid)}</p>
+            <p className="text-xs text-purple-700 mt-1">Adjusted: <span className="font-semibold">{formatPHP(adjustedCoreTotalPaid)}</span></p>
           </div>
         </div>
 
