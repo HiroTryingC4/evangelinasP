@@ -420,7 +420,7 @@ export default function SourceReportPage() {
             </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-8 gap-2">
           {SOURCE_ORDER.map((source) => (
             <div key={source} className="rounded-lg border border-gray-200 bg-gray-50 p-2">
               <p className="text-[11px] text-gray-500 uppercase tracking-wide">{source}</p>
@@ -434,7 +434,7 @@ export default function SourceReportPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mt-2">
           <div className="rounded-lg border border-gray-200 bg-white p-3">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Cash</p>
             <p className="text-lg font-bold text-gray-900 mt-0.5">{formatPHP(coreReport.summary.methodTotals.Cash)}</p>
@@ -450,7 +450,11 @@ export default function SourceReportPage() {
           <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
             <p className="text-xs text-purple-700 uppercase tracking-wide">Total Paid</p>
             <p className="text-lg font-bold text-purple-800 mt-0.5">{formatPHP(coreReport.summary.totalPaid)}</p>
-            <p className="text-xs text-purple-700 mt-1">Adjusted: <span className="font-semibold">{formatPHP(adjustedCoreTotalPaid)}</span></p>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs text-amber-800 uppercase tracking-wide">Adjusted Paid</p>
+            <p className="text-lg font-bold text-amber-900 mt-0.5">{formatPHP(adjustedCoreTotalPaid)}</p>
+            <p className="text-xs text-amber-700 mt-1">Local minus</p>
           </div>
         </div>
 
