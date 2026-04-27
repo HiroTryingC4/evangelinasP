@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, Pencil, Trash2, AlertTriangle, CheckCircle, Phone, Download } from "lucide-react";
+import { Search, Filter, Pencil, Trash2, AlertTriangle, CheckCircle, Phone, Download, Ban, RotateCcw } from "lucide-react";
 import * as XLSX from "xlsx";
 import BookingForm from "@/components/BookingForm";
 import { emitBookingsChanged } from "@/lib/bookings-sync";
@@ -102,6 +102,28 @@ function BookingsContent() {
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this booking? This cannot be undone.")) return;
     await fetch(`/api/bookings/${id}`, { method: "DELETE" });
+    emitBookingsChanged();
+    fetchBookings();
+  };
+
+  const handleCancelBooking = async (id: number) => {
+    if (!confirm("Mark this booking as Canceled?")) return;
+    await fetch(`/api/bookings/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentStatus: "Canceled" }),
+    });
+    emitBookingsChanged();
+    fetchBookings();
+  };
+
+  const handleRestoreBooking = async (id: number) => {
+    if (!confirm("Undo canceled status for this booking?")) return;
+    await fetch(`/api/bookings/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentStatus: "Restore" }),
+    });
     emitBookingsChanged();
     fetchBookings();
   };
@@ -278,6 +300,7 @@ function BookingsContent() {
             <option value="Fully Paid">Fully Paid</option>
             <option value="DP Paid">DP Paid</option>
             <option value="No DP">No DP</option>
+            <option value="Canceled">Canceled</option>
           </select>
           <select className="input text-xs" value={filterDateScope} onChange={(e) => setFilterDateScope(e.target.value)}>
             <option value="all">All dates</option>
@@ -386,6 +409,22 @@ function BookingsContent() {
                         >
                           <Trash2 className="w-3.5 h-3.5" /> Delete
                         </button>
+                        {b.paymentStatus !== "Canceled" && (
+                          <button
+                            onClick={() => handleCancelBooking(b.id)}
+                            className="flex-1 btn-secondary text-xs py-1.5 justify-center text-gray-700"
+                          >
+                            <Ban className="w-3.5 h-3.5" /> Canceled
+                          </button>
+                        )}
+                        {b.paymentStatus === "Canceled" && (
+                          <button
+                            onClick={() => handleRestoreBooking(b.id)}
+                            className="flex-1 btn-secondary text-xs py-1.5 justify-center text-blue-700"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" /> Undo Cancel
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

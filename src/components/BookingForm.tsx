@@ -261,7 +261,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
                         <span className="font-medium text-gray-700">{b.guestName}</span>
                       </div>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${b.paymentStatus === "Fully Paid" ? "bg-green-100 text-green-800" : b.paymentStatus === "DP Paid" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${b.paymentStatus === "Fully Paid" ? "bg-green-100 text-green-800" : b.paymentStatus === "DP Paid" ? "bg-yellow-100 text-yellow-800" : b.paymentStatus === "Canceled" ? "bg-gray-200 text-gray-700" : "bg-red-100 text-red-800"}`}>
                       {b.paymentStatus}
                     </span>
                   </div>
@@ -394,6 +394,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
               <span className={`text-sm px-4 py-1.5 rounded-full font-semibold ${
                 status === "Fully Paid" ? "bg-green-100 text-green-800" :
                 status === "DP Paid"   ? "bg-yellow-100 text-yellow-800" :
+                status === "Canceled"  ? "bg-gray-200 text-gray-700" :
                                           "bg-red-100 text-red-800"
               }`}>{status}</span>
             </div>

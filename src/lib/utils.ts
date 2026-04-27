@@ -164,6 +164,7 @@ export const STATUS_COLOR: Record<string, string> = {
   "Fully Paid": "bg-green-100 text-green-800",
   "DP Paid":    "bg-yellow-100 text-yellow-800",
   "No DP":      "bg-red-100 text-red-800",
+  "Canceled":   "bg-gray-200 text-gray-700",
 };
 
 export const UNIT_COLORS: Record<string, string> = {

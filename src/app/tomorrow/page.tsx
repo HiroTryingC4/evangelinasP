@@ -57,6 +57,7 @@ export default function TomorrowPage() {
     const d = new Date(today); d.setDate(today.getDate() + i);
     const ds = toYMD(d);
     const dayBookings = bookings.filter((b) => {
+      if (b.paymentStatus === "Canceled") return false;
       const ci = toYMD(b.checkIn);
       const co = toYMD(b.checkOut);
       return ci === ds || co === ds;

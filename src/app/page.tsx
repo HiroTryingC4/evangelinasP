@@ -193,17 +193,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* TODAY + WEEK quick links */}
+      {/* QUICK links */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Link href="/today" className="card p-4 hover:shadow-md transition-shadow group">
+        <Link href="/tomorrow" className="card p-4 hover:shadow-md transition-shadow group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Today&apos;s Guests</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Guests Summary</span>
             <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
           </div>
           <div className="text-2xl sm:text-3xl font-bold text-gray-900">{todayData?.count ?? 0}</div>
-          <div className="text-xs text-gray-400 mt-1">guests active today</div>
+          <div className="text-xs text-gray-400 mt-1">view schedule details</div>
         </Link>
-        <Link href="/today" className="card p-4 hover:shadow-md transition-shadow group">
+        <Link href="/finances" className="card p-4 hover:shadow-md transition-shadow group">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Week Revenue</span>
             <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />

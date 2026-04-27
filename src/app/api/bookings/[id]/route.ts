@@ -43,6 +43,56 @@ export async function PUT(
     await ensureBookingSourceColumn();
 
     const body = await req.json();
+    const bookingId = Number(params.id);
+
+    if (String(body?.paymentStatus ?? "").trim() === "Restore") {
+      const [existing] = await db
+        .select({
+          id: bookings.id,
+          dpAmount: bookings.dpAmount,
+          fpAmount: bookings.fpAmount,
+          totalFee: bookings.totalFee,
+        })
+        .from(bookings)
+        .where(eq(bookings.id, bookingId));
+
+      if (!existing) {
+        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+      }
+
+      const dp = Number(existing.dpAmount) || 0;
+      const fp = Number(existing.fpAmount) || 0;
+      const total = Number(existing.totalFee) || 0;
+
+      const [updatedRestored] = await db
+        .update(bookings)
+        .set({
+          paymentStatus: calcPaymentStatus(dp, fp, total),
+          remainingBalance: calcRemaining(dp, fp, total),
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, bookingId))
+        .returning();
+
+      return NextResponse.json(updatedRestored);
+    }
+
+    if (String(body?.paymentStatus ?? "").trim() === "Canceled") {
+      const [updatedCanceled] = await db
+        .update(bookings)
+        .set({
+          paymentStatus: "Canceled",
+          hasConflict: "OK",
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, bookingId))
+        .returning();
+
+      if (!updatedCanceled) {
+        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+      }
+      return NextResponse.json(updatedCanceled);
+    }
 
     const dp    = Number(body.dpAmount)  || 0;
     const fp    = Number(body.fpAmount)  || 0;
@@ -72,7 +122,7 @@ export async function PUT(
           eq(bookings.unit, unitCode),
           lt(bookings.checkIn, checkOutDate),
           gt(bookings.checkOut, checkInDate),
-          ne(bookings.id, Number(params.id))
+          ne(bookings.id, bookingId)
         )
       );
 
@@ -119,7 +169,7 @@ export async function PUT(
         hasConflict,
         updatedAt:        new Date(),
       })
-      .where(eq(bookings.id, Number(params.id)))
+      .where(eq(bookings.id, bookingId))
       .returning();
 
     if (!updated) {
