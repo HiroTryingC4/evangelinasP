@@ -14,7 +14,7 @@ function toYMD(date: Date): string {
 }
 
 export default function FinancesPage() {
-  const [tab, setTab] = useState<"bills" | "wages" | "income" | "expenses">("bills");
+  const [tab, setTab] = useState<"bills" | "wages" | "income" | "expenses" | "transfer">("bills");
   const [units, setUnits] = useState<string[]>(UNITS);
   const [selectedRevenueUnits, setSelectedRevenueUnits] = useState<string[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
@@ -22,6 +22,7 @@ export default function FinancesPage() {
   const [wages, setWages] = useState<any[]>([]);
   const [incomes, setIncomes] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "paid">("all");
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
@@ -98,6 +99,11 @@ export default function FinancesPage() {
     }
   };
 
+  const handleAddTransfer = (e: React.FormEvent, data: any) => {
+    e.preventDefault();
+    setTransfers([...transfers, { id: Date.now(), ...data }]);
+  };
+
   const handleAddIncome = async (e: React.FormEvent, data: any) => {
     e.preventDefault();
     try {
@@ -113,9 +119,13 @@ export default function FinancesPage() {
     }
   };
 
-  const handleDelete = async (type: "bills" | "wages" | "incomes" | "expenses", id: number) => {
+  const handleDelete = async (type: "bills" | "wages" | "incomes" | "expenses" | "transfer", id: number) => {
     if (!confirm("Delete this record?")) return;
     try {
+      if (type === "transfer") {
+        setTransfers(transfers.filter((t) => t.id !== id));
+        return;
+      }
       const apiType = type === "incomes" ? "income" : type;
       await fetch(`/api/${apiType}/${id}`, { method: "DELETE" });
       if (type === "bills") {
@@ -543,6 +553,16 @@ export default function FinancesPage() {
         >
           Expenses
         </button>
+        <button
+          onClick={() => setTab("transfer")}
+          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+            tab === "transfer"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Transfer
+        </button>
       </div>
 
       {/* BILLS TAB */}
@@ -738,6 +758,32 @@ export default function FinancesPage() {
                 fields={[expense.dueDate ? `Due: ${formatDate(expense.dueDate)}` : "", expense.category, expense.paymentMethod ? `Method: ${expense.paymentMethod}` : "", formatDate(expense.expenseDate)]}
               />
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* TRANSFER TAB */}
+      {tab === "transfer" && (
+        <div className="space-y-4">
+          <div className="card p-4">
+            <p className="text-xs text-gray-500 uppercase">Total Transfers Recorded</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(transfers.reduce((s, t) => s + t.amount, 0))}</p>
+          </div>
+
+          <TransferForm onSubmit={handleAddTransfer} />
+
+          <div className="space-y-3">
+            {transfers.length > 0 ? (
+              transfers.map((transfer) => (
+                <TransferCard
+                  key={transfer.id}
+                  transfer={transfer}
+                  onDelete={() => handleDelete("transfer", transfer.id)}
+                />
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-8">No transfers recorded yet</p>
+            )}
           </div>
         </div>
       )}
@@ -1103,6 +1149,78 @@ function IncomeForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) =>
           Add Income
         </button>
       </form>
+    </div>
+  );
+}
+
+function TransferForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => void }) {
+  const [form, setForm] = useState({
+    fromAccount: "",
+    toAccount: "",
+    amount: "",
+    method: "Cash",
+    transferDate: new Date().toISOString().split("T")[0],
+    notes: "",
+  });
+
+  return (
+    <div className="card p-4">
+      <h2 className="text-sm font-semibold text-gray-700 mb-3">Record Transfer</h2>
+      <form
+        onSubmit={(e) => {
+          onSubmit(e, {
+            fromAccount: form.fromAccount,
+            toAccount: form.toAccount,
+            amount: parseFloat(form.amount),
+            method: form.method,
+            transferDate: form.transferDate,
+            notes: form.notes,
+          });
+          setForm({ fromAccount: "", toAccount: "", amount: "", method: "Cash", transferDate: new Date().toISOString().split("T")[0], notes: "" });
+        }}
+        className="space-y-3"
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <input type="text" placeholder="From Account" value={form.fromAccount} onChange={(e) => setForm({ ...form, fromAccount: e.target.value })} className="input" required />
+          <input type="text" placeholder="To Account" value={form.toAccount} onChange={(e) => setForm({ ...form, toAccount: e.target.value })} className="input" required />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <input type="number" step="0.01" placeholder="Amount (PHP)" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="input" required />
+          <input type="text" placeholder="Method" value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value })} className="input" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-[11px] font-medium text-gray-500 uppercase">Transfer Date</p>
+          <input type="date" value={form.transferDate} onChange={(e) => setForm({ ...form, transferDate: e.target.value })} className="input" required />
+        </div>
+        <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input w-full" rows={2} />
+        <button type="submit" className="btn-primary w-full">Record Transfer</button>
+      </form>
+    </div>
+  );
+}
+
+function TransferCard({ transfer, onDelete }: { transfer: any; onDelete: () => void }) {
+  return (
+    <div className="card p-4 sm:p-5 rounded-lg border-2 border-purple-200 shadow-md hover:shadow-lg transition-shadow">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap mb-3">
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-lg font-bold text-sm">{transfer.fromAccount}</span>
+            <span className="text-gray-400">→</span>
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-lg font-bold text-sm">{transfer.toAccount}</span>
+          </div>
+          <p className="text-xl font-bold text-purple-900">{formatPHP(transfer.amount)}</p>
+          <div className="mt-2 space-y-1 text-xs text-gray-600">
+            <p><span className="font-semibold">Method:</span> {transfer.method}</p>
+            <p><span className="font-semibold">Date:</span> {formatDate(transfer.transferDate)}</p>
+            {transfer.notes && <p><span className="font-semibold">Notes:</span> {transfer.notes}</p>}
+          </div>
+        </div>
+        <button onClick={onDelete} className="btn-secondary text-xs py-2 px-3 text-red-600 hover:bg-red-50 flex-shrink-0 flex items-center gap-1">
+          <Trash2 className="w-4 h-4" />
+          Delete
+        </button>
+      </div>
     </div>
   );
 }
