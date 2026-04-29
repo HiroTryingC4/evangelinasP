@@ -309,6 +309,9 @@ function BookingsContent() {
           </select>
           <input type="month" className="input text-xs" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} placeholder="Month" />
         </div>
+        <p className="text-[11px] text-gray-500">
+          Upcoming/current includes all bookings scheduled for today, even if checkout time already passed.
+        </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <select className="input text-xs" value={filterSource} onChange={(e) => setFilterSource(e.target.value)}>
             <option value="">All sources</option>

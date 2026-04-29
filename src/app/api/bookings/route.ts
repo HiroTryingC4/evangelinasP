@@ -10,38 +10,12 @@ import {
   toYMD,
   hasUnitTimeConflict,
   normalizeBookingSource,
-  parseTimeToMinutes,
 } from "@/lib/utils";
 
 function normalizeDateKey(value: unknown): string {
   const raw = String(value ?? "").trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   return toYMD(raw);
-}
-
-function getPHNowAbsoluteMinutes() {
-  const now = new Date();
-  const ymd = toYMD(now);
-  const phTime = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Manila",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(now);
-
-  const [year, month, day] = ymd.split("-").map(Number);
-  const dayNumber = Math.floor(Date.UTC(year, month - 1, day) / 86400000);
-  const minutes = parseTimeToMinutes(phTime);
-  return dayNumber * 1440 + minutes;
-}
-
-function getBookingEndAbsoluteMinutes(booking: (typeof bookings.$inferSelect)) {
-  const endDateKey = booking.checkOutDateKey || toYMD(booking.checkOut);
-  const endTime = booking.checkOutTime || "12:00 PM";
-  const [year, month, day] = endDateKey.split("-").map(Number);
-  const dayNumber = Math.floor(Date.UTC(year, month - 1, day) / 86400000);
-  const minutes = parseTimeToMinutes(endTime);
-  return dayNumber * 1440 + minutes;
 }
 
 export const dynamic = "force-dynamic";
@@ -65,13 +39,14 @@ export async function GET(req: NextRequest) {
     if (status) all = all.filter((b) => b.paymentStatus === status);
 
     if (view === "upcoming") {
-      const nowAbsoluteMinutes = getPHNowAbsoluteMinutes();
-      all = all.filter((b) => getBookingEndAbsoluteMinutes(b) > nowAbsoluteMinutes);
+      // Keep all of today's records visible, even after their check-out time.
+      const todayKey = toYMD(new Date());
+      all = all.filter((b) => normalizeDateKey(b.checkOutDateKey || b.checkOut) >= todayKey);
     }
 
     if (view === "past") {
-      const nowAbsoluteMinutes = getPHNowAbsoluteMinutes();
-      all = all.filter((b) => getBookingEndAbsoluteMinutes(b) <= nowAbsoluteMinutes);
+      const todayKey = toYMD(new Date());
+      all = all.filter((b) => normalizeDateKey(b.checkOutDateKey || b.checkOut) < todayKey);
     }
 
     return NextResponse.json(all, {
