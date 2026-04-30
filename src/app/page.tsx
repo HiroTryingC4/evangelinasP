@@ -652,18 +652,31 @@ export default function DashboardPage() {
             <h2 className="text-sm font-semibold text-gray-700">Outstanding Balances ({outstanding.length})</h2>
           </div>
           <div className="divide-y divide-gray-100">
-            {outstanding.map((b: any) => (
-              <div key={b.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{b.guestName}</p>
-                  <p className="text-xs text-gray-400">Unit {b.unit} · {formatDate(b.checkIn)}</p>
+            {outstanding.map((b: any) => {
+              const source = String(b.bookingSource || "").trim().toLowerCase();
+              const sourceLabel = source === "tiktok" ? "TikTok" : source === "airbnb" ? "Airbnb" : source === "facebook" ? "Facebook" : source === "direct" ? "Direct" : "";
+              const sourceBadgeColor = source === "tiktok" ? "bg-gray-900 text-white" : source === "airbnb" ? "bg-pink-500 text-white" : source === "facebook" ? "bg-blue-600 text-white" : source === "direct" ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700";
+              
+              return (
+                <div key={b.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{b.guestName}</p>
+                      {sourceLabel && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${sourceBadgeColor}`}>
+                          {sourceLabel}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400">Unit {b.unit} · {formatDate(b.checkIn)}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold text-red-600">{formatPHP(b.remainingBalance)}</p>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">{b.paymentStatus}</span>
+                  </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-bold text-red-600">{formatPHP(b.remainingBalance)}</p>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">{b.paymentStatus}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

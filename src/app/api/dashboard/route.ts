@@ -206,6 +206,7 @@ export async function GET(req: NextRequest) {
         paymentStatus:    b.paymentStatus,
         checkIn:          b.checkIn,
         checkOut:         b.checkOut,
+        bookingSource:    b.bookingSource,
       }));
 
     return NextResponse.json({
