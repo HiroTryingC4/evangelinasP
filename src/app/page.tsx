@@ -138,6 +138,7 @@ export default function DashboardPage() {
   const {
     summary,
     revenuePerUnit,
+    revenuePerSource,
     monthlyRevenue,
     outstanding,
     today: todayData,
@@ -673,6 +674,42 @@ export default function DashboardPage() {
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold text-red-600">{formatPHP(b.remainingBalance)}</p>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">{b.paymentStatus}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Revenue per booking source */}
+      {revenuePerSource && revenuePerSource.length > 0 && (
+        <div className="card overflow-hidden">
+          <div className="p-4 sm:p-5 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700">Revenue by Booking Source</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Total revenue and collected payments per platform</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {revenuePerSource.map((s: any) => {
+              const maxRev = Math.max(...revenuePerSource.map((x: any) => x.revenue), 1);
+              const pct = Math.round((s.revenue / maxRev) * 100);
+              const sourceColor = s.source === "TikTok" ? "#1f2937" : s.source === "Airbnb" ? "#ec4899" : s.source === "Facebook" ? "#2563eb" : s.source === "Direct" ? "#059669" : "#6b7280";
+              
+              return (
+                <div key={s.source} className="px-4 sm:px-5 py-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full inline-block" style={{ background: sourceColor }} />
+                      <span className="text-sm font-medium text-gray-800">{s.source}</span>
+                      <span className="text-xs text-gray-400">{s.bookings} booking{s.bookings !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-gray-900">{formatPHP(s.revenue)}</span>
+                      <span className="text-xs text-green-600 ml-2">({formatPHP(s.collected)} collected)</span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: sourceColor }} />
                   </div>
                 </div>
               );

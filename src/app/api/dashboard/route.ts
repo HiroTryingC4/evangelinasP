@@ -209,6 +209,38 @@ export async function GET(req: NextRequest) {
         bookingSource:    b.bookingSource,
       }));
 
+    // Revenue per booking source (filtered)
+    const normalizeSource = (source: string | null | undefined) => {
+      const s = String(source ?? "").trim().toLowerCase();
+      if (s === "tiktok") return "TikTok";
+      if (s === "airbnb") return "Airbnb";
+      if (s === "facebook") return "Facebook";
+      if (s === "direct") return "Direct";
+      return "Other";
+    };
+
+    const sourceMap = new Map<string, { revenue: number; bookings: number; collected: number }>();
+    filtered.forEach((b) => {
+      const source = normalizeSource(b.bookingSource);
+      const current = sourceMap.get(source) || { revenue: 0, bookings: 0, collected: 0 };
+      current.revenue += b.totalFee;
+      current.bookings += 1;
+      current.collected += getCollectedForBooking(b);
+      sourceMap.set(source, current);
+    });
+
+    const revenuePerSource = ["TikTok", "Airbnb", "Facebook", "Direct", "Other"]
+      .map((source) => {
+        const data = sourceMap.get(source) || { revenue: 0, bookings: 0, collected: 0 };
+        return {
+          source,
+          revenue: data.revenue,
+          bookings: data.bookings,
+          collected: data.collected,
+        };
+      })
+      .filter((s) => s.bookings > 0);
+
     return NextResponse.json({
       summary: {
         totalRevenue,
@@ -224,6 +256,7 @@ export async function GET(req: NextRequest) {
         conflicts,
       },
       revenuePerUnit,
+      revenuePerSource,
       monthlyRevenue,
       outstanding,
       today: {
