@@ -321,7 +321,15 @@ export default function SourceReportPage() {
 
   const weeklyExpenseScopeKey = `${week.startDate}:${week.endDate}:${selectedReceiver}`;
   const weeklyManualExpenses = weeklyExpensesByScope[weeklyExpenseScopeKey] ?? [];
-  const weeklyManualExpenseTotal = weeklyManualExpenses.reduce((sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)), 0);
+  
+  // When viewing "All receivers combined", aggregate expenses from all receivers for this week
+  const weeklyManualExpenseTotal = selectedReceiver === "__all__"
+    ? Object.entries(weeklyExpensesByScope)
+        .filter(([key]) => key.startsWith(`${week.startDate}:${week.endDate}:`))
+        .flatMap(([, expenses]) => expenses)
+        .reduce((sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)), 0)
+    : weeklyManualExpenses.reduce((sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)), 0);
+  
   const adjustedCoreTotalPaid = Math.max(0, coreReport.summary.totalPaid - weeklyManualExpenseTotal);
   const selectedWeekLabel = `${new Date(`${week.startDate}T12:00:00`).toLocaleDateString("en-PH", {
     month: "short",
