@@ -415,7 +415,7 @@ export default function SourceReportPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
           {SOURCE_ORDER.map((source) => (
             <div key={source} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <p className="text-xs text-gray-500 uppercase tracking-wide">{source}</p>
@@ -427,6 +427,11 @@ export default function SourceReportPage() {
               </div>
             </div>
           ))}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs text-amber-800 uppercase tracking-wide">Adjusted Paid</p>
+            <p className="text-lg font-bold text-amber-900 mt-0.5">{formatPHP(adjustedCoreTotalPaid)}</p>
+            <p className="text-xs text-amber-700 mt-1">Local minus</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mt-2">
