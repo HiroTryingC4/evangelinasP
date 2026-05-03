@@ -146,6 +146,7 @@ export function getSundayToSaturdayWeek(date: string | Date) {
   };
 }
 
+// Core units only: 1116, 1118, 1558, 1845
 export const UNITS = ["1116", "1118", "1558", "1845"];
 export const PAYMENT_METHODS = ["Cash", "GCash", "Bank Transfer"];
 export const STAFF = ["SIR JAMES", "SIR MIKE", "RIEMAR", "NONE", "JAYJAY"];
