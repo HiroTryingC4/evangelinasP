@@ -138,7 +138,6 @@ src/
 
 - Unit 1116
 - Unit 1118
-- Unit 1245
 - Unit 1558
 - Unit 1845
 
@@ -174,6 +173,6 @@ More than enough for this use case.
 Edit `src/lib/utils.ts`:
 
 ```ts
-export const UNITS = ["1116", "1118", "1245", "1558", "1845", "YOUR_NEW_UNIT"];
+export const UNITS = ["1116", "1118", "1558", "1845", "YOUR_NEW_UNIT"];
 export const STAFF = ["SIR JAMES", "SIR MIKE", "RIEMAR", "NEW_STAFF"];
 ```

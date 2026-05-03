@@ -170,7 +170,6 @@ export const STATUS_COLOR: Record<string, string> = {
 export const UNIT_COLORS: Record<string, string> = {
   "1116": "#3b82f6",
   "1118": "#10b981",
-  "1245": "#f59e0b",
   "1558": "#ef4444",
   "1845": "#8b5cf6",
 };

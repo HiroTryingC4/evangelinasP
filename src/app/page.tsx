@@ -96,20 +96,12 @@ export default function DashboardPage() {
     const source = data?.monthlyRevenue ?? [];
     return source.map((row: any) => {
       const totalRevenue = Number(row.revenue ?? 0);
-      const unit1245Revenue = Number(row.unit1245Revenue ?? 0);
-      const unit1245IncomingPayment = Number(row.unit1245IncomingPayment ?? 0);
-      const unit1245WaitingPayment = Number(row.unit1245WaitingPayment ?? 0);
-      const otherUnitsRevenue = Number(row.otherUnitsRevenue ?? Math.max(0, totalRevenue - unit1245Revenue));
       const incomingPayment = Number(row.incomingPayment ?? 0);
       const waitingPayment = Number(row.waitingPayment ?? 0);
       const collectedPayment = Math.max(0, totalRevenue - waitingPayment);
 
       return {
         ...row,
-        unit1245Revenue,
-        unit1245IncomingPayment,
-        unit1245WaitingPayment,
-        otherUnitsRevenue,
         incomingPayment,
         waitingPayment,
         collectedPayment,

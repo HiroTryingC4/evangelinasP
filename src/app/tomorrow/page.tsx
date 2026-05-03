@@ -8,14 +8,12 @@ import type { Booking } from "@/lib/schema";
 const UNIT_COLORS: Record<string, string> = {
   "1116": "border-l-blue-500",
   "1118": "border-l-emerald-500",
-  "1245": "border-l-amber-500",
   "1558": "border-l-orange-500",
   "1845": "border-l-purple-500",
 };
 const UNIT_BADGE: Record<string, string> = {
   "1116": "bg-blue-50 text-blue-800",
   "1118": "bg-emerald-50 text-emerald-800",
-  "1245": "bg-amber-50 text-amber-800",
   "1558": "bg-orange-50 text-orange-800",
   "1845": "bg-purple-50 text-purple-800",
 };
