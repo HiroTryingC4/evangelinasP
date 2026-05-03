@@ -32,7 +32,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
   const [unitBookingsLoading, setUnitBookingsLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch(`/api/settings?_t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d.units) && d.units.length > 0) setUnits(d.units);
