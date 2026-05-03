@@ -171,25 +171,15 @@ export async function GET(req: NextRequest) {
         const monthNumber = Number(key.slice(5, 7));
         return monthNumber === i + 1;
       });
-      const unit1245Bookings = mb.filter((b) => b.normalizedUnit === "1245");
       const totalRevenue = mb.reduce((s, b) => s + b.totalFee, 0);
-      const unit1245Revenue = unit1245Bookings.reduce((s, b) => s + b.totalFee, 0);
       const incomingPayment = mb.reduce((s, b) => s + getCollectedForBooking(b), 0);
       const waitingPayment = Math.max(0, totalRevenue - incomingPayment);
-      const unit1245IncomingPayment = unit1245Bookings.reduce((s, b) => s + getCollectedForBooking(b), 0);
-      const unit1245WaitingPayment = Math.max(0, unit1245Revenue - unit1245IncomingPayment);
-      const otherUnitsRevenue = Math.max(0, totalRevenue - unit1245Revenue);
       return {
         month,
         revenue: totalRevenue,
-        unit1245Revenue,
-        unit1245IncomingPayment,
-        unit1245WaitingPayment,
-        otherUnitsRevenue,
         incomingPayment,
         waitingPayment,
         bookings: mb.length,
-        unit1245Bookings: unit1245Bookings.length,
       };
     });
 
