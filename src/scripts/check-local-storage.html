@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Check Manual Expenses in LocalStorage</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    h1 { color: #333; }
+    pre { background: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto; }
+    .info { background: #e3f2fd; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    .warning { background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Manual Expenses LocalStorage Checker</h1>
+  
+  <div class="info">
+    <strong>Instructions:</strong> Open this file in the same browser where you use the app, then check the console or the output below.
+  </div>
+
+  <h2>Stored Manual Expenses:</h2>
+  <div id="output"></div>
+
+  <script>
+    const STORAGE_KEY = 'source-report:weekly-manual-expenses';
+    const output = document.getElementById('output');
+    
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      
+      if (!raw) {
+        output.innerHTML = '<div class="warning">No manual expenses found in localStorage.</div>';
+      } else {
+        const data = JSON.parse(raw);
+        const entries = Object.entries(data);
+        
+        if (entries.length === 0) {
+          output.innerHTML = '<div class="warning">Manual expenses storage exists but is empty.</div>';
+        } else {
+          let html = '<table border="1" cellpadding="8" style="border-collapse: collapse; width: 100%;">';
+          html += '<thead><tr><th>Week + Receiver</th><th>Expenses</th></tr></thead><tbody>';
+          
+          entries.forEach(([key, expenses]) => {
+            const [startDate, endDate, receiver] = key.split(':');
+            html += `<tr><td><strong>${receiver}</strong><br>${startDate} to ${endDate}</td><td>`;
+            
+            if (Array.isArray(expenses) && expenses.length > 0) {
+              html += '<ul style="margin: 0; padding-left: 20px;">';
+              expenses.forEach(exp => {
+                html += `<li>₱${exp.amount} - ${exp.comment} (ID: ${exp.id})</li>`;
+              });
+              html += '</ul>';
+            } else {
+              html += '<em>No expenses</em>';
+            }
+            
+            html += '</td></tr>';
+          });
+          
+          html += '</tbody></table>';
+          output.innerHTML = html;
+        }
+        
+        console.log('Full localStorage data:', data);
+      }
+    } catch (error) {
+      output.innerHTML = `<div class="warning">Error reading localStorage: ${error.message}</div>`;
+      console.error(error);
+    }
+  </script>
+</body>
+</html>

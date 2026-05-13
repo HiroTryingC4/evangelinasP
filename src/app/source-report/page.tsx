@@ -11,11 +11,9 @@ type MethodName = "Cash" | "GCash" | "Bank Transfer";
 const SOURCE_ORDER: SourceName[] = ["Direct", "TikTok", "Facebook", "Airbnb"];
 const METHOD_ORDER: MethodName[] = ["Cash", "GCash", "Bank Transfer"];
 const CORE_UNITS = new Set(["1116", "1118", "1558", "1845"]);
-const WEEKLY_MANUAL_EXPENSES_STORAGE_KEY = "source-report:weekly-manual-expenses";
-const LEGACY_WEEKLY_MINUS_STORAGE_KEY = "source-report:weekly-minus";
 
 type ManualExpenseEntry = {
-  id: string;
+  id: number;
   amount: number;
   comment: string;
 };
@@ -231,7 +229,7 @@ export default function SourceReportPage() {
   const [loading, setLoading] = useState(true);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
   const [selectedReceiver, setSelectedReceiver] = useState<ReceiverFilter>("__all__");
-  const [weeklyExpensesByScope, setWeeklyExpensesByScope] = useState<Record<string, ManualExpenseEntry[]>>({});
+  const [weeklyManualExpenses, setWeeklyManualExpenses] = useState<ManualExpenseEntry[]>([]);
   const [newExpenseAmount, setNewExpenseAmount] = useState("");
   const [newExpenseComment, setNewExpenseComment] = useState("");
 
@@ -244,48 +242,41 @@ export default function SourceReportPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(WEEKLY_MANUAL_EXPENSES_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Record<string, ManualExpenseEntry[]>;
-        if (parsed && typeof parsed === "object") {
-          setWeeklyExpensesByScope(parsed);
-          return;
-        }
-      }
-
-      // Migrate old one-value weekly minus data to manual expense entries.
-      const legacyRaw = window.localStorage.getItem(LEGACY_WEEKLY_MINUS_STORAGE_KEY);
-      if (!legacyRaw) return;
-      const legacyParsed = JSON.parse(legacyRaw) as Record<string, string>;
-      if (!legacyParsed || typeof legacyParsed !== "object") return;
-
-      const migrated: Record<string, ManualExpenseEntry[]> = {};
-      Object.entries(legacyParsed).forEach(([scope, amountInput]) => {
-        const amount = parseManualAmount(String(amountInput ?? ""));
-        if (!amount) return;
-        migrated[scope] = [{
-          id: `legacy-${scope}`,
-          amount,
-          comment: "Legacy manual minus",
-        }];
-      });
-      setWeeklyExpensesByScope(migrated);
-    } catch {
-      setWeeklyExpensesByScope({});
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(WEEKLY_MANUAL_EXPENSES_STORAGE_KEY, JSON.stringify(weeklyExpensesByScope));
-    } catch {
-      // Ignore storage failures so report rendering never breaks.
-    }
-  }, [weeklyExpensesByScope]);
-
   const week = useMemo(() => getSundayToSaturdayWeek(weeklyDate), [weeklyDate]);
+
+  // Fetch manual expenses whenever week or receiver changes
+  useEffect(() => {
+    const fetchExpenses = async () => {
+      try {
+        if (selectedReceiver === "__all__") {
+          // Fetch all expenses for the week
+          const response = await fetch(
+            `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}`,
+            { cache: "no-store" }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setWeeklyManualExpenses(data);
+          }
+        } else {
+          // Fetch expenses for specific receiver
+          const response = await fetch(
+            `/api/manual-expenses?weekStart=${week.startDate}&weekEnd=${week.endDate}&receiver=${selectedReceiver}`,
+            { cache: "no-store" }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setWeeklyManualExpenses(data);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching manual expenses:", error);
+        setWeeklyManualExpenses([]);
+      }
+    };
+
+    fetchExpenses();
+  }, [week.startDate, week.endDate, selectedReceiver]);
 
   const receivers = useMemo(() => {
     const all = bookings.flatMap((b) => [b.dpReceivedBy, b.fpReceivedBy]);
@@ -308,16 +299,10 @@ export default function SourceReportPage() {
     [coreBookings, selectedReceiver, week.endDate, week.startDate]
   );
 
-  const weeklyExpenseScopeKey = `${week.startDate}:${week.endDate}:${selectedReceiver}`;
-  const weeklyManualExpenses = weeklyExpensesByScope[weeklyExpenseScopeKey] ?? [];
-  
-  // When viewing "All receivers combined", aggregate expenses from all receivers for this week
-  const weeklyManualExpenseTotal = selectedReceiver === "__all__"
-    ? Object.entries(weeklyExpensesByScope)
-        .filter(([key]) => key.startsWith(`${week.startDate}:${week.endDate}:`))
-        .flatMap(([, expenses]) => expenses)
-        .reduce((sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)), 0)
-    : weeklyManualExpenses.reduce((sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)), 0);
+  const weeklyManualExpenseTotal = weeklyManualExpenses.reduce(
+    (sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)),
+    0
+  );
   
   const adjustedCoreTotalPaid = Math.max(0, coreReport.summary.totalPaid - weeklyManualExpenseTotal);
   const selectedWeekLabel = `${new Date(`${week.startDate}T12:00:00`).toLocaleDateString("en-PH", {
@@ -473,27 +458,33 @@ export default function SourceReportPage() {
             <button
               type="button"
               className="btn-secondary text-xs py-1.5 px-3"
-              onClick={() => {
+              onClick={async () => {
                 const amount = parseManualAmount(newExpenseAmount);
                 const comment = newExpenseComment.trim();
                 if (!amount || !comment) return;
 
-                setWeeklyExpensesByScope((prev) => {
-                  const current = prev[weeklyExpenseScopeKey] ?? [];
-                  const nextEntry: ManualExpenseEntry = {
-                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                    amount,
-                    comment,
-                  };
+                try {
+                  const response = await fetch("/api/manual-expenses", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      weekStart: week.startDate,
+                      weekEnd: week.endDate,
+                      receiver: selectedReceiver,
+                      amount,
+                      comment,
+                    }),
+                  });
 
-                  return {
-                    ...prev,
-                    [weeklyExpenseScopeKey]: [...current, nextEntry],
-                  };
-                });
-
-                setNewExpenseAmount("");
-                setNewExpenseComment("");
+                  if (response.ok) {
+                    const newExpense = await response.json();
+                    setWeeklyManualExpenses((prev) => [...prev, newExpense]);
+                    setNewExpenseAmount("");
+                    setNewExpenseComment("");
+                  }
+                } catch (error) {
+                  console.error("Error adding expense:", error);
+                }
               }}
             >
               Add expense
@@ -527,15 +518,21 @@ export default function SourceReportPage() {
                         <button
                           type="button"
                           className="text-[11px] text-red-600 hover:text-red-700"
-                          onClick={() => {
-                            setWeeklyExpensesByScope((prev) => {
-                              const current = prev[weeklyExpenseScopeKey] ?? [];
-                              const next = current.filter((item) => item.id !== entry.id);
-                              return {
-                                ...prev,
-                                [weeklyExpenseScopeKey]: next,
-                              };
-                            });
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(
+                                `/api/manual-expenses?id=${entry.id}`,
+                                { method: "DELETE" }
+                              );
+
+                              if (response.ok) {
+                                setWeeklyManualExpenses((prev) =>
+                                  prev.filter((item) => item.id !== entry.id)
+                                );
+                              }
+                            } catch (error) {
+                              console.error("Error removing expense:", error);
+                            }
                           }}
                         >
                           Remove

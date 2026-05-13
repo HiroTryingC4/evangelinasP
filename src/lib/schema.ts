@@ -130,6 +130,16 @@ export const persons = pgTable("persons", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
+export const manualExpenses = pgTable("manual_expenses", {
+  id: serial("id").primaryKey(),
+  weekStart: text("week_start").notNull(), // YYYY-MM-DD format
+  weekEnd: text("week_end").notNull(), // YYYY-MM-DD format
+  receiver: text("receiver").notNull(), // receiver name or "__all__"
+  amount: integer("amount").notNull(),
+  comment: text("comment").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
 export type Booking    = typeof bookings.$inferSelect;
 export type NewBooking = typeof bookings.$inferInsert;
 export type Bill       = typeof bills.$inferSelect;
@@ -140,3 +150,5 @@ export type Income     = typeof incomes.$inferSelect;
 export type NewIncome  = typeof incomes.$inferInsert;
 export type Expense    = typeof expenses.$inferSelect;
 export type NewExpense = typeof expenses.$inferInsert;
+export type ManualExpense = typeof manualExpenses.$inferSelect;
+export type NewManualExpense = typeof manualExpenses.$inferInsert;
