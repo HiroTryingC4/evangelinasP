@@ -8,10 +8,10 @@ import { emitBookingsChanged } from "@/lib/bookings-sync";
 import { formatPHP, formatDate, STATUS_COLOR, UNITS, toYMD, normalizeBookingSource } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
-function BookingSourceBadge({ source }: { source: string | null | undefined }) {
-  const normalized = normalizeBookingSource(source);
+function BookingPlatformBadge({ platform }: { platform: string | null | undefined }) {
+  const platformStr = String(platform || "Direct").trim();
 
-  if (normalized === "TikTok") {
+  if (platformStr === "TikTok") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-black px-2 py-0.5 text-[10px] font-semibold text-white">
         <span className="text-cyan-300">♪</span>
@@ -20,7 +20,7 @@ function BookingSourceBadge({ source }: { source: string | null | undefined }) {
     );
   }
 
-  if (normalized === "Facebook") {
+  if (platformStr === "Facebook") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
         <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">f</span>
@@ -29,7 +29,7 @@ function BookingSourceBadge({ source }: { source: string | null | undefined }) {
     );
   }
 
-  if (normalized === "Airbnb") {
+  if (platformStr === "Airbnb") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
         <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">A</span>
@@ -61,6 +61,7 @@ function BookingsContent() {
   const [receivers, setReceivers] = useState<string[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editBooking, setEditBooking] = useState<Booking | null>(null);
+  const [savedScrollPosition, setSavedScrollPosition] = useState(0);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -101,31 +102,37 @@ function BookingsContent() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this booking? This cannot be undone.")) return;
+    const scrollPos = window.scrollY;
     await fetch(`/api/bookings/${id}`, { method: "DELETE" });
     emitBookingsChanged();
-    fetchBookings();
+    await fetchBookings();
+    window.scrollTo(0, scrollPos);
   };
 
   const handleCancelBooking = async (id: number) => {
     if (!confirm("Mark this booking as Canceled?")) return;
+    const scrollPos = window.scrollY;
     await fetch(`/api/bookings/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paymentStatus: "Canceled" }),
     });
     emitBookingsChanged();
-    fetchBookings();
+    await fetchBookings();
+    window.scrollTo(0, scrollPos);
   };
 
   const handleRestoreBooking = async (id: number) => {
     if (!confirm("Undo canceled status for this booking?")) return;
+    const scrollPos = window.scrollY;
     await fetch(`/api/bookings/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paymentStatus: "Restore" }),
     });
     emitBookingsChanged();
-    fetchBookings();
+    await fetchBookings();
+    window.scrollTo(0, scrollPos);
   };
 
   const exportToExcel = () => {
@@ -365,7 +372,7 @@ function BookingsContent() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold text-gray-900 truncate">{b.guestName}</p>
-                            <BookingSourceBadge source={b.bookingSource} />
+                            <BookingPlatformBadge platform={b.bookingPlatform} />
                             {getBookingCountBadge(b.guestName)}
                           </div>
                           {b.contactNo && (
@@ -401,7 +408,11 @@ function BookingsContent() {
 
                       <div className="flex gap-2 border-t border-gray-100 pt-2">
                         <button
-                          onClick={() => { setEditBooking(b); setShowForm(true); }}
+                          onClick={() => { 
+                            setSavedScrollPosition(window.scrollY);
+                            setEditBooking(b); 
+                            setShowForm(true); 
+                          }}
                           className="flex-1 btn-secondary text-xs py-1.5 justify-center"
                         >
                           <Pencil className="w-3.5 h-3.5" /> Edit
@@ -441,8 +452,17 @@ function BookingsContent() {
       {showForm && (
         <BookingForm
           booking={editBooking}
-          onClose={() => { setShowForm(false); setEditBooking(null); router.replace("/bookings"); }}
-          onSaved={() => { emitBookingsChanged(); fetchBookings(); }}
+          onClose={() => { 
+            setShowForm(false); 
+            setEditBooking(null); 
+            router.replace("/bookings", { scroll: false }); 
+            setTimeout(() => window.scrollTo(0, savedScrollPosition), 0);
+          }}
+          onSaved={async () => { 
+            emitBookingsChanged(); 
+            await fetchBookings();
+            setTimeout(() => window.scrollTo(0, savedScrollPosition), 0);
+          }}
         />
       )}
     </div>

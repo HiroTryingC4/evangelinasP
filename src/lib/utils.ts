@@ -150,15 +150,17 @@ export function getSundayToSaturdayWeek(date: string | Date) {
 export const UNITS = ["1116", "1118", "1558", "1845"];
 export const PAYMENT_METHODS = ["Cash", "GCash", "Bank Transfer"];
 export const STAFF = ["SIR JAMES", "SIR MIKE", "RIEMAR", "NONE", "JAYJAY"];
-export const BOOKING_SOURCES = ["Direct", "TikTok", "Facebook", "Airbnb"] as const;
+// Booking source now tracks who sourced/got the booking
+export const BOOKING_SOURCES = ["SIR JAMES", "SIR MIKE", "RIEMAR", "JAYJAY", "NONE"] as const;
+// Booking platform tracks where the booking came from
+export const BOOKING_PLATFORMS = ["TikTok", "Airbnb", "Facebook", "Direct"] as const;
 
 export function normalizeBookingSource(value: unknown): string {
-  const raw = String(value ?? "").trim().toLowerCase();
-  if (raw === "tiktok" || raw === "tik tok") return "TikTok";
-  if (raw === "facebook" || raw === "fb") return "Facebook";
-  if (raw === "airbnb" || raw === "air bnb") return "Airbnb";
-  if (raw === "direct" || raw === "walk-in" || raw === "walk in") return "Direct";
-  return "Direct";
+  const raw = String(value ?? "").trim().toUpperCase();
+  // Return as-is if it's a valid staff name
+  if (STAFF.includes(raw)) return raw;
+  // Default to RIEMAR if unknown
+  return "RIEMAR";
 }
 
 export const STATUS_COLOR: Record<string, string> = {

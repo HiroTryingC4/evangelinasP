@@ -167,140 +167,172 @@ export default function DashboardPage() {
         : "Incoming vs waiting";
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Revenue & booking analytics</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">Revenue & booking analytics</p>
         </div>
         <div className="flex items-center gap-2">
           {refreshing && (
-            <div className="flex items-center gap-2 text-xs text-gray-500 mr-1">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
               <span className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-blue-600" />
               Updating...
             </div>
           )}
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input w-auto text-xs" />
-          <span className="text-gray-400 text-xs">to</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input w-auto text-xs" />
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input w-auto text-sm" />
+          <span className="text-gray-400 text-sm">to</span>
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input w-auto text-sm" />
         </div>
       </div>
 
-      {/* QUICK links */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Link href="/tomorrow" className="card p-4 hover:shadow-md transition-shadow group">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Guests Summary</span>
-            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+      {/* Quick Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link href="/tomorrow" className="card p-5 hover:shadow-lg transition-all group border-l-4 border-blue-500">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Guests Summary</span>
+            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
           </div>
-          <div className="text-2xl sm:text-3xl font-bold text-gray-900">{todayData?.count ?? 0}</div>
-          <div className="text-xs text-gray-400 mt-1">view schedule details</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{todayData?.count ?? 0}</div>
+          <div className="text-xs text-gray-500">View schedule details</div>
         </Link>
-        <Link href="/finances" className="card p-4 hover:shadow-md transition-shadow group">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Week Revenue</span>
-            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+        
+        <Link href="/finances" className="card p-5 hover:shadow-lg transition-all group border-l-4 border-green-500">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Week Revenue</span>
+            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-blue-700">{formatPHP(weekRevenueDisplay)}</div>
-          <div className="text-xs text-gray-400 mt-1">{weekGuestsDisplay} guests this week ({weekScopeLabel})</div>
+          <div className="text-2xl font-bold text-green-700 mb-1">{formatPHP(weekRevenueDisplay)}</div>
+          <div className="text-xs text-gray-500">{weekGuestsDisplay} guests • {weekScopeLabel}</div>
         </Link>
-        <Link href="/payments" className="card p-4 hover:shadow-md transition-shadow group">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payments</span>
-            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+        
+        <Link href="/payments" className="card p-5 hover:shadow-lg transition-all group border-l-4 border-purple-500">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Payments</span>
+            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-gray-900">{formatPHP(summary.collectedRevenue ?? 0)}</div>
-          <div className="text-xs text-gray-400 mt-1">Go to payment records</div>
+          <div className="text-2xl font-bold text-purple-700 mb-1">{formatPHP(summary.collectedRevenue ?? 0)}</div>
+          <div className="text-xs text-gray-500">Go to payment records</div>
         </Link>
       </div>
 
-      {/* Main summary stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-blue-600 mb-1">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Expected Revenue</span>
+      {/* Revenue Overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="card p-6 bg-gradient-to-br from-blue-50 to-white border-blue-100">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+            </div>
+            <span className="text-sm font-semibold text-gray-700">Expected Revenue</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatPHP(summary.expectedRevenue ?? summary.totalRevenue)}</p>
-          <p className="text-[11px] text-gray-400 mt-1">Projected from booked stays</p>
+          <p className="text-3xl font-bold text-gray-900 mb-2">{formatPHP(summary.expectedRevenue ?? summary.totalRevenue)}</p>
+          <p className="text-xs text-gray-500">Projected from booked stays</p>
         </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-emerald-600 mb-1">
-            <CheckCircle className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Collected Revenue</span>
+        
+        <div className="card p-6 bg-gradient-to-br from-emerald-50 to-white border-emerald-100">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-emerald-600" />
+            </div>
+            <span className="text-sm font-semibold text-gray-700">Collected Revenue</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatPHP(summary.collectedRevenue ?? summary.activeRevenue ?? 0)}</p>
-          <p className="text-[11px] text-gray-400 mt-1">Down payments + full payments received</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-indigo-600 mb-1">
-            <BookOpen className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Bookings</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{summary.totalBookings}</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-purple-600 mb-1">
-            <Users className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Avg/Booking</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{formatPHP(Math.round(summary.avgPerBooking))}</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-green-600 mb-1">
-            <CheckCircle className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Fully Paid</span>
-          </div>
-          <p className="text-2xl font-bold text-green-700">{summary.fullyPaid}</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-yellow-600 mb-1">
-            <Clock className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Follow-Ups</span>
-          </div>
-          <p className="text-2xl font-bold text-yellow-700">{summary.followUps}</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-1.5 text-red-600 mb-1">
-            <AlertTriangle className="w-4 h-4" />
-            <span className="text-xs font-semibold text-gray-500">Conflicts</span>
-          </div>
-          <p className="text-2xl font-bold text-red-700">{summary.conflicts}</p>
+          <p className="text-3xl font-bold text-gray-900 mb-2">{formatPHP(summary.collectedRevenue ?? summary.activeRevenue ?? 0)}</p>
+          <p className="text-xs text-gray-500">Down payments + full payments received</p>
         </div>
       </div>
 
-      {/* Payment status bar */}
-      <div className="card p-4 sm:p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Payment Status</h2>
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="card p-4 text-center hover:shadow-md transition-shadow">
+          <div className="flex justify-center mb-2">
+            <div className="p-2 bg-indigo-100 rounded-full">
+              <BookOpen className="w-5 h-5 text-indigo-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 mb-1">{summary.totalBookings}</p>
+          <p className="text-xs text-gray-500 font-medium">Bookings</p>
+        </div>
+        
+        <div className="card p-4 text-center hover:shadow-md transition-shadow">
+          <div className="flex justify-center mb-2">
+            <div className="p-2 bg-purple-100 rounded-full">
+              <Users className="w-5 h-5 text-purple-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 mb-1">{formatPHP(Math.round(summary.avgPerBooking))}</p>
+          <p className="text-xs text-gray-500 font-medium">Avg/Booking</p>
+        </div>
+        
+        <div className="card p-4 text-center hover:shadow-md transition-shadow">
+          <div className="flex justify-center mb-2">
+            <div className="p-2 bg-green-100 rounded-full">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-green-700 mb-1">{summary.fullyPaid}</p>
+          <p className="text-xs text-gray-500 font-medium">Fully Paid</p>
+        </div>
+        
+        <div className="card p-4 text-center hover:shadow-md transition-shadow">
+          <div className="flex justify-center mb-2">
+            <div className="p-2 bg-yellow-100 rounded-full">
+              <Clock className="w-5 h-5 text-yellow-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-yellow-700 mb-1">{summary.followUps}</p>
+          <p className="text-xs text-gray-500 font-medium">Follow-Ups</p>
+        </div>
+        
+        <div className="card p-4 text-center hover:shadow-md transition-shadow">
+          <div className="flex justify-center mb-2">
+            <div className="p-2 bg-red-100 rounded-full">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-red-700 mb-1">{summary.conflicts}</p>
+          <p className="text-xs text-gray-500 font-medium">Conflicts</p>
+        </div>
+      </div>
+
+      {/* Payment Status */}
+      <div className="card p-6">
+        <h2 className="text-base font-semibold text-gray-900 mb-4">Payment Status</h2>
         {summary.totalBookings > 0 ? (
           <>
-            <div className="flex rounded-full overflow-hidden h-4 sm:h-5 text-xs">
+            <div className="flex rounded-lg overflow-hidden h-6 shadow-sm">
               {summary.fullyPaid > 0 && (
-                <div className="bg-green-500 flex items-center justify-center text-white font-medium"
+                <div className="bg-green-500 flex items-center justify-center text-white text-xs font-semibold"
                   style={{ width: `${(summary.fullyPaid / summary.totalBookings) * 100}%` }}>
                   {summary.fullyPaid > 2 ? summary.fullyPaid : ""}
                 </div>
               )}
               {summary.dpPaid > 0 && (
-                <div className="bg-yellow-400 flex items-center justify-center text-yellow-900 font-medium"
+                <div className="bg-yellow-400 flex items-center justify-center text-yellow-900 text-xs font-semibold"
                   style={{ width: `${(summary.dpPaid / summary.totalBookings) * 100}%` }}>
                   {summary.dpPaid > 2 ? summary.dpPaid : ""}
                 </div>
               )}
               {summary.noDP > 0 && (
-                <div className="bg-red-400 flex items-center justify-center text-white font-medium"
+                <div className="bg-red-400 flex items-center justify-center text-white text-xs font-semibold"
                   style={{ width: `${(summary.noDP / summary.totalBookings) * 100}%` }}>
                   {summary.noDP > 2 ? summary.noDP : ""}
                 </div>
               )}
             </div>
-            <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />Fully Paid: {summary.fullyPaid}</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />DP Paid: {summary.dpPaid}</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />No DP: {summary.noDP}</span>
+            <div className="flex flex-wrap gap-4 mt-4 text-sm">
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-gray-700">Fully Paid: <span className="font-semibold">{summary.fullyPaid}</span></span>
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-yellow-400" />
+                <span className="text-gray-700">DP Paid: <span className="font-semibold">{summary.dpPaid}</span></span>
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-400" />
+                <span className="text-gray-700">No DP: <span className="font-semibold">{summary.noDP}</span></span>
+              </span>
             </div>
           </>
         ) : (
@@ -417,7 +449,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-blue-50 rounded-xl p-3">
             <p className="text-[11px] uppercase tracking-wide text-blue-700 font-semibold">Revenue ({weeklyAnalysis.label})</p>
             <p className="text-xl font-bold text-blue-800 mt-0.5">{formatPHP(weeklyAnalysis.revenue)}</p>

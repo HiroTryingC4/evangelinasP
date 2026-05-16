@@ -112,6 +112,13 @@ export async function GET(req: NextRequest) {
         revenue: dayBookings.reduce((s, b) => s + b.totalFee, 0),
         guests: dayBookings.length,
         bookings: dayBookings.length,
+        guestList: dayBookings.map((b) => ({
+          id: b.id,
+          guestName: b.guestName,
+          unit: b.unit,
+          bookingSource: b.bookingSource,
+          totalFee: b.totalFee,
+        })),
       };
     });
 

@@ -25,6 +25,17 @@ type WeeklyRow = {
   bySource: Record<SourceName, number>;
   methods: Record<MethodName, number>;
   paidTotal: number;
+  guestList: Array<{
+    id: number;
+    guestName: string;
+    unit: string | null;
+    bookingSource: string | null;
+    totalFee: number;
+    dpAmount: number;
+    fpAmount: number;
+    dpReceivedBy?: string | null;
+    fpReceivedBy?: string | null;
+  }>;
 };
 
 type WeeklyReport = {
@@ -36,8 +47,6 @@ type WeeklyReport = {
     totalPaid: number;
   };
 };
-
-type ReceiverFilter = "__all__" | string;
 
 function addDays(baseYMD: string, days: number): string {
   const date = new Date(`${baseYMD}T12:00:00`);
@@ -78,66 +87,31 @@ function getMethodAmounts(booking: Booking): Record<MethodName, number> {
   return amounts;
 }
 
-function normalizeReceiver(value: string | null | undefined): string {
-  return String(value ?? "").trim().toLowerCase();
-}
-
-function bookingMatchesReceiver(booking: Booking, selectedReceiver: ReceiverFilter): boolean {
-  if (selectedReceiver === "__all__") return true;
-
-  const selected = normalizeReceiver(selectedReceiver);
-  const dpReceiver = normalizeReceiver(booking.dpReceivedBy);
-  const fpReceiver = normalizeReceiver(booking.fpReceivedBy);
-
-  return dpReceiver === selected || fpReceiver === selected;
-}
-
-function getMethodAmountsForReceiver(
-  booking: Booking,
-  selectedReceiver: ReceiverFilter
-): Record<MethodName, number> {
-  if (selectedReceiver === "__all__") return getMethodAmounts(booking);
-
-  const selected = normalizeReceiver(selectedReceiver);
-  const dpReceiver = normalizeReceiver(booking.dpReceivedBy);
-  const fpReceiver = normalizeReceiver(booking.fpReceivedBy);
-  const dpIncluded = dpReceiver === selected;
-  const fpIncluded = fpReceiver === selected;
-
-  const dpMethod = String(booking.dpMethod ?? "").trim().toLowerCase();
-  const fpMethod = String(booking.fpMethod ?? "").trim().toLowerCase();
-
-  const amounts: Record<MethodName, number> = {
-    Cash: 0,
-    GCash: 0,
-    "Bank Transfer": 0,
-  };
-
-  const addAmount = (method: string, amount: number) => {
-    const safeAmount = Math.max(0, amount);
-    if (!safeAmount) return;
-
-    if (method === "cash") amounts.Cash += safeAmount;
-    else if (method === "gcash") amounts.GCash += safeAmount;
-    else if (method === "bank transfer") amounts["Bank Transfer"] += safeAmount;
-  };
-
-  if (dpIncluded) addAmount(dpMethod, Number(booking.dpAmount ?? 0));
-  if (fpIncluded) addAmount(fpMethod, Number(booking.fpAmount ?? 0));
-
-  return amounts;
+function bookingMatchesBooker(booking: Booking, selectedBooker: string): boolean {
+  if (selectedBooker === "__all__") return true;
+  
+  const booker = String(booking.bookingSource ?? "").trim().toUpperCase();
+  const dpReceiver = String(booking.dpReceivedBy ?? "").trim().toUpperCase();
+  const fpReceiver = String(booking.fpReceivedBy ?? "").trim().toUpperCase();
+  const selected = selectedBooker.toUpperCase();
+  
+  // Show booking if:
+  // 1. This person got the booking (booker matches)
+  // 2. This person received the deposit (dpReceiver matches)
+  // 3. This person received the full payment (fpReceiver matches)
+  return booker === selected || dpReceiver === selected || fpReceiver === selected;
 }
 
 function buildWeeklyReport(
   sourceBookings: Booking[],
   weekStart: string,
   weekEnd: string,
-  selectedReceiver: ReceiverFilter
+  selectedBooker: string
 ): WeeklyReport {
   const rows = Array.from({ length: 7 }, (_, index) => {
     const dayKey = addDays(weekStart, index);
     const dayBookings = sourceBookings.filter((b) => (b.checkInDateKey || toYMD(b.checkIn)) === dayKey);
-    const dayRelevantBookings = dayBookings.filter((b) => bookingMatchesReceiver(b, selectedReceiver));
+    const dayRelevantBookings = dayBookings.filter((b) => bookingMatchesBooker(b, selectedBooker));
 
     const bySource = SOURCE_ORDER.reduce((acc, source) => {
       acc[source] = 0;
@@ -145,7 +119,7 @@ function buildWeeklyReport(
     }, {} as Record<SourceName, number>);
 
     dayRelevantBookings.forEach((b) => {
-      const source = normalizeBookingSource(b.bookingSource) as SourceName;
+      const source = String(b.bookingPlatform || "Direct").trim() as SourceName;
       bySource[source] += 1;
     });
 
@@ -155,7 +129,7 @@ function buildWeeklyReport(
     }, {} as Record<MethodName, number>);
 
     dayRelevantBookings.forEach((b) => {
-      const amounts = getMethodAmountsForReceiver(b, selectedReceiver);
+      const amounts = getMethodAmounts(b);
       METHOD_ORDER.forEach((method) => {
         methodTotals[method] += amounts[method];
       });
@@ -174,6 +148,17 @@ function buildWeeklyReport(
       bySource,
       methods: methodTotals,
       paidTotal,
+      guestList: dayRelevantBookings.map((b) => ({
+        id: b.id,
+        guestName: b.guestName,
+        unit: b.unit,
+        bookingSource: b.bookingSource,
+        totalFee: b.totalFee,
+        dpAmount: b.dpAmount || 0,
+        fpAmount: b.fpAmount || 0,
+        dpReceivedBy: b.dpReceivedBy,
+        fpReceivedBy: b.fpReceivedBy,
+      })),
     };
   });
 
@@ -199,11 +184,11 @@ function buildWeeklyReport(
     return key >= weekStart && key <= weekEnd;
   });
 
-  const weekRelevantBookings = weekBookings.filter((b) => bookingMatchesReceiver(b, selectedReceiver));
+  const weekRelevantBookings = weekBookings.filter((b) => bookingMatchesBooker(b, selectedBooker));
 
   weekRelevantBookings.forEach((b) => {
-    const source = normalizeBookingSource(b.bookingSource) as SourceName;
-    const amounts = getMethodAmountsForReceiver(b, selectedReceiver);
+    const source = String(b.bookingPlatform || "Direct").trim() as SourceName;
+    const amounts = getMethodAmounts(b);
     totals[source].bookings += 1;
     METHOD_ORDER.forEach((method) => {
       totals[source].methods[method] += amounts[method];
@@ -228,7 +213,7 @@ export default function SourceReportPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
-  const [selectedReceiver, setSelectedReceiver] = useState<ReceiverFilter>("__all__");
+  const [selectedBooker, setSelectedBooker] = useState<string>("__all__");
   const [weeklyManualExpenses, setWeeklyManualExpenses] = useState<ManualExpenseEntry[]>([]);
   const [newExpenseAmount, setNewExpenseAmount] = useState("");
   const [newExpenseComment, setNewExpenseComment] = useState("");
@@ -244,42 +229,8 @@ export default function SourceReportPage() {
 
   const week = useMemo(() => getSundayToSaturdayWeek(weeklyDate), [weeklyDate]);
 
-  // Fetch manual expenses whenever week or receiver changes
-  useEffect(() => {
-    const fetchExpenses = async () => {
-      try {
-        if (selectedReceiver === "__all__") {
-          // Fetch all expenses for the week
-          const response = await fetch(
-            `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}`,
-            { cache: "no-store" }
-          );
-          if (response.ok) {
-            const data = await response.json();
-            setWeeklyManualExpenses(data);
-          }
-        } else {
-          // Fetch expenses for specific receiver
-          const response = await fetch(
-            `/api/manual-expenses?weekStart=${week.startDate}&weekEnd=${week.endDate}&receiver=${selectedReceiver}`,
-            { cache: "no-store" }
-          );
-          if (response.ok) {
-            const data = await response.json();
-            setWeeklyManualExpenses(data);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching manual expenses:", error);
-        setWeeklyManualExpenses([]);
-      }
-    };
-
-    fetchExpenses();
-  }, [week.startDate, week.endDate, selectedReceiver]);
-
-  const receivers = useMemo(() => {
-    const all = bookings.flatMap((b) => [b.dpReceivedBy, b.fpReceivedBy]);
+  const bookers = useMemo(() => {
+    const all = bookings.map((b) => b.bookingSource);
     return Array.from(
       new Set(
         all
@@ -289,14 +240,36 @@ export default function SourceReportPage() {
     ).sort((a, b) => a.localeCompare(b));
   }, [bookings]);
 
+  // Fetch manual expenses whenever week changes (always fetch all for now)
+  useEffect(() => {
+    const fetchExpenses = async () => {
+      try {
+        // Fetch all expenses for the week
+        const response = await fetch(
+          `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}`,
+          { cache: "no-store" }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setWeeklyManualExpenses(data);
+        }
+      } catch (error) {
+        console.error("Error fetching manual expenses:", error);
+        setWeeklyManualExpenses([]);
+      }
+    };
+
+    fetchExpenses();
+  }, [week.startDate, week.endDate]);
+
   const coreBookings = useMemo(
     () => bookings.filter((b) => CORE_UNITS.has(String(b.unit ?? "").replace(/^Unit\s*/i, "").trim())),
     [bookings]
   );
 
   const coreReport = useMemo(
-    () => buildWeeklyReport(coreBookings, week.startDate, week.endDate, selectedReceiver),
-    [coreBookings, selectedReceiver, week.endDate, week.startDate]
+    () => buildWeeklyReport(coreBookings, week.startDate, week.endDate, selectedBooker),
+    [coreBookings, selectedBooker, week.endDate, week.startDate]
   );
 
   const weeklyManualExpenseTotal = weeklyManualExpenses.reduce(
@@ -341,13 +314,13 @@ export default function SourceReportPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <select
             className="input text-xs w-auto"
-            value={selectedReceiver}
-            onChange={(e) => setSelectedReceiver(e.target.value)}
-            title="Filter report by receiver"
+            value={selectedBooker}
+            onChange={(e) => setSelectedBooker(e.target.value)}
+            title="Filter by who got the booking or received payment"
           >
-            <option value="__all__">All receivers combined</option>
-            {receivers.map((receiver) => (
-              <option key={receiver} value={receiver}>{receiver}</option>
+            <option value="__all__">All bookers</option>
+            {bookers.map((booker) => (
+              <option key={booker} value={booker}>{booker}</option>
             ))}
           </select>
           <button
@@ -470,7 +443,7 @@ export default function SourceReportPage() {
                     body: JSON.stringify({
                       weekStart: week.startDate,
                       weekEnd: week.endDate,
-                      receiver: selectedReceiver,
+                      receiver: "__all__", // Manual expenses apply to all
                       amount,
                       comment,
                     }),
@@ -592,6 +565,201 @@ export default function SourceReportPage() {
                 <td className="px-3 py-2 text-right text-green-700">{formatPHP(coreReport.summary.methodTotals.GCash)}</td>
                 <td className="px-3 py-2 text-right text-blue-700">{formatPHP(coreReport.summary.methodTotals["Bank Transfer"])}</td>
                 <td className="px-3 py-2 text-right text-purple-700">{formatPHP(coreReport.summary.totalPaid)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* Guest Details Table */}
+      <div className="card overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Guest Details by Day</h2>
+              <p className="text-xs text-gray-500 mt-1">Check-in schedule with booking manager and payment receiver</p>
+            </div>
+            <div className="flex flex-col gap-2 sticky top-4 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+              <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Legend:</span>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center text-[10px] px-2.5 py-1.5 rounded-md bg-purple-600 text-white border border-purple-700 font-bold min-w-[70px]">
+                  BOOKED BY
+                </span>
+                <span className="text-xs text-gray-500">=</span>
+                <span className="text-xs text-gray-600">Who Got Booking</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center text-[10px] px-2.5 py-1.5 rounded-md bg-green-500 text-white border border-green-600 font-bold min-w-[70px]">
+                  DP PAID TO
+                </span>
+                <span className="text-xs text-gray-500">=</span>
+                <span className="text-xs text-gray-600">Deposit Receiver</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center text-[10px] px-2.5 py-1.5 rounded-md bg-blue-500 text-white border border-blue-600 font-bold min-w-[70px]">
+                  FP PAID TO
+                </span>
+                <span className="text-xs text-gray-500">=</span>
+                <span className="text-xs text-gray-600">Full Payment Receiver</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-gray-100 text-xs text-gray-700 uppercase tracking-wide border-b-2 border-gray-300">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-bold border-r border-gray-300">Day</th>
+                <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">Total</th>
+                <th className="px-3 py-2.5 text-left font-bold border-r border-gray-300">Guest Name</th>
+                <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">Unit</th>
+                <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">Booked By</th>
+                <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">DP Paid To</th>
+                <th className="px-3 py-2.5 text-right font-bold border-r border-gray-300">DP Amount</th>
+                <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">FP Paid To</th>
+                <th className="px-3 py-2.5 text-right font-bold border-r border-gray-300">FP Amount</th>
+                <th className="px-3 py-2.5 text-right font-bold">Total</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {coreReport.rows.map((row) => {
+                const dateLabel = new Date(row.dayKey).toLocaleDateString("en-PH", { 
+                  month: "short", 
+                  day: "numeric" 
+                });
+                const guestList = row.guestList || [];
+                
+                if (guestList.length === 0) {
+                  return (
+                    <tr key={row.dayKey} className="border-b border-gray-200 hover:bg-gray-50">
+                      <td className="px-3 py-3 border-r border-gray-200">
+                        <div className="font-semibold text-gray-900">{row.label.split(',')[0]}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{dateLabel}</div>
+                      </td>
+                      <td className="px-3 py-3 text-center border-r border-gray-200">
+                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-gray-100 text-gray-400">
+                          0
+                        </span>
+                      </td>
+                      <td colSpan={8} className="px-3 py-3 text-center text-xs text-gray-400 italic">
+                        No guests scheduled
+                      </td>
+                    </tr>
+                  );
+                }
+                
+                return guestList.map((guest, index) => {
+                  const bookedBy = guest.bookingSource || "Unknown";
+                  const dpReceiver = guest.dpReceivedBy || "None";
+                  const fpReceiver = guest.fpReceivedBy || "None";
+                  
+                  const bookedByColors: Record<string, string> = {
+                    "riemar": "bg-purple-600 text-white",
+                    "sir james": "bg-indigo-600 text-white",
+                    "sir mike": "bg-cyan-600 text-white",
+                    "jayjay": "bg-orange-600 text-white",
+                    "none": "bg-gray-500 text-white",
+                  };
+                  
+                  const receiverColors: Record<string, string> = {
+                    "riemar": "bg-purple-400 text-white",
+                    "sir james": "bg-indigo-400 text-white",
+                    "sir mike": "bg-cyan-400 text-white",
+                    "jayjay": "bg-orange-400 text-white",
+                    "none": "bg-gray-400 text-white",
+                  };
+                  
+                  const normalizedBookedBy = bookedBy.toLowerCase().trim();
+                  const normalizedDpReceiver = dpReceiver.toLowerCase().trim();
+                  const normalizedFpReceiver = fpReceiver.toLowerCase().trim();
+                  const bookedByColor = bookedByColors[normalizedBookedBy] || "bg-gray-700 text-white";
+                  const dpReceiverColor = receiverColors[normalizedDpReceiver] || "bg-gray-500 text-white";
+                  const fpReceiverColor = receiverColors[normalizedFpReceiver] || "bg-gray-500 text-white";
+                  
+                  return (
+                    <tr key={`${row.dayKey}-${guest.id}`} className="border-b border-gray-200 hover:bg-gray-50">
+                      {index === 0 ? (
+                        <>
+                          <td rowSpan={guestList.length} className="px-3 py-3 border-r border-gray-200 align-top bg-gray-50">
+                            <div className="font-semibold text-gray-900">{row.label.split(',')[0]}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{dateLabel}</div>
+                          </td>
+                          <td rowSpan={guestList.length} className="px-3 py-3 text-center border-r border-gray-200 align-top bg-gray-50">
+                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-sm">
+                              {row.bookings}
+                            </span>
+                          </td>
+                        </>
+                      ) : null}
+                      <td className="px-3 py-2.5 border-r border-gray-200">
+                        <span className="text-gray-900 font-medium">{guest.guestName}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border-r border-gray-200">
+                        <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">{guest.unit}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border-r border-gray-200">
+                        <span 
+                          className={`text-[10px] px-2.5 py-1.5 rounded-md font-bold ${bookedByColor} shadow-sm uppercase whitespace-nowrap inline-block min-w-[70px]`}
+                          title={`Booked by ${bookedBy}`}
+                        >
+                          {bookedBy}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border-r border-gray-200">
+                        <span 
+                          className={`text-[10px] px-2.5 py-1.5 rounded-md font-bold ${dpReceiverColor} shadow-sm uppercase whitespace-nowrap inline-block min-w-[70px]`}
+                          title={`Deposit received by ${dpReceiver}`}
+                        >
+                          {dpReceiver}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right border-r border-gray-200">
+                        <span className="font-semibold text-green-700">{formatPHP(guest.dpAmount)}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border-r border-gray-200">
+                        <span 
+                          className={`text-[10px] px-2.5 py-1.5 rounded-md font-bold ${fpReceiverColor} shadow-sm uppercase whitespace-nowrap inline-block min-w-[70px]`}
+                          title={`Full payment received by ${fpReceiver}`}
+                        >
+                          {fpReceiver}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right border-r border-gray-200">
+                        <span className="font-semibold text-blue-700">{formatPHP(guest.fpAmount)}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <span className="font-bold text-purple-700">{formatPHP(guest.dpAmount + guest.fpAmount)}</span>
+                      </td>
+                    </tr>
+                  );
+                });
+              })}
+            </tbody>
+            <tfoot className="bg-gradient-to-r from-gray-100 to-gray-200 border-t-2 border-gray-300">
+              <tr>
+                <td className="px-3 py-3 font-bold text-gray-900 border-r border-gray-300">Week Total</td>
+                <td className="px-3 py-3 text-center border-r border-gray-300">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md">
+                    {coreReport.summary.totalBookings}
+                  </span>
+                </td>
+                <td colSpan={4} className="px-3 py-3 text-gray-700 font-medium border-r border-gray-300">
+                  {coreReport.summary.totalBookings} total guest{coreReport.summary.totalBookings !== 1 ? 's' : ''}
+                </td>
+                <td className="px-3 py-3 text-right font-bold text-green-700 border-r border-gray-300">
+                  {formatPHP(coreReport.rows.reduce((sum, row) => 
+                    sum + row.guestList.reduce((guestSum, guest) => guestSum + guest.dpAmount, 0), 0
+                  ))}
+                </td>
+                <td className="px-3 py-3 border-r border-gray-300"></td>
+                <td className="px-3 py-3 text-right font-bold text-blue-700 border-r border-gray-300">
+                  {formatPHP(coreReport.rows.reduce((sum, row) => 
+                    sum + row.guestList.reduce((guestSum, guest) => guestSum + guest.fpAmount, 0), 0
+                  ))}
+                </td>
+                <td className="px-3 py-3 text-right font-bold text-purple-700 text-base">
+                  {formatPHP(coreReport.summary.totalPaid)}
+                </td>
               </tr>
             </tfoot>
           </table>
