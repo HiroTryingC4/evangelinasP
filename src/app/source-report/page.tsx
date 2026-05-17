@@ -560,18 +560,30 @@ export default function SourceReportPage() {
                           className="text-[11px] text-red-600 hover:text-red-700"
                           onClick={async () => {
                             try {
+                              console.log("🗑️ Deleting expense:", entry.id);
                               const response = await fetch(
-                                `/api/manual-expenses?id=${entry.id}`,
-                                { method: "DELETE" }
+                                `/api/manual-expenses?id=${entry.id}&_t=${Date.now()}`,
+                                { 
+                                  method: "DELETE",
+                                  cache: "no-store"
+                                }
                               );
 
+                              console.log("Delete response status:", response.status);
+
                               if (response.ok) {
+                                console.log("✅ Expense deleted successfully");
                                 setWeeklyManualExpenses((prev) =>
                                   prev.filter((item) => item.id !== entry.id)
                                 );
+                              } else {
+                                const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+                                console.error("❌ Failed to delete expense:", errorData);
+                                alert(`Failed to delete expense: ${errorData.error || 'Unknown error'}`);
                               }
                             } catch (error) {
-                              console.error("Error removing expense:", error);
+                              console.error("❌ Error removing expense:", error);
+                              alert(`Error removing expense: ${error instanceof Error ? error.message : 'Unknown error'}`);
                             }
                           }}
                         >

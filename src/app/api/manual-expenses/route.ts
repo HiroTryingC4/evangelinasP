@@ -89,27 +89,35 @@ export async function POST(request: NextRequest) {
 // DELETE: Remove a manual expense by ID
 export async function DELETE(request: NextRequest) {
   try {
+    console.log("🗑️ DELETE /api/manual-expenses - Ensuring table exists...");
     await ensureManualExpensesTable();
+    console.log("✅ Table ensured");
     
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
+    console.log("🔍 Deleting expense with ID:", id);
+
     if (!id) {
+      console.error("❌ Missing expense ID");
       return NextResponse.json(
         { error: "Missing expense ID" },
         { status: 400 }
       );
     }
 
-    await db
+    const result = await db
       .delete(manualExpenses)
-      .where(eq(manualExpenses.id, Number(id)));
+      .where(eq(manualExpenses.id, Number(id)))
+      .returning();
 
-    return NextResponse.json({ success: true });
+    console.log("✅ Deleted expense:", result);
+
+    return NextResponse.json({ success: true, deleted: result });
   } catch (error) {
-    console.error("Error deleting manual expense:", error);
+    console.error("❌ Error deleting manual expense:", error);
     return NextResponse.json(
-      { error: "Failed to delete manual expense" },
+      { error: "Failed to delete manual expense", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
