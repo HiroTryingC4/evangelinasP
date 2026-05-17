@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { sql } from "drizzle-orm";
+import { manualExpenses } from "@/lib/schema";
 import { ensureManualExpensesTable } from "@/lib/db-health";
 
 export const dynamic = "force-dynamic";
@@ -10,20 +10,43 @@ export async function GET() {
   try {
     await ensureManualExpensesTable();
     
-    // Get all records
-    const result = await db.execute(sql`SELECT * FROM manual_expenses ORDER BY created_at DESC LIMIT 50`);
-    
-    // Get count
-    const countResult = await db.execute(sql`SELECT COUNT(*) as count FROM manual_expenses`);
+    // Get all records using Drizzle ORM
+    const allExpenses = await db.select().from(manualExpenses);
     
     return NextResponse.json({
-      total: countResult.rows[0],
-      expenses: result.rows,
+      total: allExpenses.length,
+      expenses: allExpenses,
     });
   } catch (error) {
     console.error("Error in debug endpoint:", error);
     return NextResponse.json(
       { error: "Failed to fetch debug info", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: Clear all manual expenses (debug only)
+export async function DELETE(request: NextRequest) {
+  try {
+    console.log("??? Clearing all manual expenses using Drizzle ORM...");
+    await ensureManualExpensesTable();
+    
+    // Use Drizzle ORM delete instead of raw SQL
+    const deleted = await db.delete(manualExpenses);
+    
+    console.log("? All manual expenses cleared");
+    console.log("Deleted result:", deleted);
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: "All manual expenses cleared",
+      deletedCount: Array.isArray(deleted) ? deleted.length : "Success"
+    });
+  } catch (error) {
+    console.error("? Error clearing manual expenses:", error);
+    return NextResponse.json(
+      { error: "Failed to clear manual expenses", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

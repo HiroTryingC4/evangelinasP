@@ -91,11 +91,14 @@ function getMethodAmounts(booking: Booking): Record<MethodName, number> {
 function bookingMatchesReceiver(booking: Booking, selectedReceiver: string): boolean {
   if (selectedReceiver === "__all__") return true;
   
-  // Match by booking source (who got the booking)
-  const bookingSource = String(booking.bookingSource ?? "").trim().toUpperCase();
   const selected = selectedReceiver.toUpperCase();
   
-  return bookingSource === selected;
+  // Match by who RECEIVED the money (dpReceivedBy or fpReceivedBy)
+  // NOT by who booked it (bookingSource)
+  const dpReceiver = String(booking.dpReceivedBy ?? "").trim().toUpperCase();
+  const fpReceiver = String(booking.fpReceivedBy ?? "").trim().toUpperCase();
+  
+  return dpReceiver === selected || fpReceiver === selected;
 }
 
 function getMethodAmountsForReceiver(
@@ -262,10 +265,16 @@ export default function SourceReportPage() {
   const [loading, setLoading] = useState(true);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
   const [selectedReceiver, setSelectedReceiver] = useState<string>("__all__");
-  const [weeklyManualExpenses, setWeeklyManualExpenses] = useState<ManualExpenseEntry[]>([]);
+  const [manualExpenses, setManualExpenses] = useState<ManualExpenseEntry[]>([]);
   const [newExpenseAmount, setNewExpenseAmount] = useState("");
   const [newExpenseComment, setNewExpenseComment] = useState("");
   const [addingExpense, setAddingExpense] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
+
+  function showNotification(msg: string) {
+    setNotification(msg);
+    window.setTimeout(() => setNotification(null), 4000);
+  }
 
   useEffect(() => {
     fetch("/api/bookings?view=all", { cache: "no-store" })
@@ -279,25 +288,26 @@ export default function SourceReportPage() {
   const week = useMemo(() => getSundayToSaturdayWeek(weeklyDate), [weeklyDate]);
 
   const receivers = useMemo(() => {
-    // Get unique booking sources (who got the bookings)
-    const sources = bookings.map((b) => b.bookingSource);
-    return Array.from(
-      new Set(
-        sources
-          .map((v) => String(v ?? "").trim())
-          .filter(Boolean)
-      )
-    ).sort((a, b) => a.localeCompare(b));
+    // Get all people who received money (dpReceivedBy or fpReceivedBy)
+    const allReceivers = new Set<string>();
+    
+    bookings.forEach((b) => {
+      const dpReceiver = String(b.dpReceivedBy ?? "").trim();
+      const fpReceiver = String(b.fpReceivedBy ?? "").trim();
+      
+      if (dpReceiver) allReceivers.add(dpReceiver);
+      if (fpReceiver) allReceivers.add(fpReceiver);
+    });
+    
+    return Array.from(allReceivers).sort((a, b) => a.localeCompare(b));
   }, [bookings]);
 
-  // Fetch manual expenses whenever week changes (always fetch all for now)
+  // Fetch all manual expenses from the reliable debug endpoint, then filter by week locally.
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
-        // Always fetch all expenses for the week, regardless of receiver filter
-        // Add timestamp to prevent any caching
-        const url = `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}&_t=${Date.now()}`;
-        console.log("📥 Fetching expenses from:", url);
+        const url = `/api/manual-expenses/debug?_t=${Date.now()}`;
+        console.log("📥 Fetching manual expenses from:", url);
         const response = await fetch(url, { 
           cache: "no-store",
           headers: {
@@ -308,22 +318,37 @@ export default function SourceReportPage() {
         });
         if (response.ok) {
           const data = await response.json();
-          console.log("✅ Fetched expenses:", data);
-          console.log(`📊 Found ${data.length} expenses for this week`);
-          setWeeklyManualExpenses(data);
+          const rows = Array.isArray(data?.expenses) ? data.expenses : [];
+          console.log("✅ Fetched manual expenses:", rows);
+          setManualExpenses(rows);
         } else {
           const errorText = await response.text();
           console.error("❌ Failed to fetch expenses:", response.status, errorText);
-          setWeeklyManualExpenses([]);
+          setManualExpenses([]);
         }
       } catch (error) {
         console.error("❌ Error fetching manual expenses:", error);
-        setWeeklyManualExpenses([]);
+        setManualExpenses([]);
       }
     };
 
     fetchExpenses();
   }, [week.startDate, week.endDate]);
+
+  const weeklyManualExpenses = useMemo(
+    () =>
+      manualExpenses.filter((entry) => entry.weekStart === week.startDate && entry.weekEnd === week.endDate),
+    [manualExpenses, week.endDate, week.startDate]
+  );
+
+  const visibleManualExpenses = useMemo(
+    () =>
+      weeklyManualExpenses.filter((entry) => {
+        if (selectedReceiver === "__all__") return true;
+        return entry.receiver === selectedReceiver || entry.receiver === "__all__";
+      }),
+    [selectedReceiver, weeklyManualExpenses]
+  );
 
   const coreBookings = useMemo(
     () => bookings.filter((b) => CORE_UNITS.has(String(b.unit ?? "").replace(/^Unit\s*/i, "").trim())),
@@ -385,9 +410,9 @@ export default function SourceReportPage() {
             className="input text-xs w-auto"
             value={selectedReceiver}
             onChange={(e) => setSelectedReceiver(e.target.value)}
-            title="Filter by who got the booking"
+            title="Filter by who received the money (downpayment or balance)"
           >
-            <option value="__all__">All bookers</option>
+            <option value="__all__">All receivers</option>
             {receivers.map((receiver) => (
               <option key={receiver} value={receiver}>{receiver}</option>
             ))}
@@ -505,7 +530,7 @@ export default function SourceReportPage() {
                 const amount = parseManualAmount(newExpenseAmount);
                 const comment = newExpenseComment.trim();
                 if (!amount || !comment) {
-                  alert("Please enter both amount and comment");
+                  showNotification("Please enter both amount and comment");
                   return;
                 }
 
@@ -517,7 +542,7 @@ export default function SourceReportPage() {
                     body: JSON.stringify({
                       weekStart: week.startDate,
                       weekEnd: week.endDate,
-                      receiver: "__all__", // Always save as __all__ so it shows for everyone
+                      receiver: selectedReceiver === "__all__" ? "__all__" : selectedReceiver,
                       amount,
                       comment,
                     }),
@@ -527,9 +552,9 @@ export default function SourceReportPage() {
                     const newExpense = await response.json();
                     console.log("✅ Expense added:", newExpense);
                     
-                    // Refetch from database to ensure we have the latest data
-                    console.log("🔄 Refetching expenses from database...");
-                    const refetchUrl = `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}&_t=${Date.now()}`;
+                    // Refetch from the stable debug endpoint to ensure we have the latest data
+                    console.log("🔄 Refetching expenses from debug endpoint...");
+                    const refetchUrl = `/api/manual-expenses/debug?_t=${Date.now()}`;
                     const refetchResponse = await fetch(refetchUrl, { 
                       cache: "no-store",
                       headers: {
@@ -541,28 +566,29 @@ export default function SourceReportPage() {
                     
                     if (refetchResponse.ok) {
                       const freshData = await refetchResponse.json();
-                      console.log("✅ Refetched data:", freshData);
-                      setWeeklyManualExpenses(freshData);
+                      const freshExpenses = Array.isArray(freshData?.expenses) ? freshData.expenses : [];
+                      console.log("✅ Refetched data:", freshExpenses);
+                      setManualExpenses(freshExpenses);
                       
                       // Clear inputs and show success
                       setNewExpenseAmount("");
                       setNewExpenseComment("");
-                      alert(`✅ Expense added successfully! (${formatPHP(amount)})`);
+                      showNotification(`✅ Expense added successfully! (${formatPHP(amount)})`);
                     } else {
                       // Fallback to local state update
-                      setWeeklyManualExpenses((prev) => [...prev, newExpense]);
+                      setManualExpenses((prev) => [...prev, newExpense]);
                       setNewExpenseAmount("");
                       setNewExpenseComment("");
-                      alert(`✅ Expense added! (${formatPHP(amount)})`);
+                      showNotification(`✅ Expense added! (${formatPHP(amount)})`);
                     }
                   } else {
                     const errorData = await response.json();
                     console.error("Failed to add expense:", errorData);
-                    alert(`Failed to add expense: ${errorData.error || 'Unknown error'}`);
+                    showNotification(`Failed to add expense: ${errorData.error || 'Unknown error'}`);
                   }
                 } catch (error) {
                   console.error("Error adding expense:", error);
-                  alert(`Error adding expense: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                  showNotification(`Error adding expense: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 } finally {
                   setAddingExpense(false);
                 }
@@ -572,27 +598,35 @@ export default function SourceReportPage() {
             </button>
           </div>
 
+          {notification ? (
+            <div className="mt-2 p-2 rounded text-sm bg-amber-100 text-amber-900">
+              {notification}
+            </div>
+          ) : null}
+
           <div className="mt-2 text-xs sm:text-sm text-amber-900 space-y-0.5">
             <p>Manual expenses total: <span className="font-semibold">{formatPHP(weeklyManualExpenseTotal)}</span></p>
             <p>Adjusted total paid: <span className="font-semibold">{formatPHP(adjustedCoreTotalPaid)}</span></p>
             <p className="text-[11px] text-amber-700">Local report-only minus. This does not sync to Finances.</p>
           </div>
 
-          {weeklyManualExpenses.length > 0 ? (
+          {visibleManualExpenses.length > 0 ? (
             <div className="mt-2 rounded-md border border-amber-100 bg-white overflow-hidden">
               <table className="w-full text-xs">
                 <thead className="bg-amber-50 text-amber-900">
                   <tr>
                     <th className="text-left px-2 py-1.5 font-semibold">Week</th>
+                    <th className="text-left px-2 py-1.5 font-semibold">Receiver</th>
                     <th className="text-left px-2 py-1.5 font-semibold">Comment</th>
                     <th className="text-right px-2 py-1.5 font-semibold">Amount</th>
                     <th className="text-right px-2 py-1.5 font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {weeklyManualExpenses.map((entry) => (
+                  {visibleManualExpenses.map((entry) => (
                     <tr key={entry.id} className="border-t border-amber-100">
                       <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">{selectedWeekLabel}</td>
+                      <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">{entry.receiver}</td>
                       <td className="px-2 py-1.5 text-amber-900">{entry.comment}</td>
                       <td className="px-2 py-1.5 text-right font-medium text-amber-900">-{formatPHP(entry.amount)}</td>
                       <td className="px-2 py-1.5 text-right">
@@ -615,9 +649,9 @@ export default function SourceReportPage() {
                               if (response.ok) {
                                 console.log("✅ Expense deleted successfully");
                                 
-                                // Refetch from database to ensure we have the latest data
-                                console.log("🔄 Refetching expenses from database...");
-                                const refetchUrl = `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}&_t=${Date.now()}`;
+                                // Refetch from the stable debug endpoint to ensure we have the latest data
+                                console.log("🔄 Refetching expenses from debug endpoint...");
+                                const refetchUrl = `/api/manual-expenses/debug?_t=${Date.now()}`;
                                 const refetchResponse = await fetch(refetchUrl, { 
                                   cache: "no-store",
                                   headers: {
@@ -629,22 +663,23 @@ export default function SourceReportPage() {
                                 
                                 if (refetchResponse.ok) {
                                   const freshData = await refetchResponse.json();
-                                  console.log("✅ Refetched data:", freshData);
-                                  setWeeklyManualExpenses(freshData);
+                                  const freshExpenses = Array.isArray(freshData?.expenses) ? freshData.expenses : [];
+                                  console.log("✅ Refetched data:", freshExpenses);
+                                  setManualExpenses(freshExpenses);
                                 } else {
                                   // Fallback to local state update
-                                  setWeeklyManualExpenses((prev) =>
+                                  setManualExpenses((prev) =>
                                     prev.filter((item) => item.id !== entry.id)
                                   );
                                 }
-                              } else {
+                                } else {
                                 const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
                                 console.error("❌ Failed to delete expense:", errorData);
-                                alert(`Failed to delete expense: ${errorData.error || 'Unknown error'}`);
+                                showNotification(`Failed to delete expense: ${errorData.error || 'Unknown error'}`);
                               }
                             } catch (error) {
                               console.error("❌ Error removing expense:", error);
-                              alert(`Error removing expense: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                              showNotification(`Error removing expense: ${error instanceof Error ? error.message : 'Unknown error'}`);
                             }
                           }}
                         >
@@ -717,7 +752,7 @@ export default function SourceReportPage() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-gray-900">Guest Details by Day</h2>
-              <p className="text-xs text-gray-500 mt-1">Check-in schedule with booking manager and payment receiver</p>
+              <p className="text-xs text-gray-500 mt-1">Check-in schedule showing who booked it and who actually received each payment</p>
             </div>
             <div className="flex flex-col gap-2 sticky top-4 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
               <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Legend:</span>
@@ -726,7 +761,7 @@ export default function SourceReportPage() {
                   BOOKED BY
                 </span>
                 <span className="text-xs text-gray-500">=</span>
-                <span className="text-xs text-gray-600">Who Got Booking</span>
+                <span className="text-xs text-gray-600">Booking handler only</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center justify-center text-[10px] px-2.5 py-1.5 rounded-md bg-green-500 text-white border border-green-600 font-bold min-w-[70px]">
@@ -753,7 +788,7 @@ export default function SourceReportPage() {
                 <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">Total</th>
                 <th className="px-3 py-2.5 text-left font-bold border-r border-gray-300">Guest Name</th>
                 <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">Unit</th>
-                <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">Booked By</th>
+                <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">Booking Handler</th>
                 <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">DP Paid To</th>
                 <th className="px-3 py-2.5 text-right font-bold border-r border-gray-300">DP Amount</th>
                 <th className="px-3 py-2.5 text-center font-bold border-r border-gray-300">FP Paid To</th>
@@ -840,7 +875,7 @@ export default function SourceReportPage() {
                       <td className="px-3 py-2.5 text-center border-r border-gray-200">
                         <span 
                           className={`text-[10px] px-2.5 py-1.5 rounded-md font-bold ${bookedByColor} shadow-sm uppercase whitespace-nowrap inline-block min-w-[70px]`}
-                          title={`Booked by ${bookedBy}`}
+                          title={`Booking handled by ${bookedBy}`}
                         >
                           {bookedBy}
                         </span>

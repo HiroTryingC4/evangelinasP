@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { manualExpenses } from "@/lib/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { ensureManualExpensesTable } from "@/lib/db-health";
 
 export const dynamic = "force-dynamic";
@@ -26,26 +26,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use raw SQL because Drizzle ORM is not finding the records
-    const result = await db.execute(sql`
-      SELECT * FROM manual_expenses 
-      WHERE week_start = ${weekStart} AND week_end = ${weekEnd}
-      ORDER BY created_at DESC
-    `);
-    
-    const expenses = result.rows.map((row: any) => ({
+    // Use Drizzle ORM select to ensure reads come from the primary connection
+    const expenses = await db
+      .select()
+      .from(manualExpenses)
+      .where(and(eq(manualExpenses.weekStart, weekStart), eq(manualExpenses.weekEnd, weekEnd)));
+
+    // Map to API-friendly shape
+    const mapped = expenses.map((row: any) => ({
       id: row.id,
-      weekStart: row.week_start,
-      weekEnd: row.week_end,
+      weekStart: row.weekStart,
+      weekEnd: row.weekEnd,
       receiver: row.receiver,
       amount: row.amount,
       comment: row.comment,
-      createdAt: row.created_at,
+      createdAt: row.createdAt,
     }));
 
-    console.log(`✅ Found ${expenses.length} expenses`);
+    console.log(`✅ Found ${mapped.length} expenses`);
     
-    return NextResponse.json(expenses);
+    return NextResponse.json(mapped);
   } catch (error) {
     console.error("❌ Error fetching weekly manual expenses:", error);
     return NextResponse.json(
