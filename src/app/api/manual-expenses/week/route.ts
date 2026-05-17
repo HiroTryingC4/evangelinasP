@@ -9,11 +9,15 @@ export const dynamic = "force-dynamic";
 // GET: Fetch all manual expenses for a specific week (across all receivers)
 export async function GET(request: NextRequest) {
   try {
+    console.log("📖 GET /api/manual-expenses/week - Ensuring table exists...");
     await ensureManualExpensesTable();
+    console.log("✅ Table ensured");
     
     const { searchParams } = new URL(request.url);
     const weekStart = searchParams.get("weekStart");
     const weekEnd = searchParams.get("weekEnd");
+
+    console.log("🔍 Fetching expenses for:", { weekStart, weekEnd });
 
     if (!weekStart || !weekEnd) {
       return NextResponse.json(
@@ -32,11 +36,12 @@ export async function GET(request: NextRequest) {
         )
       );
 
+    console.log(`✅ Found ${expenses.length} expenses:`, expenses);
     return NextResponse.json(expenses);
   } catch (error) {
-    console.error("Error fetching weekly manual expenses:", error);
+    console.error("❌ Error fetching weekly manual expenses:", error);
     return NextResponse.json(
-      { error: "Failed to fetch weekly manual expenses" },
+      { error: "Failed to fetch weekly manual expenses", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

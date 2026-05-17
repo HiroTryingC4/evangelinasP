@@ -26,10 +26,14 @@ export async function ensureBookingSourceColumn() {
 }
 
 export async function ensureManualExpensesTable() {
-  if (manualExpensesEnsured) return;
+  if (manualExpensesEnsured) {
+    console.log("✅ manual_expenses table already ensured");
+    return;
+  }
   if (!manualExpensesEnsurePromise) {
     manualExpensesEnsurePromise = (async () => {
       try {
+        console.log("🔨 Creating manual_expenses table if not exists...");
         // Create table if it doesn't exist
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS manual_expenses (
@@ -42,16 +46,18 @@ export async function ensureManualExpensesTable() {
             created_at TIMESTAMP DEFAULT NOW()
           )
         `);
+        console.log("✅ manual_expenses table created/verified");
 
         // Create index for faster queries
         await db.execute(sql`
           CREATE INDEX IF NOT EXISTS idx_manual_expenses_week_receiver 
           ON manual_expenses(week_start, week_end, receiver)
         `);
+        console.log("✅ Index created/verified");
 
         manualExpensesEnsured = true;
       } catch (error) {
-        console.error("Error ensuring manual_expenses table:", error);
+        console.error("❌ Error ensuring manual_expenses table:", error);
         throw error;
       } finally {
         manualExpensesEnsurePromise = null;

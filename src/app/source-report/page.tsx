@@ -296,7 +296,8 @@ export default function SourceReportPage() {
     const fetchExpenses = async () => {
       try {
         // Always fetch all expenses for the week, regardless of receiver filter
-        const url = `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}`;
+        // Add timestamp to prevent any caching
+        const url = `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}&_t=${Date.now()}`;
         console.log("Fetching expenses from:", url);
         const response = await fetch(url, { cache: "no-store" });
         if (response.ok) {

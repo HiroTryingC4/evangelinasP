@@ -47,18 +47,23 @@ export async function GET(request: NextRequest) {
 // POST: Create a new manual expense
 export async function POST(request: NextRequest) {
   try {
+    console.log("📝 POST /api/manual-expenses - Ensuring table exists...");
     await ensureManualExpensesTable();
+    console.log("✅ Table ensured");
     
     const body = await request.json();
+    console.log("📦 Received body:", body);
     const { weekStart, weekEnd, receiver, amount, comment } = body;
 
     if (!weekStart || !weekEnd || !receiver || !amount || !comment) {
+      console.error("❌ Missing required fields:", { weekStart, weekEnd, receiver, amount, comment });
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
+    console.log("💾 Inserting expense:", { weekStart, weekEnd, receiver, amount: Number(amount), comment });
     const [newExpense] = await db
       .insert(manualExpenses)
       .values({
@@ -70,11 +75,12 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    console.log("✅ Expense created:", newExpense);
     return NextResponse.json(newExpense, { status: 201 });
   } catch (error) {
-    console.error("Error creating manual expense:", error);
+    console.error("❌ Error creating manual expense:", error);
     return NextResponse.json(
-      { error: "Failed to create manual expense" },
+      { error: "Failed to create manual expense", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
