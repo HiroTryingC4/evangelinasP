@@ -91,12 +91,11 @@ function getMethodAmounts(booking: Booking): Record<MethodName, number> {
 function bookingMatchesReceiver(booking: Booking, selectedReceiver: string): boolean {
   if (selectedReceiver === "__all__") return true;
   
-  const dpReceiver = String(booking.dpReceivedBy ?? "").trim().toUpperCase();
-  const fpReceiver = String(booking.fpReceivedBy ?? "").trim().toUpperCase();
+  // Match by booking source (who got the booking)
+  const bookingSource = String(booking.bookingSource ?? "").trim().toUpperCase();
   const selected = selectedReceiver.toUpperCase();
   
-  // Show booking if this person received any payment
-  return dpReceiver === selected || fpReceiver === selected;
+  return bookingSource === selected;
 }
 
 function getMethodAmountsForReceiver(
@@ -279,12 +278,11 @@ export default function SourceReportPage() {
   const week = useMemo(() => getSundayToSaturdayWeek(weeklyDate), [weeklyDate]);
 
   const receivers = useMemo(() => {
-    const dpReceivers = bookings.map((b) => b.dpReceivedBy);
-    const fpReceivers = bookings.map((b) => b.fpReceivedBy);
-    const all = [...dpReceivers, ...fpReceivers];
+    // Get unique booking sources (who got the bookings)
+    const sources = bookings.map((b) => b.bookingSource);
     return Array.from(
       new Set(
-        all
+        sources
           .map((v) => String(v ?? "").trim())
           .filter(Boolean)
       )
@@ -386,9 +384,9 @@ export default function SourceReportPage() {
             className="input text-xs w-auto"
             value={selectedReceiver}
             onChange={(e) => setSelectedReceiver(e.target.value)}
-            title="Filter by payment receiver"
+            title="Filter by who got the booking"
           >
-            <option value="__all__">All receivers</option>
+            <option value="__all__">All bookers</option>
             {receivers.map((receiver) => (
               <option key={receiver} value={receiver}>{receiver}</option>
             ))}
