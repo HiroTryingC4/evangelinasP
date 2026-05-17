@@ -511,7 +511,7 @@ export default function SourceReportPage() {
                     body: JSON.stringify({
                       weekStart: week.startDate,
                       weekEnd: week.endDate,
-                      receiver: selectedReceiver,
+                      receiver: "__all__", // Always save as __all__ so it shows for everyone
                       amount,
                       comment,
                     }),
