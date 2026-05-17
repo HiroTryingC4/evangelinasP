@@ -87,31 +87,79 @@ function getMethodAmounts(booking: Booking): Record<MethodName, number> {
   return amounts;
 }
 
-function bookingMatchesBooker(booking: Booking, selectedBooker: string): boolean {
-  if (selectedBooker === "__all__") return true;
+function bookingMatchesReceiver(booking: Booking, selectedReceiver: string): boolean {
+  if (selectedReceiver === "__all__") return true;
   
-  const booker = String(booking.bookingSource ?? "").trim().toUpperCase();
   const dpReceiver = String(booking.dpReceivedBy ?? "").trim().toUpperCase();
   const fpReceiver = String(booking.fpReceivedBy ?? "").trim().toUpperCase();
-  const selected = selectedBooker.toUpperCase();
+  const selected = selectedReceiver.toUpperCase();
   
-  // Show booking if:
-  // 1. This person got the booking (booker matches)
-  // 2. This person received the deposit (dpReceiver matches)
-  // 3. This person received the full payment (fpReceiver matches)
-  return booker === selected || dpReceiver === selected || fpReceiver === selected;
+  // Show booking if this person received any payment
+  return dpReceiver === selected || fpReceiver === selected;
+}
+
+function getMethodAmountsForReceiver(
+  booking: Booking,
+  selectedReceiver: string
+): Record<MethodName, number> {
+  const amounts: Record<MethodName, number> = {
+    Cash: 0,
+    GCash: 0,
+    "Bank Transfer": 0,
+  };
+
+  if (selectedReceiver === "__all__") {
+    // Show all payments
+    const addAmount = (method: string, amount: number) => {
+      const safeAmount = Math.max(0, amount);
+      if (!safeAmount) return;
+
+      const methodLower = method.toLowerCase();
+      if (methodLower === "cash") amounts.Cash += safeAmount;
+      else if (methodLower === "gcash") amounts.GCash += safeAmount;
+      else if (methodLower === "bank transfer") amounts["Bank Transfer"] += safeAmount;
+    };
+
+    addAmount(String(booking.dpMethod ?? "").trim(), Number(booking.dpAmount ?? 0));
+    addAmount(String(booking.fpMethod ?? "").trim(), Number(booking.fpAmount ?? 0));
+  } else {
+    // Only show payments received by selected receiver
+    const selected = selectedReceiver.toUpperCase();
+    const dpReceiver = String(booking.dpReceivedBy ?? "").trim().toUpperCase();
+    const fpReceiver = String(booking.fpReceivedBy ?? "").trim().toUpperCase();
+
+    const addAmount = (method: string, amount: number) => {
+      const safeAmount = Math.max(0, amount);
+      if (!safeAmount) return;
+
+      const methodLower = method.toLowerCase();
+      if (methodLower === "cash") amounts.Cash += safeAmount;
+      else if (methodLower === "gcash") amounts.GCash += safeAmount;
+      else if (methodLower === "bank transfer") amounts["Bank Transfer"] += safeAmount;
+    };
+
+    if (dpReceiver === selected) {
+      addAmount(String(booking.dpMethod ?? "").trim(), Number(booking.dpAmount ?? 0));
+    }
+
+    if (fpReceiver === selected) {
+      addAmount(String(booking.fpMethod ?? "").trim(), Number(booking.fpAmount ?? 0));
+    }
+  }
+
+  return amounts;
 }
 
 function buildWeeklyReport(
   sourceBookings: Booking[],
   weekStart: string,
   weekEnd: string,
-  selectedBooker: string
+  selectedReceiver: string
 ): WeeklyReport {
   const rows = Array.from({ length: 7 }, (_, index) => {
     const dayKey = addDays(weekStart, index);
     const dayBookings = sourceBookings.filter((b) => (b.checkInDateKey || toYMD(b.checkIn)) === dayKey);
-    const dayRelevantBookings = dayBookings.filter((b) => bookingMatchesBooker(b, selectedBooker));
+    const dayRelevantBookings = dayBookings.filter((b) => bookingMatchesReceiver(b, selectedReceiver));
 
     const bySource = SOURCE_ORDER.reduce((acc, source) => {
       acc[source] = 0;
@@ -129,7 +177,7 @@ function buildWeeklyReport(
     }, {} as Record<MethodName, number>);
 
     dayRelevantBookings.forEach((b) => {
-      const amounts = getMethodAmounts(b);
+      const amounts = getMethodAmountsForReceiver(b, selectedReceiver);
       METHOD_ORDER.forEach((method) => {
         methodTotals[method] += amounts[method];
       });
@@ -184,11 +232,11 @@ function buildWeeklyReport(
     return key >= weekStart && key <= weekEnd;
   });
 
-  const weekRelevantBookings = weekBookings.filter((b) => bookingMatchesBooker(b, selectedBooker));
+  const weekRelevantBookings = weekBookings.filter((b) => bookingMatchesReceiver(b, selectedReceiver));
 
   weekRelevantBookings.forEach((b) => {
     const source = String(b.bookingPlatform || "Direct").trim() as SourceName;
-    const amounts = getMethodAmounts(b);
+    const amounts = getMethodAmountsForReceiver(b, selectedReceiver);
     totals[source].bookings += 1;
     METHOD_ORDER.forEach((method) => {
       totals[source].methods[method] += amounts[method];
@@ -213,7 +261,7 @@ export default function SourceReportPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
-  const [selectedBooker, setSelectedBooker] = useState<string>("__all__");
+  const [selectedReceiver, setSelectedReceiver] = useState<string>("__all__");
   const [weeklyManualExpenses, setWeeklyManualExpenses] = useState<ManualExpenseEntry[]>([]);
   const [newExpenseAmount, setNewExpenseAmount] = useState("");
   const [newExpenseComment, setNewExpenseComment] = useState("");
@@ -229,8 +277,10 @@ export default function SourceReportPage() {
 
   const week = useMemo(() => getSundayToSaturdayWeek(weeklyDate), [weeklyDate]);
 
-  const bookers = useMemo(() => {
-    const all = bookings.map((b) => b.bookingSource);
+  const receivers = useMemo(() => {
+    const dpReceivers = bookings.map((b) => b.dpReceivedBy);
+    const fpReceivers = bookings.map((b) => b.fpReceivedBy);
+    const all = [...dpReceivers, ...fpReceivers];
     return Array.from(
       new Set(
         all
@@ -268,8 +318,8 @@ export default function SourceReportPage() {
   );
 
   const coreReport = useMemo(
-    () => buildWeeklyReport(coreBookings, week.startDate, week.endDate, selectedBooker),
-    [coreBookings, selectedBooker, week.endDate, week.startDate]
+    () => buildWeeklyReport(coreBookings, week.startDate, week.endDate, selectedReceiver),
+    [coreBookings, selectedReceiver, week.endDate, week.startDate]
   );
 
   const weeklyManualExpenseTotal = weeklyManualExpenses.reduce(
@@ -314,13 +364,13 @@ export default function SourceReportPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <select
             className="input text-xs w-auto"
-            value={selectedBooker}
-            onChange={(e) => setSelectedBooker(e.target.value)}
-            title="Filter by who got the booking or received payment"
+            value={selectedReceiver}
+            onChange={(e) => setSelectedReceiver(e.target.value)}
+            title="Filter by payment receiver"
           >
-            <option value="__all__">All bookers</option>
-            {bookers.map((booker) => (
-              <option key={booker} value={booker}>{booker}</option>
+            <option value="__all__">All receivers</option>
+            {receivers.map((receiver) => (
+              <option key={receiver} value={receiver}>{receiver}</option>
             ))}
           </select>
           <button

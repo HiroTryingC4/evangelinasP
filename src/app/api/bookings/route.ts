@@ -126,6 +126,7 @@ export async function POST(req: NextRequest) {
         guestName:        body.guestName?.trim(),
         contactNo:        body.contactNo?.trim() || null,
         bookingSource,
+        bookingPlatform:  body.bookingPlatform?.trim() || "Direct",
         unit:             unitCode,
         checkIn,
         checkInDateKey,

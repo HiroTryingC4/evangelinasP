@@ -98,6 +98,13 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
     if (diff >= 0) setForm((f) => ({ ...f, hoursStayed: String(Math.round(diff)) }));
   }, [form.checkIn, form.checkOut]);
 
+  // Auto-set booking source to RIEMAR when platform is TikTok
+  useEffect(() => {
+    if (form.bookingPlatform === "TikTok") {
+      setForm((f) => ({ ...f, bookingSource: "RIEMAR" }));
+    }
+  }, [form.bookingPlatform]);
+
   // Check conflicts when unit/dates change
   useEffect(() => {
     if (!form.unit || !form.checkIn || !form.checkOut) { setConflict(null); return; }
