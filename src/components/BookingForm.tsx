@@ -105,6 +105,13 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
     }
   }, [form.bookingPlatform]);
 
+  // Auto-set booking source to SIR JAMES when platform is Airbnb
+  useEffect(() => {
+    if (form.bookingPlatform === "Airbnb") {
+      setForm((f) => ({ ...f, bookingSource: "SIR JAMES" }));
+    }
+  }, [form.bookingPlatform]);
+
   // Check conflicts when unit/dates change
   useEffect(() => {
     if (!form.unit || !form.checkIn || !form.checkOut) { setConflict(null); return; }
