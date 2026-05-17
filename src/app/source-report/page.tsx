@@ -298,19 +298,27 @@ export default function SourceReportPage() {
         // Always fetch all expenses for the week, regardless of receiver filter
         // Add timestamp to prevent any caching
         const url = `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}&_t=${Date.now()}`;
-        console.log("Fetching expenses from:", url);
-        const response = await fetch(url, { cache: "no-store" });
+        console.log("📥 Fetching expenses from:", url);
+        const response = await fetch(url, { 
+          cache: "no-store",
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         if (response.ok) {
           const data = await response.json();
-          console.log("Fetched expenses:", data);
+          console.log("✅ Fetched expenses:", data);
+          console.log(`📊 Found ${data.length} expenses for this week`);
           setWeeklyManualExpenses(data);
         } else {
           const errorText = await response.text();
-          console.error("Failed to fetch expenses:", errorText);
+          console.error("❌ Failed to fetch expenses:", response.status, errorText);
           setWeeklyManualExpenses([]);
         }
       } catch (error) {
-        console.error("Error fetching manual expenses:", error);
+        console.error("❌ Error fetching manual expenses:", error);
         setWeeklyManualExpenses([]);
       }
     };
