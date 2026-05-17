@@ -16,6 +16,7 @@ type ManualExpenseEntry = {
   id: number;
   amount: number;
   comment: string;
+  receiver: string;
 };
 
 type WeeklyRow = {
@@ -294,14 +295,18 @@ export default function SourceReportPage() {
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
-        // Fetch all expenses for the week
-        const response = await fetch(
-          `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}`,
-          { cache: "no-store" }
-        );
+        // Always fetch all expenses for the week, regardless of receiver filter
+        const url = `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}`;
+        console.log("Fetching expenses from:", url);
+        const response = await fetch(url, { cache: "no-store" });
         if (response.ok) {
           const data = await response.json();
+          console.log("Fetched expenses:", data);
           setWeeklyManualExpenses(data);
+        } else {
+          const errorText = await response.text();
+          console.error("Failed to fetch expenses:", errorText);
+          setWeeklyManualExpenses([]);
         }
       } catch (error) {
         console.error("Error fetching manual expenses:", error);
@@ -322,10 +327,16 @@ export default function SourceReportPage() {
     [coreBookings, selectedReceiver, week.endDate, week.startDate]
   );
 
-  const weeklyManualExpenseTotal = weeklyManualExpenses.reduce(
-    (sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)),
-    0
-  );
+  const weeklyManualExpenseTotal = weeklyManualExpenses
+    .filter((entry) => {
+      // Filter expenses by selected receiver
+      if (selectedReceiver === "__all__") return true;
+      return entry.receiver === selectedReceiver || entry.receiver === "__all__";
+    })
+    .reduce(
+      (sum, entry) => sum + Math.max(0, Number(entry.amount ?? 0)),
+      0
+    );
   
   const adjustedCoreTotalPaid = Math.max(0, coreReport.summary.totalPaid - weeklyManualExpenseTotal);
   const selectedWeekLabel = `${new Date(`${week.startDate}T12:00:00`).toLocaleDateString("en-PH", {
@@ -493,7 +504,7 @@ export default function SourceReportPage() {
                     body: JSON.stringify({
                       weekStart: week.startDate,
                       weekEnd: week.endDate,
-                      receiver: "__all__", // Manual expenses apply to all
+                      receiver: selectedReceiver,
                       amount,
                       comment,
                     }),
@@ -504,9 +515,14 @@ export default function SourceReportPage() {
                     setWeeklyManualExpenses((prev) => [...prev, newExpense]);
                     setNewExpenseAmount("");
                     setNewExpenseComment("");
+                  } else {
+                    const errorData = await response.json();
+                    console.error("Failed to add expense:", errorData);
+                    alert(`Failed to add expense: ${errorData.error || 'Unknown error'}`);
                   }
                 } catch (error) {
                   console.error("Error adding expense:", error);
+                  alert(`Error adding expense: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 }
               }}
             >
