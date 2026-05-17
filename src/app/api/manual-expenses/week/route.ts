@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { manualExpenses } from "@/lib/schema";
 import { and, eq } from "drizzle-orm";
+import { ensureManualExpensesTable } from "@/lib/db-health";
 
 export const dynamic = "force-dynamic";
 
 // GET: Fetch all manual expenses for a specific week (across all receivers)
 export async function GET(request: NextRequest) {
   try {
+    await ensureManualExpensesTable();
+    
     const { searchParams } = new URL(request.url);
     const weekStart = searchParams.get("weekStart");
     const weekEnd = searchParams.get("weekEnd");

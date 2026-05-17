@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { manualExpenses } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
+import { ensureManualExpensesTable } from "@/lib/db-health";
 
 export const dynamic = "force-dynamic";
 
 // GET: Fetch manual expenses for a specific week and receiver
 export async function GET(request: NextRequest) {
   try {
+    await ensureManualExpensesTable();
+    
     const { searchParams } = new URL(request.url);
     const weekStart = searchParams.get("weekStart");
     const weekEnd = searchParams.get("weekEnd");
@@ -44,6 +47,8 @@ export async function GET(request: NextRequest) {
 // POST: Create a new manual expense
 export async function POST(request: NextRequest) {
   try {
+    await ensureManualExpensesTable();
+    
     const body = await request.json();
     const { weekStart, weekEnd, receiver, amount, comment } = body;
 
@@ -78,6 +83,8 @@ export async function POST(request: NextRequest) {
 // DELETE: Remove a manual expense by ID
 export async function DELETE(request: NextRequest) {
   try {
+    await ensureManualExpensesTable();
+    
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
