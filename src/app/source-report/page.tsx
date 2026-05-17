@@ -265,6 +265,7 @@ export default function SourceReportPage() {
   const [weeklyManualExpenses, setWeeklyManualExpenses] = useState<ManualExpenseEntry[]>([]);
   const [newExpenseAmount, setNewExpenseAmount] = useState("");
   const [newExpenseComment, setNewExpenseComment] = useState("");
+  const [addingExpense, setAddingExpense] = useState(false);
 
   useEffect(() => {
     fetch("/api/bookings?view=all", { cache: "no-store" })
@@ -499,11 +500,16 @@ export default function SourceReportPage() {
             <button
               type="button"
               className="btn-secondary text-xs py-1.5 px-3"
+              disabled={addingExpense}
               onClick={async () => {
                 const amount = parseManualAmount(newExpenseAmount);
                 const comment = newExpenseComment.trim();
-                if (!amount || !comment) return;
+                if (!amount || !comment) {
+                  alert("Please enter both amount and comment");
+                  return;
+                }
 
+                setAddingExpense(true);
                 try {
                   const response = await fetch("/api/manual-expenses", {
                     method: "POST",
@@ -537,13 +543,18 @@ export default function SourceReportPage() {
                       const freshData = await refetchResponse.json();
                       console.log("✅ Refetched data:", freshData);
                       setWeeklyManualExpenses(freshData);
+                      
+                      // Clear inputs and show success
+                      setNewExpenseAmount("");
+                      setNewExpenseComment("");
+                      alert(`✅ Expense added successfully! (${formatPHP(amount)})`);
                     } else {
                       // Fallback to local state update
                       setWeeklyManualExpenses((prev) => [...prev, newExpense]);
+                      setNewExpenseAmount("");
+                      setNewExpenseComment("");
+                      alert(`✅ Expense added! (${formatPHP(amount)})`);
                     }
-                    
-                    setNewExpenseAmount("");
-                    setNewExpenseComment("");
                   } else {
                     const errorData = await response.json();
                     console.error("Failed to add expense:", errorData);
@@ -552,10 +563,12 @@ export default function SourceReportPage() {
                 } catch (error) {
                   console.error("Error adding expense:", error);
                   alert(`Error adding expense: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                } finally {
+                  setAddingExpense(false);
                 }
               }}
             >
-              Add expense
+              {addingExpense ? "Adding..." : "Add expense"}
             </button>
           </div>
 
