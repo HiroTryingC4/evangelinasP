@@ -14,6 +14,8 @@ const CORE_UNITS = new Set(["1116", "1118", "1558", "1845"]);
 
 type ManualExpenseEntry = {
   id: number;
+  weekStart: string;
+  weekEnd: string;
   amount: number;
   comment: string;
   receiver: string;
