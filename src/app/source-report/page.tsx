@@ -521,7 +521,29 @@ export default function SourceReportPage() {
 
                   if (response.ok) {
                     const newExpense = await response.json();
-                    setWeeklyManualExpenses((prev) => [...prev, newExpense]);
+                    console.log("✅ Expense added:", newExpense);
+                    
+                    // Refetch from database to ensure we have the latest data
+                    console.log("🔄 Refetching expenses from database...");
+                    const refetchUrl = `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}&_t=${Date.now()}`;
+                    const refetchResponse = await fetch(refetchUrl, { 
+                      cache: "no-store",
+                      headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                      }
+                    });
+                    
+                    if (refetchResponse.ok) {
+                      const freshData = await refetchResponse.json();
+                      console.log("✅ Refetched data:", freshData);
+                      setWeeklyManualExpenses(freshData);
+                    } else {
+                      // Fallback to local state update
+                      setWeeklyManualExpenses((prev) => [...prev, newExpense]);
+                    }
+                    
                     setNewExpenseAmount("");
                     setNewExpenseComment("");
                   } else {
@@ -581,9 +603,29 @@ export default function SourceReportPage() {
 
                               if (response.ok) {
                                 console.log("✅ Expense deleted successfully");
-                                setWeeklyManualExpenses((prev) =>
-                                  prev.filter((item) => item.id !== entry.id)
-                                );
+                                
+                                // Refetch from database to ensure we have the latest data
+                                console.log("🔄 Refetching expenses from database...");
+                                const refetchUrl = `/api/manual-expenses/week?weekStart=${week.startDate}&weekEnd=${week.endDate}&_t=${Date.now()}`;
+                                const refetchResponse = await fetch(refetchUrl, { 
+                                  cache: "no-store",
+                                  headers: {
+                                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                    'Pragma': 'no-cache',
+                                    'Expires': '0'
+                                  }
+                                });
+                                
+                                if (refetchResponse.ok) {
+                                  const freshData = await refetchResponse.json();
+                                  console.log("✅ Refetched data:", freshData);
+                                  setWeeklyManualExpenses(freshData);
+                                } else {
+                                  // Fallback to local state update
+                                  setWeeklyManualExpenses((prev) =>
+                                    prev.filter((item) => item.id !== entry.id)
+                                  );
+                                }
                               } else {
                                 const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
                                 console.error("❌ Failed to delete expense:", errorData);
