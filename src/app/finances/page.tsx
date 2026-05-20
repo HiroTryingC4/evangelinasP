@@ -13,6 +13,10 @@ function toYMD(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function toArray<T>(value: T[] | null | undefined | unknown): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export default function FinancesPage() {
   const [tab, setTab] = useState<"bills" | "wages" | "income" | "expenses" | "transfer">("bills");
   const [units, setUnits] = useState<string[]>(UNITS);
@@ -39,11 +43,13 @@ export default function FinancesPage() {
           if (Array.isArray(d.units) && d.units.length > 0) setUnits(d.units);
         })
         .catch(() => {}),
-      fetch("/api/bookings").then((r) => r.json()).then((d) => setBookings(d || [])),
-      fetch("/api/bills").then((r) => r.json()).then((d) => setBills(d || [])),
-      fetch("/api/wages").then((r) => r.json()).then((d) => setWages(d || [])),
-      fetch("/api/income").then((r) => r.json()).then((d) => setIncomes(d || [])),
-      fetch("/api/expenses").then((r) => r.json()).then((d) => setExpenses(d || [])),
+      fetch("/api/bookings").then((r) => r.json()).then((d) => setBookings(toArray(d))),
+      fetch("/api/bills").then((r) => r.json()).then((d) => setBills(toArray(d))),
+      fetch("/api/wages").then((r) => r.json()).then((d) => setWages(toArray(d))),
+      fetch("/api/income")
+        .then((r) => r.json())
+        .then((d) => setIncomes(toArray(d))),
+      fetch("/api/expenses").then((r) => r.json()).then((d) => setExpenses(toArray(d))),
     ]).finally(() => setLoading(false));
   }, []);
 
@@ -63,7 +69,7 @@ export default function FinancesPage() {
         body: JSON.stringify(data),
       });
       const res = await fetch("/api/bills");
-      setBills(await res.json());
+      setBills(toArray(await res.json()));
     } catch (e) {
       console.error("Failed to add bill:", e);
     }
@@ -78,14 +84,13 @@ export default function FinancesPage() {
         body: JSON.stringify(data),
       });
       const res = await fetch("/api/wages");
-      setWages(await res.json());
+      setWages(toArray(await res.json()));
     } catch (e) {
       console.error("Failed to add wage:", e);
     }
   };
 
-  const handleAddExpense = async (e: React.FormEvent, data: any) => {
-    e.preventDefault();
+  const handleAddExpense = async (data: any) => {
     try {
       await fetch("/api/expenses", {
         method: "POST",
@@ -93,7 +98,7 @@ export default function FinancesPage() {
         body: JSON.stringify(data),
       });
       const res = await fetch("/api/expenses");
-      setExpenses(await res.json());
+      setExpenses(toArray(await res.json()));
     } catch (e) {
       console.error("Failed to add expense:", e);
     }
@@ -113,7 +118,8 @@ export default function FinancesPage() {
         body: JSON.stringify(data),
       });
       const res = await fetch("/api/income");
-      setIncomes(await res.json());
+      const nextIncomes = await res.json();
+      setIncomes(toArray(nextIncomes));
     } catch (e) {
       console.error("Failed to add income:", e);
     }
@@ -972,7 +978,7 @@ function WageForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
   );
 }
 
-function ExpenseForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => void }) {
+function ExpenseForm({ onSubmit }: { onSubmit: (data: any) => void }) {
   const [form, setForm] = useState({
     description: "",
     amount: "",
@@ -982,13 +988,32 @@ function ExpenseForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) =
     paymentMethod: "",
     notes: "",
   });
+  const today = new Date().toISOString().split("T")[0];
+
+  const handleNightClean = async () => {
+    await onSubmit({
+      description: "Clean Night",
+      amount: 300,
+      expenseDate: today,
+      dueDate: null,
+      category: "",
+      paymentMethod: "",
+      notes: "",
+    });
+  };
 
   return (
     <div className="card p-4">
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">Add Expense</h2>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h2 className="text-sm font-semibold text-gray-700">Add Expense</h2>
+        <button type="button" onClick={handleNightClean} className="btn-secondary text-xs py-1.5 px-3">
+          Night Clean
+        </button>
+      </div>
       <form
         onSubmit={(e) => {
-          onSubmit(e, {
+          e.preventDefault();
+          onSubmit({
             description: form.description,
             amount: parseFloat(form.amount),
             expenseDate: form.expenseDate,

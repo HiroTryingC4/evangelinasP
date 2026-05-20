@@ -43,7 +43,7 @@ export default function TomorrowPage() {
   useEffect(() => {
     fetch("/api/bookings")
       .then((r) => r.json())
-      .then((d) => { setBookings(d); setLoading(false); });
+      .then((d) => { setBookings(Array.isArray(d) ? d : []); setLoading(false); });
   }, []);
 
   const todayStr = toYMD(new Date());

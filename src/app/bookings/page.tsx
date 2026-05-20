@@ -73,7 +73,7 @@ function BookingsContent() {
     params.set("view", filterDateScope);
     const res = await fetch(`/api/bookings?${params}`, { cache: "no-store" });
     const data = await res.json();
-    setBookings(data);
+    setBookings(Array.isArray(data) ? data : []);
     setLoading(false);
   };
 

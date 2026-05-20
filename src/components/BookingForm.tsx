@@ -30,6 +30,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
   const [receivers, setReceivers] = useState<string[]>(STAFF);
   const [unitBookings, setUnitBookings] = useState<Booking[]>([]);
   const [unitBookingsLoading, setUnitBookingsLoading] = useState(false);
+  const [nightCleaning, setNightCleaning] = useState(false);
 
   useEffect(() => {
     fetch(`/api/settings?_t=${Date.now()}`, { cache: "no-store" })
@@ -63,7 +64,11 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
 
   // Populate form when editing
   useEffect(() => {
-    if (!booking) { setForm(EMPTY); return; }
+    if (!booking) {
+      setForm(EMPTY);
+      setNightCleaning(false);
+      return;
+    }
     setForm({
       guestName:    booking.guestName     ?? "",
       contactNo:    booking.contactNo     ?? "",
@@ -85,6 +90,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
       fpMethod:     booking.fpMethod      ?? "GCash",
       fpReceivedBy: booking.fpReceivedBy  ?? "SIR JAMES",
     });
+    setNightCleaning(false);
   }, [booking]);
 
   const set = (key: string) =>
@@ -188,6 +194,24 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
         const errorText = await res.text();
         throw new Error(errorText || `HTTP ${res.status}`);
       }
+
+      if (nightCleaning) {
+        await fetch("/api/expenses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description: "Clean Night",
+            amount: 300,
+            expenseDate: new Date().toISOString().split("T")[0],
+            category: "",
+            paymentMethod: "",
+            notes: "",
+          }),
+        }).catch((error) => {
+          console.error("Failed to create night cleaning expense:", error);
+        });
+      }
+
       emitBookingsChanged();
       onSaved();
       onClose();
@@ -420,6 +444,19 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
               }`}>{status}</span>
             </div>
           )}
+
+          <label className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={nightCleaning}
+              onChange={(e) => setNightCleaning(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Night Cleaning</p>
+              <p className="text-xs text-gray-500">Adds a ₱300 Clean Night expense to Finances after saving.</p>
+            </div>
+          </label>
         </div>
 
         {/* Footer */}

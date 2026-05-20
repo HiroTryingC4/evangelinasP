@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { manualExpenses } from "@/lib/schema";
+import { manualExpenses, expenses } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 import { ensureManualExpensesTable } from "@/lib/db-health";
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("💾 Inserting expense:", { weekStart, weekEnd, receiver, amount: Number(amount), comment });
+    console.log("💾 Inserting manual expense:", { weekStart, weekEnd, receiver, amount: Number(amount), comment });
     const [newExpense] = await db
       .insert(manualExpenses)
       .values({
@@ -75,7 +75,35 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    console.log("✅ Expense created:", newExpense);
+    console.log("✅ Manual expense created:", newExpense);
+
+    // Also create a corresponding expense entry in the Finances system
+    try {
+      console.log("💰 Creating corresponding Finances expense...");
+      const expenseDescription = `Manual Weekly Expense: ${comment}`;
+      const expenseAmount = Number(amount);
+      const expenseDate = new Date(weekStart); // Use week start date as expense date
+
+      const [financeExpense] = await db
+        .insert(expenses)
+        .values({
+          description: expenseDescription,
+          amount: expenseAmount.toFixed(2),
+          expenseDate: expenseDate,
+          dueDate: null, // Leave blank as requested
+          category: null, // Leave blank as requested
+          paymentMethod: null, // Leave blank as requested
+          notes: null, // Leave blank as requested
+          status: "pending",
+        })
+        .returning();
+
+      console.log("✅ Finances expense created:", financeExpense);
+    } catch (financeError) {
+      console.error("⚠️ Failed to create Finances expense (manual expense still created):", financeError);
+      // Don't fail the whole request if finance expense creation fails
+    }
+
     return NextResponse.json(newExpense, { status: 201 });
   } catch (error) {
     console.error("❌ Error creating manual expense:", error);
