@@ -149,9 +149,9 @@ export function getSundayToSaturdayWeek(date: string | Date) {
 // Core units only: 1116, 1118, 1558, 1845
 export const UNITS = ["1116", "1118", "1558", "1845"];
 export const PAYMENT_METHODS = ["Cash", "GCash", "Bank Transfer"];
-export const STAFF = ["SIR JAMES", "SIR MIKE", "RIEMAR", "NONE", "JAYJAY"];
+export const STAFF = ["SIR JAMES", "SIR MIKE", "RIEMAR", "JEFF", "NONE", "JAYJAY"];
 // Booking source now tracks who sourced/got the booking
-export const BOOKING_SOURCES = ["SIR JAMES", "SIR MIKE", "RIEMAR", "JAYJAY", "NONE"] as const;
+export const BOOKING_SOURCES = ["SIR JAMES", "SIR MIKE", "RIEMAR", "JEFF", "JAYJAY", "NONE"] as const;
 // Booking platform tracks where the booking came from
 export const BOOKING_PLATFORMS = ["TikTok", "Airbnb", "Facebook", "Direct"] as const;
 
