@@ -663,7 +663,7 @@ export default function FinancesPage() {
                 title={wage.employeeName}
                 onDelete={() => handleDelete("wages", wage.id)}
                 onMarkPaid={() => handleMarkPaid("wages", wage)}
-                fields={[wage.dueDate ? `Due: ${formatDate(wage.dueDate)}` : "", wage.paymentMethod ? `Method: ${wage.paymentMethod}` : "", formatDate(wage.payDate)]}
+                fields={[wage.paymentMethod ? `Method: ${wage.paymentMethod}` : "", formatDate(wage.payDate)]}
               />
             ))}
           </div>
@@ -761,7 +761,7 @@ export default function FinancesPage() {
                 type="expenses"
                 onDelete={() => handleDelete("expenses", expense.id)}
                 onMarkPaid={() => handleMarkPaid("expenses", expense)}
-                fields={[expense.dueDate ? `Due: ${formatDate(expense.dueDate)}` : "", expense.category, expense.paymentMethod ? `Method: ${expense.paymentMethod}` : "", formatDate(expense.expenseDate)]}
+                fields={[expense.category, expense.paymentMethod ? `Method: ${expense.paymentMethod}` : "", formatDate(expense.expenseDate)]}
               />
             ))}
           </div>
@@ -802,7 +802,6 @@ function BillForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
     description: "",
     amount: "",
     billDate: new Date().toISOString().split("T")[0],
-    dueDate: "",
     paymentMethod: "",
     category: "",
     notes: "",
@@ -820,12 +819,12 @@ function BillForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
             description: form.description,
             amount: parseInt(form.amount),
             billDate: form.billDate,
-            dueDate: form.dueDate || null,
+            dueDate: null,
             paymentMethod: form.paymentMethod,
             category: form.category,
             notes: form.notes,
           });
-          setForm({ description: "", amount: "", billDate: new Date().toISOString().split("T")[0], dueDate: "", paymentMethod: "", category: "", notes: "" });
+          setForm({ description: "", amount: "", billDate: new Date().toISOString().split("T")[0], paymentMethod: "", category: "", notes: "" });
         }}
         className="space-y-4"
       >
@@ -871,18 +870,7 @@ function BillForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-              Due Date
-            </label>
-            <input
-              type="date"
-              value={form.dueDate}
-              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              className="input focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-3">
           <div className="space-y-2">
             <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
               Payment Method
@@ -939,7 +927,6 @@ function WageForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
     employeeName: "",
     amount: "",
     payDate: new Date().toISOString().split("T")[0],
-    dueDate: "",
     paymentMethod: "",
     notes: "",
   });
@@ -956,11 +943,11 @@ function WageForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
             employeeName: form.employeeName,
             amount: parseInt(form.amount),
             payDate: form.payDate,
-            dueDate: form.dueDate || null,
+            dueDate: null,
             paymentMethod: form.paymentMethod,
             notes: form.notes,
           });
-          setForm({ employeeName: "", amount: "", payDate: new Date().toISOString().split("T")[0], dueDate: "", paymentMethod: "", notes: "" });
+          setForm({ employeeName: "", amount: "", payDate: new Date().toISOString().split("T")[0], paymentMethod: "", notes: "" });
         }}
         className="space-y-4"
       >
@@ -1006,18 +993,7 @@ function WageForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-              Due Date
-            </label>
-            <input
-              type="date"
-              value={form.dueDate}
-              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-3">
           <div className="space-y-2">
             <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
               Payment Method
@@ -1061,7 +1037,6 @@ function ExpenseForm({ onSubmit }: { onSubmit: (data: any) => void }) {
     description: "",
     amount: "",
     expenseDate: new Date().toISOString().split("T")[0],
-    dueDate: "",
     category: "",
     paymentMethod: "",
     notes: "",
@@ -1073,7 +1048,6 @@ function ExpenseForm({ onSubmit }: { onSubmit: (data: any) => void }) {
       description: "Clean Night",
       amount: 300,
       expenseDate: today,
-      dueDate: null,
       category: "",
       paymentMethod: "",
       notes: "",
@@ -1102,12 +1076,11 @@ function ExpenseForm({ onSubmit }: { onSubmit: (data: any) => void }) {
             description: form.description,
             amount: parseFloat(form.amount),
             expenseDate: form.expenseDate,
-            dueDate: form.dueDate || null,
             category: form.category,
             paymentMethod: form.paymentMethod,
             notes: form.notes,
           });
-          setForm({ description: "", amount: "", expenseDate: new Date().toISOString().split("T")[0], dueDate: "", category: "", paymentMethod: "", notes: "" });
+          setForm({ description: "", amount: "", expenseDate: new Date().toISOString().split("T")[0], category: "", paymentMethod: "", notes: "" });
         }}
         className="space-y-4"
       >

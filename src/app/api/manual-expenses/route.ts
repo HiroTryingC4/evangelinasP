@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
           category: null, // Leave blank as requested
           paymentMethod: null, // Leave blank as requested
           notes: null, // Leave blank as requested
-          status: "pending",
+          status: "paid",
+          paidDate: new Date(), // Mark as paid immediately with today's date
         })
         .returning();
 

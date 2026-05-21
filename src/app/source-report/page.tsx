@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Wallet, BarChart3 } from "lucide-react";
 import { formatPHP, getSundayToSaturdayWeek, normalizeBookingSource, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
@@ -263,6 +264,7 @@ function buildWeeklyReport(
 }
 
 export default function SourceReportPage() {
+  const router = useRouter();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyDate, setWeeklyDate] = useState(() => toYMD(new Date()));
@@ -695,13 +697,23 @@ export default function SourceReportPage() {
                       // Clear inputs and show success
                       setNewExpenseAmount("");
                       setNewExpenseComment("");
-                      showNotification(`✅ Expense added successfully! (${formatPHP(amount)})`);
+                      showNotification(`✅ Expense added successfully! (${formatPHP(amount)}) Redirecting to Finances...`);
+                      
+                      // Redirect to finances after a short delay
+                      setTimeout(() => {
+                        router.push("/finances");
+                      }, 1500);
                     } else {
                       // Fallback to local state update
                       setManualExpenses((prev) => [...prev, newExpense]);
                       setNewExpenseAmount("");
                       setNewExpenseComment("");
-                      showNotification(`✅ Expense added! (${formatPHP(amount)})`);
+                      showNotification(`✅ Expense added! (${formatPHP(amount)}) Redirecting to Finances...`);
+                      
+                      // Redirect to finances after a short delay
+                      setTimeout(() => {
+                        router.push("/finances");
+                      }, 1500);
                     }
                   } else {
                     const errorData = await response.json();
