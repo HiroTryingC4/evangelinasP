@@ -170,16 +170,22 @@ export async function PUT(req: NextRequest) {
     const existingReceivers = await db.select({ name: receiverPersons.name }).from(receiverPersons);
     const incomingReceiverSet = new Set(receivers.map((r) => r.name.trim().toLowerCase()));
     
-    console.log("Existing receivers in DB:", existingReceivers.map(r => r.name));
-    console.log("Incoming receivers from request:", Array.from(incomingReceiverSet));
+    console.log("🔍 [DELETE LOGIC] Existing receivers in DB:", existingReceivers.map(r => r.name));
+    console.log("🔍 [DELETE LOGIC] Incoming receivers from request:", receivers.map(r => r.name));
+    console.log("🔍 [DELETE LOGIC] Incoming receiver set (lowercase):", Array.from(incomingReceiverSet));
     
     for (const row of existingReceivers) {
       const normalizedName = String(row.name).trim().toLowerCase();
+      console.log(`🔍 [DELETE LOGIC] Checking: "${row.name}" (normalized: "${normalizedName}") in set? ${incomingReceiverSet.has(normalizedName)}`);
       if (!incomingReceiverSet.has(normalizedName)) {
-        console.log(`Deleting receiver: ${row.name}`);
+        console.log(`🗑️  [DELETE LOGIC] DELETING receiver: ${row.name}`);
         await db.delete(receiverPersons).where(eq(receiverPersons.name, row.name));
       }
     }
+    
+    // Verify deletion
+    const afterDelete = await db.select({ name: receiverPersons.name }).from(receiverPersons);
+    console.log("✅ [DELETE LOGIC] Receivers after deletion:", afterDelete.map(r => r.name));
 
     // Keep `persons` in sync so newly added receivers are available
     // in transfer/payment database flows that read from this table.

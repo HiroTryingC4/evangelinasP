@@ -149,10 +149,11 @@ export default function SettingsPage() {
       lastSavedSnapshotRef.current = snapshotSettings(savedUnits, savedReceivers);
       setMessage("Saved. New units/receivers are now available in forms and filters.");
       
-      // Reload settings from server to ensure sync (increased delay for database operations)
+      // Reload settings from server to ensure sync
       setTimeout(() => {
-        void loadSettings();
-      }, 1000);
+        // Force a complete page reload to ensure cache is cleared
+        window.location.reload();
+      }, 500);
     } catch (e: any) {
       setError(e?.message || "Failed to save settings.");
     } finally {

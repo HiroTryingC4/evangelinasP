@@ -538,9 +538,21 @@ export default function SourceReportPage() {
             </a>
           </div>
 
-          {/* Mini Weekly Calendar */}
+          {/* Mini Weekly Calendar with Expenses Focus */}
           <div className="mb-3 rounded-lg border border-amber-300 bg-white p-3">
-            <p className="text-xs font-semibold text-amber-800 mb-2">Week Overview</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-amber-800">Week Overview</p>
+              {weeklyManualExpenses.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-[10px] font-semibold">
+                    📝 {weeklyManualExpenses.length} expense{weeklyManualExpenses.length !== 1 ? 's' : ''}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 text-orange-800 text-[10px] font-semibold">
+                    {formatPHP(weeklyManualExpenseTotal)}
+                  </span>
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-7 gap-1">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => {
                 const currentDate = new Date(week.start);
@@ -558,35 +570,61 @@ export default function SourceReportPage() {
                 });
                 
                 const isToday = dateStr === new Date().toISOString().split("T")[0];
+                const hasExpenses = weeklyManualExpenses.length > 0;
                 
                 return (
                   <div key={day} className="text-center">
                     <div className="text-[9px] font-semibold text-gray-600 mb-1">{day}</div>
                     <div
                       className={`
-                        text-xs font-semibold py-1.5 rounded border-2 transition-all
+                        text-xs font-semibold py-1.5 rounded border-2 transition-all relative
                         ${hasBookings 
                           ? "bg-red-500 border-red-600 text-white" 
                           : "bg-green-500 border-green-600 text-white"
                         }
                         ${isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""}
+                        ${hasExpenses ? "shadow-lg" : ""}
                       `}
                     >
                       {currentDate.getDate()}
+                      {hasExpenses && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 border border-yellow-600 rounded-full animate-pulse" title="Week has expenses" />
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-2 flex items-center justify-center gap-3 text-[10px] text-gray-600">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-green-500 rounded"></div>
-                <span>Available</span>
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center justify-center gap-3 text-[10px] text-gray-600">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-green-500 rounded"></div>
+                  <span>Available</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-red-500 rounded"></div>
+                  <span>Booked</span>
+                </div>
+                {weeklyManualExpenses.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-yellow-400 border border-yellow-600 rounded-full animate-pulse"></div>
+                    <span>Expenses recorded</span>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-red-500 rounded"></div>
-                <span>Booked</span>
-              </div>
+              {weeklyManualExpenses.length > 0 && (
+                <div className="pt-1.5 border-t border-amber-200 text-[10px]">
+                  <p className="text-amber-900 font-medium">📋 Expenses this week:</p>
+                  <ul className="mt-1 space-y-0.5 ml-2">
+                    {weeklyManualExpenses.map((expense, idx) => (
+                      <li key={expense.id} className="text-amber-800">
+                        <span className="text-amber-700">{expense.comment}</span> - {formatPHP(expense.amount)}
+                        {expense.receiver !== "__all__" && <span className="text-amber-600"> ({expense.receiver})</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 
