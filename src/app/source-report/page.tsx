@@ -272,6 +272,7 @@ export default function SourceReportPage() {
   const [newExpenseComment, setNewExpenseComment] = useState("");
   const [addingExpense, setAddingExpense] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [configuredReceivers, setConfiguredReceivers] = useState<string[]>([]);
 
   function showNotification(msg: string) {
     setNotification(msg);
@@ -287,10 +288,24 @@ export default function SourceReportPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Fetch configured receivers from settings
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.receivers)) {
+          setConfiguredReceivers(data.receivers);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to fetch receivers from settings:", error);
+      });
+  }, []);
+
   const week = useMemo(() => getSundayToSaturdayWeek(weeklyDate), [weeklyDate]);
 
   const receivers = useMemo(() => {
-    // Get all people who received money (dpReceivedBy or fpReceivedBy)
+    // Get all people who received money (dpReceivedBy or fpReceivedBy) from bookings
     const allReceivers = new Set<string>();
     
     bookings.forEach((b) => {
@@ -301,8 +316,13 @@ export default function SourceReportPage() {
       if (fpReceiver) allReceivers.add(fpReceiver);
     });
     
+    // Also include configured receivers from settings
+    configuredReceivers.forEach((receiver) => {
+      if (receiver) allReceivers.add(receiver);
+    });
+    
     return Array.from(allReceivers).sort((a, b) => a.localeCompare(b));
-  }, [bookings]);
+  }, [bookings, configuredReceivers]);
 
   // Fetch all manual expenses from the reliable debug endpoint, then filter by week locally.
   useEffect(() => {
