@@ -12,6 +12,7 @@ interface Booking {
   checkInTime?: string | null;
   checkOutTime?: string | null;
   guestName: string;
+  numberOfGuests?: number;
   status?: string;
 }
 
@@ -41,6 +42,21 @@ export default function CalendarPage() {
   const goToToday = () => {
     setCurrentMonth(new Date());
   };
+
+  // Calculate total guests for current month
+  const getTotalGuestsForMonth = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    
+    return bookings.filter((booking) => {
+      const checkIn = new Date(booking.checkIn);
+      return checkIn.getFullYear() === year && checkIn.getMonth() === month;
+    }).reduce((total, booking) => {
+      return total + (booking.numberOfGuests || 0);
+    }, 0);
+  };
+
+  const totalGuests = getTotalGuestsForMonth();
 
   if (loading) {
     return (
@@ -88,6 +104,17 @@ export default function CalendarPage() {
           Next
           <ChevronRight className="w-4 h-4" />
         </button>
+      </div>
+
+      {/* Total Guests Counter */}
+      <div className="card p-5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm opacity-90 uppercase tracking-wide">Total Booking Guests This Month</p>
+            <p className="text-4xl font-bold mt-1">{totalGuests}</p>
+          </div>
+          <div className="text-6xl opacity-20">👥</div>
+        </div>
       </div>
 
       {/* Legend */}
