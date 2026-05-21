@@ -809,8 +809,11 @@ function BillForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
   });
 
   return (
-    <div className="card p-4">
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">Add Bill</h2>
+    <div className="card p-5 border-2 border-red-100 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-4 py-3 rounded-lg mb-4 shadow-md">
+        <h2 className="text-base font-bold">💳 Add Bill</h2>
+        <p className="text-xs opacity-90 mt-0.5">Record a new bill or payment obligation</p>
+      </div>
       <form
         onSubmit={(e) => {
           onSubmit(e, {
@@ -824,67 +827,106 @@ function BillForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
           });
           setForm({ description: "", amount: "", billDate: new Date().toISOString().split("T")[0], dueDate: "", paymentMethod: "", category: "", notes: "" });
         }}
-        className="space-y-3"
+        className="space-y-4"
       >
-        <input
-          type="text"
-          placeholder="Description"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className="input w-full"
-          required
-        />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Description <span className="text-red-500">*</span>
+          </label>
           <input
-            type="number"
-            placeholder="Amount (₱)"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            className="input"
+            type="text"
+            placeholder="e.g., Electricity Bill, Water Bill"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="input w-full focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
             required
           />
-          <div className="space-y-1">
-            <p className="text-[11px] font-medium text-gray-500 uppercase">Bill Date</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Amount (₱) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              placeholder="0"
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              className="input focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Bill Date <span className="text-red-500">*</span>
+            </label>
             <input
               type="date"
               value={form.billDate}
               onChange={(e) => setForm({ ...form, billDate: e.target.value })}
-              className="input"
+              className="input focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
               required
             />
           </div>
-          <div className="space-y-1">
-            <p className="text-[11px] font-medium text-gray-500 uppercase">Due Date</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Due Date
+            </label>
             <input
               type="date"
               value={form.dueDate}
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              className="input"
+              className="input focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
             />
           </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Payment Method
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., GCash, Bank"
+              value={form.paymentMethod}
+              onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+              className="input focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Category
+          </label>
           <input
             type="text"
-            placeholder="Payment Method"
-            value={form.paymentMethod}
-            onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
-            className="input"
-          />
-          <input
-            type="text"
-            placeholder="Category"
+            placeholder="e.g., Utilities, Rent"
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="input"
+            className="input w-full focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
           />
         </div>
-        <textarea
-          placeholder="Notes"
-          value={form.notes}
-          onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          className="input w-full"
-          rows={2}
-        />
-        <button type="submit" className="btn-primary w-full">
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Notes
+          </label>
+          <textarea
+            placeholder="Additional details..."
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            className="input w-full focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
+            rows={2}
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          className="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold py-3 px-4 rounded-lg hover:from-red-600 hover:to-orange-600 transform hover:scale-[1.02] transition-all duration-200 shadow-md hover:shadow-lg"
+        >
           Add Bill
         </button>
       </form>
@@ -903,8 +945,11 @@ function WageForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
   });
 
   return (
-    <div className="card p-4">
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">Add Wage</h2>
+    <div className="card p-5 border-2 border-blue-100 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 rounded-lg mb-4 shadow-md">
+        <h2 className="text-base font-bold">👤 Add Wage</h2>
+        <p className="text-xs opacity-90 mt-0.5">Record employee salary or wage payment</p>
+      </div>
       <form
         onSubmit={(e) => {
           onSubmit(e, {
@@ -917,60 +962,93 @@ function WageForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) => v
           });
           setForm({ employeeName: "", amount: "", payDate: new Date().toISOString().split("T")[0], dueDate: "", paymentMethod: "", notes: "" });
         }}
-        className="space-y-3"
+        className="space-y-4"
       >
-        <input
-          type="text"
-          placeholder="Employee Name"
-          value={form.employeeName}
-          onChange={(e) => setForm({ ...form, employeeName: e.target.value })}
-          className="input w-full"
-          required
-        />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Employee Name <span className="text-blue-500">*</span>
+          </label>
           <input
-            type="number"
-            placeholder="Amount (₱)"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            className="input"
+            type="text"
+            placeholder="e.g., John Doe"
+            value={form.employeeName}
+            onChange={(e) => setForm({ ...form, employeeName: e.target.value })}
+            className="input w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
             required
           />
-          <div className="space-y-1">
-            <p className="text-[11px] font-medium text-gray-500 uppercase">Pay Date</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Amount (₱) <span className="text-blue-500">*</span>
+            </label>
+            <input
+              type="number"
+              placeholder="0"
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Pay Date <span className="text-blue-500">*</span>
+            </label>
             <input
               type="date"
               value={form.payDate}
               onChange={(e) => setForm({ ...form, payDate: e.target.value })}
-              className="input"
+              className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
               required
             />
           </div>
-          <div className="space-y-1">
-            <p className="text-[11px] font-medium text-gray-500 uppercase">Due Date</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Due Date
+            </label>
             <input
               type="date"
               value={form.dueDate}
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              className="input"
+              className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
             />
           </div>
-          <input
-            type="text"
-            placeholder="Payment Method"
-            value={form.paymentMethod}
-            onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
-            className="input"
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Payment Method
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., GCash, Bank"
+              value={form.paymentMethod}
+              onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+              className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Notes
+          </label>
+          <textarea
+            placeholder="Additional details..."
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            className="input w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+            rows={2}
           />
         </div>
-        <textarea
-          placeholder="Notes"
-          value={form.notes}
-          onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          className="input w-full"
-          rows={2}
-        />
-        <button type="submit" className="btn-primary w-full">
+
+        <button 
+          type="submit" 
+          className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold py-3 px-4 rounded-lg hover:from-blue-600 hover:to-indigo-600 transform hover:scale-[1.02] transition-all duration-200 shadow-md hover:shadow-lg"
+        >
           Add Wage
         </button>
       </form>
@@ -1003,11 +1081,18 @@ function ExpenseForm({ onSubmit }: { onSubmit: (data: any) => void }) {
   };
 
   return (
-    <div className="card p-4">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <h2 className="text-sm font-semibold text-gray-700">Add Expense</h2>
-        <button type="button" onClick={handleNightClean} className="btn-secondary text-xs py-1.5 px-3">
-          Night Clean
+    <div className="card p-5 border-2 border-purple-100 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-3 rounded-lg mb-4 shadow-md flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-bold">💰 Add Expense</h2>
+          <p className="text-xs opacity-90 mt-0.5">Record operational expenses</p>
+        </div>
+        <button 
+          type="button" 
+          onClick={handleNightClean} 
+          className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-semibold py-2 px-3 rounded-lg transition-all transform hover:scale-105 shadow-md"
+        >
+          🌙 Night Clean
         </button>
       </div>
       <form
@@ -1024,68 +1109,107 @@ function ExpenseForm({ onSubmit }: { onSubmit: (data: any) => void }) {
           });
           setForm({ description: "", amount: "", expenseDate: new Date().toISOString().split("T")[0], dueDate: "", category: "", paymentMethod: "", notes: "" });
         }}
-        className="space-y-3"
+        className="space-y-4"
       >
-        <input
-          type="text"
-          placeholder="Description"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className="input w-full"
-          required
-        />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Description <span className="text-purple-500">*</span>
+          </label>
           <input
-            type="number"
-            step="0.01"
-            placeholder="Amount (₱)"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            className="input"
+            type="text"
+            placeholder="e.g., Office Supplies, Maintenance"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="input w-full focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all"
             required
           />
-          <div className="space-y-1">
-            <p className="text-[11px] font-medium text-gray-500 uppercase">Expense Date</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Amount (₱) <span className="text-purple-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              className="input focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Expense Date <span className="text-purple-500">*</span>
+            </label>
             <input
               type="date"
               value={form.expenseDate}
               onChange={(e) => setForm({ ...form, expenseDate: e.target.value })}
-              className="input"
+              className="input focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all"
               required
             />
           </div>
-          <div className="space-y-1">
-            <p className="text-[11px] font-medium text-gray-500 uppercase">Due Date</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Due Date
+            </label>
             <input
               type="date"
               value={form.dueDate}
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              className="input"
+              className="input focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all"
             />
           </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Category
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., Supplies, Repairs"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="input focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Payment Method
+          </label>
           <input
             type="text"
-            placeholder="Category"
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="input"
-          />
-          <input
-            type="text"
-            placeholder="Payment Method"
+            placeholder="e.g., Cash, GCash"
             value={form.paymentMethod}
             onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
-            className="input"
+            className="input w-full focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all"
           />
         </div>
-        <textarea
-          placeholder="Notes"
-          value={form.notes}
-          onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          className="input w-full"
-          rows={2}
-        />
-        <button type="submit" className="btn-primary w-full">
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Notes
+          </label>
+          <textarea
+            placeholder="Additional details..."
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            className="input w-full focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all"
+            rows={2}
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 px-4 rounded-lg hover:from-purple-600 hover:to-pink-600 transform hover:scale-[1.02] transition-all duration-200 shadow-md hover:shadow-lg"
+        >
           Add Expense
         </button>
       </form>
@@ -1104,8 +1228,11 @@ function IncomeForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) =>
   });
 
   return (
-    <div className="card p-4">
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">Add Income</h2>
+    <div className="card p-5 border-2 border-green-100 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-3 rounded-lg mb-4 shadow-md">
+        <h2 className="text-base font-bold">💵 Add Income</h2>
+        <p className="text-xs opacity-90 mt-0.5">Record external income sources</p>
+      </div>
       <form
         onSubmit={(e) => {
           onSubmit(e, {
@@ -1118,59 +1245,95 @@ function IncomeForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) =>
           });
           setForm({ description: "", source: "Airbnb", amount: "", incomeDate: new Date().toISOString().split("T")[0], paymentMethod: "", notes: "" });
         }}
-        className="space-y-3"
+        className="space-y-4"
       >
-        <input
-          type="text"
-          placeholder="Description"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className="input w-full"
-          required
-        />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Description <span className="text-green-500">*</span>
+          </label>
           <input
-            type="number"
-            step="0.01"
-            placeholder="Amount (₱)"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            className="input"
+            type="text"
+            placeholder="e.g., Bonus Payment, Refund"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="input w-full focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all"
             required
           />
-          <div className="space-y-1">
-            <p className="text-[11px] font-medium text-gray-500 uppercase">Income Date</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Amount (₱) <span className="text-green-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              className="input focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Income Date <span className="text-green-500">*</span>
+            </label>
             <input
               type="date"
               value={form.incomeDate}
               onChange={(e) => setForm({ ...form, incomeDate: e.target.value })}
-              className="input"
+              className="input focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all"
               required
             />
           </div>
-          <input
-            type="text"
-            placeholder="Source (e.g., Airbnb)"
-            value={form.source}
-            onChange={(e) => setForm({ ...form, source: e.target.value })}
-            className="input"
-          />
-          <input
-            type="text"
-            placeholder="Payment Method"
-            value={form.paymentMethod}
-            onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
-            className="input"
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Source
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., Airbnb, Booking.com"
+              value={form.source}
+              onChange={(e) => setForm({ ...form, source: e.target.value })}
+              className="input focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Payment Method
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., Bank Transfer"
+              value={form.paymentMethod}
+              onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+              className="input focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Notes
+          </label>
+          <textarea
+            placeholder="Additional details..."
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            className="input w-full focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all"
+            rows={2}
           />
         </div>
-        <textarea
-          placeholder="Notes"
-          value={form.notes}
-          onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          className="input w-full"
-          rows={2}
-        />
-        <button type="submit" className="btn-primary w-full">
+
+        <button 
+          type="submit" 
+          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold py-3 px-4 rounded-lg hover:from-green-600 hover:to-emerald-600 transform hover:scale-[1.02] transition-all duration-200 shadow-md hover:shadow-lg"
+        >
           Add Income
         </button>
       </form>
@@ -1189,8 +1352,11 @@ function TransferForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) 
   });
 
   return (
-    <div className="card p-4">
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">Record Transfer</h2>
+    <div className="card p-5 border-2 border-indigo-100 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-3 rounded-lg mb-4 shadow-md">
+        <h2 className="text-base font-bold">🔄 Record Transfer</h2>
+        <p className="text-xs opacity-90 mt-0.5">Track money movement between accounts</p>
+      </div>
       <form
         onSubmit={(e) => {
           onSubmit(e, {
@@ -1203,22 +1369,98 @@ function TransferForm({ onSubmit }: { onSubmit: (e: React.FormEvent, data: any) 
           });
           setForm({ fromAccount: "", toAccount: "", amount: "", method: "Cash", transferDate: new Date().toISOString().split("T")[0], notes: "" });
         }}
-        className="space-y-3"
+        className="space-y-4"
       >
-        <div className="grid grid-cols-2 gap-2">
-          <input type="text" placeholder="From Account" value={form.fromAccount} onChange={(e) => setForm({ ...form, fromAccount: e.target.value })} className="input" required />
-          <input type="text" placeholder="To Account" value={form.toAccount} onChange={(e) => setForm({ ...form, toAccount: e.target.value })} className="input" required />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              From Account <span className="text-indigo-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              placeholder="e.g., GCash" 
+              value={form.fromAccount} 
+              onChange={(e) => setForm({ ...form, fromAccount: e.target.value })} 
+              className="input focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all" 
+              required 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              To Account <span className="text-indigo-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              placeholder="e.g., Bank" 
+              value={form.toAccount} 
+              onChange={(e) => setForm({ ...form, toAccount: e.target.value })} 
+              className="input focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all" 
+              required 
+            />
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <input type="number" step="0.01" placeholder="Amount (PHP)" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="input" required />
-          <input type="text" placeholder="Method" value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value })} className="input" />
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Amount (₱) <span className="text-indigo-500">*</span>
+            </label>
+            <input 
+              type="number" 
+              step="0.01" 
+              placeholder="0.00" 
+              value={form.amount} 
+              onChange={(e) => setForm({ ...form, amount: e.target.value })} 
+              className="input focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all" 
+              required 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Method
+            </label>
+            <input 
+              type="text" 
+              placeholder="e.g., Cash, Online" 
+              value={form.method} 
+              onChange={(e) => setForm({ ...form, method: e.target.value })} 
+              className="input focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all" 
+            />
+          </div>
         </div>
-        <div className="space-y-1">
-          <p className="text-[11px] font-medium text-gray-500 uppercase">Transfer Date</p>
-          <input type="date" value={form.transferDate} onChange={(e) => setForm({ ...form, transferDate: e.target.value })} className="input" required />
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Transfer Date <span className="text-indigo-500">*</span>
+          </label>
+          <input 
+            type="date" 
+            value={form.transferDate} 
+            onChange={(e) => setForm({ ...form, transferDate: e.target.value })} 
+            className="input w-full focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all" 
+            required 
+          />
         </div>
-        <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input w-full" rows={2} />
-        <button type="submit" className="btn-primary w-full">Record Transfer</button>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Notes
+          </label>
+          <textarea 
+            placeholder="Additional details..." 
+            value={form.notes} 
+            onChange={(e) => setForm({ ...form, notes: e.target.value })} 
+            className="input w-full focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all" 
+            rows={2} 
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold py-3 px-4 rounded-lg hover:from-indigo-600 hover:to-purple-600 transform hover:scale-[1.02] transition-all duration-200 shadow-md hover:shadow-lg"
+        >
+          Record Transfer
+        </button>
       </form>
     </div>
   );

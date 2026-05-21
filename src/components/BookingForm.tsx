@@ -231,17 +231,26 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center animate-in fade-in duration-200"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+      <div className="bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100 flex-shrink-0">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-            {booking ? "Edit Booking" : "New Booking"}
-          </h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Close">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100 flex-shrink-0 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">
+              {booking ? "Edit Booking" : "New Booking"}
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {booking ? "Update booking details" : "Create a new booking"}
+            </p>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-2 hover:bg-white/80 rounded-lg transition-all duration-200 hover:scale-110" 
+            aria-label="Close"
+          >
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
@@ -252,55 +261,61 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
           {/* Guest */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
-              <label className="label">Guest name *</label>
+              <label className="label flex items-center gap-1">
+                <span>Guest name</span>
+                <span className="text-red-500">*</span>
+              </label>
               <input
-                className={`input ${errors.guestName ? "border-red-400 focus:ring-red-400" : ""}`}
+                className={`input transition-all duration-200 ${errors.guestName ? "border-red-400 focus:ring-red-400 shake" : "focus:border-blue-400 focus:ring-blue-400"}`}
                 value={form.guestName} onChange={set("guestName")} placeholder="Full name"
               />
-              {errors.guestName && <p className="text-xs text-red-500 mt-1">{errors.guestName}</p>}
+              {errors.guestName && <p className="text-xs text-red-500 mt-1 animate-in slide-in-from-top-1">{errors.guestName}</p>}
             </div>
             <div>
               <label className="label">Contact no.</label>
-              <input className="input" value={form.contactNo} onChange={set("contactNo")} placeholder="09XXXXXXXXX" type="tel" />
+              <input className="input focus:border-blue-400 focus:ring-blue-400 transition-all duration-200" value={form.contactNo} onChange={set("contactNo")} placeholder="09XXXXXXXXX" type="tel" />
             </div>
             <div>
-              <label className="label">Unit *</label>
-              <select className="input" value={form.unit} onChange={set("unit")}>
+              <label className="label flex items-center gap-1">
+                <span>Unit</span>
+                <span className="text-red-500">*</span>
+              </label>
+              <select className="input focus:border-blue-400 focus:ring-blue-400 transition-all duration-200" value={form.unit} onChange={set("unit")}>
                 {units.map((u) => <option key={u} value={u}>Unit {u}</option>)}
               </select>
             </div>
             <div>
               <label className="label">Booked by (who got this booking)</label>
-              <select className="input" value={form.bookingSource} onChange={set("bookingSource")}>
+              <select className="input focus:border-blue-400 focus:ring-blue-400 transition-all duration-200" value={form.bookingSource} onChange={set("bookingSource")}>
                 {BOOKING_SOURCES.map((source) => <option key={source} value={source}>{source}</option>)}
               </select>
             </div>
             <div>
               <label className="label">Platform (where it came from)</label>
-              <select className="input" value={form.bookingPlatform} onChange={set("bookingPlatform")}>
+              <select className="input focus:border-blue-400 focus:ring-blue-400 transition-all duration-200" value={form.bookingPlatform} onChange={set("bookingPlatform")}>
                 {BOOKING_PLATFORMS.map((platform) => <option key={platform} value={platform}>{platform}</option>)}
               </select>
             </div>
           </div>
 
           {/* Selected unit calendar preview */}
-          <div className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-white">
+          <div className="border border-blue-100 rounded-xl p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Selected unit calendar</p>
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Selected unit calendar</p>
                 <h3 className="text-sm font-semibold text-gray-900">Upcoming dates for Unit {form.unit}</h3>
               </div>
               {unitBookingsLoading && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
             </div>
 
             {upcomingUnitBookings.length === 0 ? (
-              <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-sm text-gray-500">
+              <div className="rounded-lg bg-white/60 border border-blue-100 p-3 text-sm text-gray-500 text-center">
                 No upcoming dates for this unit.
               </div>
             ) : (
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {upcomingUnitBookings.map((b) => (
-                  <div key={b.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                  <div key={b.id} className="flex items-center justify-between gap-3 rounded-lg border border-blue-100 bg-white/80 backdrop-blur-sm px-3 py-2 hover:shadow-md transition-all duration-200">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-900 truncate">
                         <CalendarDays className="w-4 h-4 text-blue-600 flex-shrink-0" />
@@ -323,13 +338,13 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
 
           {/* Conflict banner */}
           {checking && (
-            <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500">
+            <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 animate-pulse">
               <Loader2 className="w-4 h-4 animate-spin" /> Checking availability…
             </div>
           )}
           {!checking && conflict && conflict.length > 0 && (
-            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg animate-in slide-in-from-top-2">
+              <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0 animate-bounce" />
               <div>
                 <p className="text-sm font-semibold text-red-700">Unit conflict detected!</p>
                 {conflict.map((c: any) => (
@@ -341,7 +356,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
             </div>
           )}
           {!checking && conflict === null && form.checkIn && form.checkOut && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 animate-in slide-in-from-top-2">
               <CheckCircle className="w-4 h-4" /> Unit is available — no conflicts
             </div>
           )}
@@ -382,26 +397,29 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
           </div>
 
           {/* Down payment */}
-          <div className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50 space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Down Payment</p>
+          <div className="border border-green-100 rounded-xl p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 shadow-sm space-y-3">
+            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              Down Payment
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Amount (₱)</label>
-                <input type="number" min="0" className="input" value={form.dpAmount} onChange={set("dpAmount")} placeholder="0" />
+                <input type="number" min="0" className="input focus:border-green-400 focus:ring-green-400 transition-all duration-200" value={form.dpAmount} onChange={set("dpAmount")} placeholder="0" />
               </div>
               <div>
                 <label className="label">Date</label>
-                <input type="date" className="input" value={form.dpDate} onChange={set("dpDate")} />
+                <input type="date" className="input focus:border-green-400 focus:ring-green-400 transition-all duration-200" value={form.dpDate} onChange={set("dpDate")} />
               </div>
               <div>
                 <label className="label">Method</label>
-                <select className="input" value={form.dpMethod} onChange={set("dpMethod")}>
+                <select className="input focus:border-green-400 focus:ring-green-400 transition-all duration-200" value={form.dpMethod} onChange={set("dpMethod")}>
                   {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
                 </select>
               </div>
               <div>
                 <label className="label">Received by</label>
-                <select className="input" value={form.dpReceivedBy} onChange={set("dpReceivedBy")}>
+                <select className="input focus:border-green-400 focus:ring-green-400 transition-all duration-200" value={form.dpReceivedBy} onChange={set("dpReceivedBy")}>
                   {receivers.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
@@ -409,26 +427,29 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
           </div>
 
           {/* Full payment */}
-          <div className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50 space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Full Payment</p>
+          <div className="border border-blue-100 rounded-xl p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm space-y-3">
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide flex items-center gap-2">
+              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              Full Payment
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Amount (₱)</label>
-                <input type="number" min="0" className="input" value={form.fpAmount} onChange={set("fpAmount")} placeholder="0" />
+                <input type="number" min="0" className="input focus:border-blue-400 focus:ring-blue-400 transition-all duration-200" value={form.fpAmount} onChange={set("fpAmount")} placeholder="0" />
               </div>
               <div>
                 <label className="label">Date</label>
-                <input type="date" className="input" value={form.fpDate} onChange={set("fpDate")} />
+                <input type="date" className="input focus:border-blue-400 focus:ring-blue-400 transition-all duration-200" value={form.fpDate} onChange={set("fpDate")} />
               </div>
               <div>
                 <label className="label">Method</label>
-                <select className="input" value={form.fpMethod} onChange={set("fpMethod")}>
+                <select className="input focus:border-blue-400 focus:ring-blue-400 transition-all duration-200" value={form.fpMethod} onChange={set("fpMethod")}>
                   {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
                 </select>
               </div>
               <div>
                 <label className="label">Received by</label>
-                <select className="input" value={form.fpReceivedBy} onChange={set("fpReceivedBy")}>
+                <select className="input focus:border-blue-400 focus:ring-blue-400 transition-all duration-200" value={form.fpReceivedBy} onChange={set("fpReceivedBy")}>
                   {receivers.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
@@ -436,26 +457,29 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
           </div>
 
           {/* Additional payment */}
-          <div className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50 space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Additional Payment</p>
+          <div className="border border-purple-100 rounded-xl p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-pink-50 shadow-sm space-y-3">
+            <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide flex items-center gap-2">
+              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+              Additional Payment
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Amount (₱)</label>
-                <input type="number" min="0" className="input" value={form.apAmount} onChange={set("apAmount")} placeholder="0" />
+                <input type="number" min="0" className="input focus:border-purple-400 focus:ring-purple-400 transition-all duration-200" value={form.apAmount} onChange={set("apAmount")} placeholder="0" />
               </div>
               <div>
                 <label className="label">Date</label>
-                <input type="date" className="input" value={form.apDate} onChange={set("apDate")} />
+                <input type="date" className="input focus:border-purple-400 focus:ring-purple-400 transition-all duration-200" value={form.apDate} onChange={set("apDate")} />
               </div>
               <div>
                 <label className="label">Method</label>
-                <select className="input" value={form.apMethod} onChange={set("apMethod")}>
+                <select className="input focus:border-purple-400 focus:ring-purple-400 transition-all duration-200" value={form.apMethod} onChange={set("apMethod")}>
                   {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
                 </select>
               </div>
               <div>
                 <label className="label">Received by</label>
-                <select className="input" value={form.apReceivedBy} onChange={set("apReceivedBy")}>
+                <select className="input focus:border-purple-400 focus:ring-purple-400 transition-all duration-200" value={form.apReceivedBy} onChange={set("apReceivedBy")}>
                   {receivers.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
@@ -464,26 +488,26 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
 
           {/* Live payment summary */}
           {total > 0 && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-xl p-4 flex items-center justify-between shadow-lg">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Remaining balance</p>
-                <p className="text-2xl font-bold text-gray-900">{formatPHP(remaining)}</p>
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-0.5">Remaining balance</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{formatPHP(remaining)}</p>
               </div>
-              <span className={`text-sm px-4 py-1.5 rounded-full font-semibold ${
-                status === "Fully Paid" ? "bg-green-100 text-green-800" :
-                status === "DP Paid"   ? "bg-yellow-100 text-yellow-800" :
-                status === "Canceled"  ? "bg-gray-200 text-gray-700" :
-                                          "bg-red-100 text-red-800"
+              <span className={`text-sm px-4 py-2 rounded-full font-semibold shadow-md ${
+                status === "Fully Paid" ? "bg-green-500 text-white" :
+                status === "DP Paid"   ? "bg-yellow-500 text-white" :
+                status === "Canceled"  ? "bg-gray-400 text-white" :
+                                          "bg-red-500 text-white"
               }`}>{status}</span>
             </div>
           )}
 
-          <label className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
+          <label className="flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
             <input
               type="checkbox"
               checked={nightCleaning}
               onChange={(e) => setNightCleaning(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
             />
             <div>
               <p className="text-sm font-semibold text-gray-900">Night Cleaning</p>
@@ -493,9 +517,9 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 border-t border-gray-100 flex-shrink-0 bg-white rounded-b-2xl">
-          <button onClick={onClose} className="btn-secondary" disabled={saving}>Cancel</button>
-          <button onClick={handleSave} disabled={saving} className="btn-primary min-w-[120px] justify-center">
+        <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 border-t border-gray-100 flex-shrink-0 bg-gradient-to-r from-gray-50 to-blue-50 rounded-b-2xl">
+          <button onClick={onClose} className="btn-secondary hover:scale-105 transition-transform duration-200" disabled={saving}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="btn-primary min-w-[120px] justify-center hover:scale-105 transition-transform duration-200 shadow-lg">
             {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : booking ? "Update Booking" : "Add Booking"}
           </button>
         </div>

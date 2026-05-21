@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, LayoutDashboard, CalendarDays, Settings, CreditCard, Wallet, BarChart3 } from "lucide-react";
+import { BookOpen, LayoutDashboard, CalendarDays, Settings, CreditCard, Wallet, BarChart3, Calendar } from "lucide-react";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tomorrow", label: "Schedule", icon: CalendarDays },
   { href: "/bookings", label: "Bookings", icon: BookOpen },
+  { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/source-report", label: "Source Report", icon: BarChart3 },
   { href: "/payments", label: "Payments", icon: CreditCard },
   { href: "/finances", label: "Finances", icon: Wallet },
@@ -47,8 +48,8 @@ export default function NavBar() {
 
       {/* Mobile bottom nav */}
       <nav className="sm:hidden bottom-nav">
-        <div className="grid grid-cols-5 gap-0.5 px-1 pt-1 pb-1">
-          {links.map(({ href, label, icon: Icon }) => (
+        <div className="grid grid-cols-4 gap-0.5 px-1 pt-1 pb-1">
+          {links.slice(0, 8).map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
