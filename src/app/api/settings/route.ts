@@ -70,10 +70,39 @@ export async function GET() {
     const configuredUnits = units.map((u) => u.code);
     const mergedUnits = [...configuredUnits, ...UNITS.filter((code) => !configuredUnits.includes(code))];
 
+    // If no receivers in database, initialize with STAFF defaults
+    if (receivers.length === 0) {
+      console.log("No receivers found in database, initializing with defaults...");
+      // Initialize database with STAFF defaults
+      for (let i = 0; i < STAFF.length; i++) {
+        await db
+          .insert(receiverPersons)
+          .values({ name: STAFF[i], role: "employee", sortOrder: i })
+          .onConflictDoNothing();
+      }
+      // Re-fetch after initialization
+      const initializedReceivers = await db
+        .select({ name: receiverPersons.name, role: receiverPersons.role })
+        .from(receiverPersons)
+        .orderBy(asc(receiverPersons.sortOrder), asc(receiverPersons.id));
+      
+      return NextResponse.json({
+        units: mergedUnits,
+        receivers: initializedReceivers.map((r) => r.name),
+        receiverPersons: initializedReceivers,
+      }, {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
+    }
+
     return NextResponse.json({
       units: mergedUnits,
-      receivers: receivers.length > 0 ? receivers.map((r) => r.name) : STAFF,
-      receiverPersons: receivers.length > 0 ? receivers : STAFF.map((name) => ({ name, role: "employee" })),
+      receivers: receivers.map((r) => r.name),
+      receiverPersons: receivers,
     }, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
@@ -140,8 +169,14 @@ export async function PUT(req: NextRequest) {
 
     const existingReceivers = await db.select({ name: receiverPersons.name }).from(receiverPersons);
     const incomingReceiverSet = new Set(receivers.map((r) => r.name.trim().toLowerCase()));
+    
+    console.log("Existing receivers in DB:", existingReceivers.map(r => r.name));
+    console.log("Incoming receivers from request:", Array.from(incomingReceiverSet));
+    
     for (const row of existingReceivers) {
-      if (!incomingReceiverSet.has(String(row.name).trim().toLowerCase())) {
+      const normalizedName = String(row.name).trim().toLowerCase();
+      if (!incomingReceiverSet.has(normalizedName)) {
+        console.log(`Deleting receiver: ${row.name}`);
         await db.delete(receiverPersons).where(eq(receiverPersons.name, row.name));
       }
     }
