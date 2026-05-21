@@ -525,8 +525,70 @@ export default function SourceReportPage() {
         </div>
 
         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <p className="text-xs text-amber-800 font-semibold uppercase tracking-wide">Manual Weekly Expenses (direct minus)</p>
-          <p className="mt-0.5 text-[11px] text-amber-700">Deducted for week: {selectedWeekLabel}</p>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-xs text-amber-800 font-semibold uppercase tracking-wide">Manual Weekly Expenses (direct minus)</p>
+              <p className="mt-0.5 text-[11px] text-amber-700">Deducted for week: {selectedWeekLabel}</p>
+            </div>
+            <a
+              href="/finances"
+              className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1 hover:bg-amber-100 transition-colors"
+            >
+              💰 Go to Finances
+            </a>
+          </div>
+
+          {/* Mini Weekly Calendar */}
+          <div className="mb-3 rounded-lg border border-amber-300 bg-white p-3">
+            <p className="text-xs font-semibold text-amber-800 mb-2">Week Overview</p>
+            <div className="grid grid-cols-7 gap-1">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => {
+                const currentDate = new Date(week.start);
+                currentDate.setDate(currentDate.getDate() + index);
+                const dateStr = currentDate.toISOString().split("T")[0];
+                
+                // Check if this date has any bookings
+                const hasBookings = bookings.some((booking) => {
+                  const checkIn = new Date(booking.checkIn);
+                  const checkOut = new Date(booking.checkOut);
+                  checkIn.setHours(0, 0, 0, 0);
+                  checkOut.setHours(0, 0, 0, 0);
+                  currentDate.setHours(0, 0, 0, 0);
+                  return currentDate >= checkIn && currentDate <= checkOut;
+                });
+                
+                const isToday = dateStr === new Date().toISOString().split("T")[0];
+                
+                return (
+                  <div key={day} className="text-center">
+                    <div className="text-[9px] font-semibold text-gray-600 mb-1">{day}</div>
+                    <div
+                      className={`
+                        text-xs font-semibold py-1.5 rounded border-2 transition-all
+                        ${hasBookings 
+                          ? "bg-red-500 border-red-600 text-white" 
+                          : "bg-green-500 border-green-600 text-white"
+                        }
+                        ${isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""}
+                      `}
+                    >
+                      {currentDate.getDate()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-3 text-[10px] text-gray-600">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                <span>Available</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-red-500 rounded"></div>
+                <span>Booked</span>
+              </div>
+            </div>
+          </div>
 
           <div className="mt-2 grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-2">
             <input
