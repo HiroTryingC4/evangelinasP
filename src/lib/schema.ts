@@ -42,8 +42,8 @@ export const bookings = pgTable("bookings", {
   fpMethod:     text("fp_method"),
   fpReceivedBy: text("fp_received_by"),
 
-  // Additional payment (3rd payment)
-  apAmount:     integer("ap_amount").notNull().default(0),
+  // Additional payment (3rd payment) - OPTIONAL, may not exist in old databases
+  apAmount:     integer("ap_amount"),
   apDate:       timestamp("ap_date", { mode: "date" }),
   apMethod:     text("ap_method"),
   apReceivedBy: text("ap_received_by"),
