@@ -12,7 +12,6 @@ interface Booking {
   checkInTime?: string | null;
   checkOutTime?: string | null;
   guestName: string;
-  numberOfGuests?: number;
   status?: string;
 }
 
@@ -43,20 +42,18 @@ export default function CalendarPage() {
     setCurrentMonth(new Date());
   };
 
-  // Calculate total guests for current month
-  const getTotalGuestsForMonth = () => {
+  // Calculate total bookings for current month
+  const getTotalBookingsForMonth = () => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     
     return bookings.filter((booking) => {
       const checkIn = new Date(booking.checkIn);
       return checkIn.getFullYear() === year && checkIn.getMonth() === month;
-    }).reduce((total, booking) => {
-      return total + (booking.numberOfGuests || 0);
-    }, 0);
+    }).length;
   };
 
-  const totalGuests = getTotalGuestsForMonth();
+  const totalBookings = getTotalBookingsForMonth();
 
   if (loading) {
     return (
@@ -106,14 +103,14 @@ export default function CalendarPage() {
         </button>
       </div>
 
-      {/* Total Guests Counter */}
+      {/* Total Bookings Counter */}
       <div className="card p-5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm opacity-90 uppercase tracking-wide">Total Booking Guests This Month</p>
-            <p className="text-4xl font-bold mt-1">{totalGuests}</p>
+            <p className="text-sm opacity-90 uppercase tracking-wide">Total Bookings This Month</p>
+            <p className="text-4xl font-bold mt-1">{totalBookings}</p>
           </div>
-          <div className="text-6xl opacity-20">👥</div>
+          <div className="text-6xl opacity-20">📅</div>
         </div>
       </div>
 
