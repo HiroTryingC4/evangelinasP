@@ -18,6 +18,7 @@ const EMPTY = {
   hoursStayed: "",
   totalFee: "", dpAmount: "", dpDate: "", dpMethod: "GCash", dpReceivedBy: "SIR JAMES",
   fpAmount: "", fpDate: "", fpMethod: "GCash", fpReceivedBy: "SIR JAMES",
+  apAmount: "", apDate: "", apMethod: "GCash", apReceivedBy: "SIR JAMES",
 };
 
 export default function BookingForm({ booking, onClose, onSaved }: Props) {
@@ -89,6 +90,10 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
       fpDate:       booking.fpDate ? toYMD(booking.fpDate) : "",
       fpMethod:     booking.fpMethod      ?? "GCash",
       fpReceivedBy: booking.fpReceivedBy  ?? "SIR JAMES",
+      apAmount:     String((booking as any).apAmount ?? ""),
+      apDate:       (booking as any).apDate ? toYMD((booking as any).apDate) : "",
+      apMethod:     (booking as any).apMethod      ?? "GCash",
+      apReceivedBy: (booking as any).apReceivedBy  ?? "SIR JAMES",
     });
     setNightCleaning(false);
   }, [booking]);
@@ -145,9 +150,10 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
 
   const dp      = Number(form.dpAmount)  || 0;
   const fp      = Number(form.fpAmount)  || 0;
+  const ap      = Number(form.apAmount)  || 0;
   const total   = Number(form.totalFee)  || 0;
-  const remaining = calcRemaining(dp, fp, total);
-  const status    = calcPaymentStatus(dp, fp, total);
+  const remaining = calcRemaining(dp, fp, total, ap);
+  const status    = calcPaymentStatus(dp, fp, total, ap);
 
   const upcomingUnitBookings = unitBookings
     .filter((b) => {
@@ -423,6 +429,33 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
               <div>
                 <label className="label">Received by</label>
                 <select className="input" value={form.fpReceivedBy} onChange={set("fpReceivedBy")}>
+                  {receivers.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional payment */}
+          <div className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Additional Payment</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Amount (₱)</label>
+                <input type="number" min="0" className="input" value={form.apAmount} onChange={set("apAmount")} placeholder="0" />
+              </div>
+              <div>
+                <label className="label">Date</label>
+                <input type="date" className="input" value={form.apDate} onChange={set("apDate")} />
+              </div>
+              <div>
+                <label className="label">Method</label>
+                <select className="input" value={form.apMethod} onChange={set("apMethod")}>
+                  {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Received by</label>
+                <select className="input" value={form.apReceivedBy} onChange={set("apReceivedBy")}>
                   {receivers.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>

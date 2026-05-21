@@ -62,13 +62,14 @@ export async function PUT(
 
       const dp = Number(existing.dpAmount) || 0;
       const fp = Number(existing.fpAmount) || 0;
+      const ap = Number((existing as any).apAmount) || 0;
       const total = Number(existing.totalFee) || 0;
 
       const [updatedRestored] = await db
         .update(bookings)
         .set({
-          paymentStatus: calcPaymentStatus(dp, fp, total),
-          remainingBalance: calcRemaining(dp, fp, total),
+          paymentStatus: calcPaymentStatus(dp, fp, total, ap),
+          remainingBalance: calcRemaining(dp, fp, total, ap),
           updatedAt: new Date(),
         })
         .where(eq(bookings.id, bookingId))
@@ -96,6 +97,7 @@ export async function PUT(
 
     const dp    = Number(body.dpAmount)  || 0;
     const fp    = Number(body.fpAmount)  || 0;
+    const ap    = Number(body.apAmount)  || 0;
     const total = Number(body.totalFee)  || 0;
 
     // Strip "Unit " prefix if sent
@@ -165,8 +167,12 @@ export async function PUT(
         fpDate:           body.fpDate       ? parseYMDToPHDate(body.fpDate)  : null,
         fpMethod:         body.fpMethod     || null,
         fpReceivedBy:     body.fpReceivedBy || null,
-        remainingBalance: calcRemaining(dp, fp, total),
-        paymentStatus:    calcPaymentStatus(dp, fp, total),
+        apAmount:         ap,
+        apDate:           body.apDate       ? parseYMDToPHDate(body.apDate)  : null,
+        apMethod:         body.apMethod     || null,
+        apReceivedBy:     body.apReceivedBy || null,
+        remainingBalance: calcRemaining(dp, fp, total, ap),
+        paymentStatus:    calcPaymentStatus(dp, fp, total, ap),
         hasConflict,
         updatedAt:        new Date(),
       })

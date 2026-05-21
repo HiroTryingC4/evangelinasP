@@ -1,12 +1,12 @@
-export function calcPaymentStatus(dp: number, fp: number, total: number): string {
-  const paid = dp + fp;
+export function calcPaymentStatus(dp: number, fp: number, total: number, ap: number = 0): string {
+  const paid = dp + fp + ap;
   if (paid >= total) return "Fully Paid";
   if (dp > 0) return "DP Paid";
   return "No DP";
 }
 
-export function calcRemaining(dp: number, fp: number, total: number): number {
-  return Math.max(0, total - dp - fp);
+export function calcRemaining(dp: number, fp: number, total: number, ap: number = 0): number {
+  return Math.max(0, total - dp - fp - ap);
 }
 
 const PH_TIME_ZONE = "Asia/Manila";

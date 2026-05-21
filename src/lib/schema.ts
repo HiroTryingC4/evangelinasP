@@ -42,6 +42,12 @@ export const bookings = pgTable("bookings", {
   fpMethod:     text("fp_method"),
   fpReceivedBy: text("fp_received_by"),
 
+  // Additional payment (3rd payment)
+  apAmount:     integer("ap_amount").notNull().default(0),
+  apDate:       timestamp("ap_date", { mode: "date" }),
+  apMethod:     text("ap_method"),
+  apReceivedBy: text("ap_received_by"),
+
   // Computed fields (stored for quick querying)
   remainingBalance: integer("remaining_balance").notNull().default(0),
   paymentStatus:    text("payment_status").notNull().default("No DP"),

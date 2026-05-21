@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
 
     const dp    = Number(body.dpAmount)  || 0;
     const fp    = Number(body.fpAmount)  || 0;
+    const ap    = Number(body.apAmount)  || 0;
     const total = Number(body.totalFee)  || 0;
 
     // Strip "Unit " prefix if frontend sent "Unit 1558" instead of "1558"
@@ -143,8 +144,12 @@ export async function POST(req: NextRequest) {
         fpDate:           body.fpDate       ? parseYMDToPHDate(body.fpDate)  : null,
         fpMethod:         body.fpMethod     || null,
         fpReceivedBy:     body.fpReceivedBy || null,
-        remainingBalance: calcRemaining(dp, fp, total),
-        paymentStatus:    calcPaymentStatus(dp, fp, total),
+        apAmount:         ap,
+        apDate:           body.apDate       ? parseYMDToPHDate(body.apDate)  : null,
+        apMethod:         body.apMethod     || null,
+        apReceivedBy:     body.apReceivedBy || null,
+        remainingBalance: calcRemaining(dp, fp, total, ap),
+        paymentStatus:    calcPaymentStatus(dp, fp, total, ap),
         hasConflict,
       })
       .returning();
