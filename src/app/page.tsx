@@ -1,4 +1,5 @@
 "use client";
+// Force rebuild v2
 import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
 import { TrendingUp, Users, BookOpen, AlertTriangle, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
