@@ -1146,6 +1146,7 @@ function ExpenseForm({ onSubmit }: { onSubmit: (data: any) => void }) {
     description: "",
     amount: "",
     expenseDate: new Date().toISOString().split("T")[0],
+    dueDate: "",
     category: "",
     paymentMethod: "",
     notes: "",
