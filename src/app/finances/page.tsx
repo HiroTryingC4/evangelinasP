@@ -1190,7 +1190,7 @@ function ExpenseForm({ onSubmit }: { onSubmit: (data: any) => void }) {
             paymentMethod: form.paymentMethod,
             notes: form.notes,
           });
-          setForm({ description: "", amount: "", expenseDate: new Date().toISOString().split("T")[0], category: "", paymentMethod: "", notes: "" });
+          setForm({ description: "", amount: "", expenseDate: new Date().toISOString().split("T")[0], dueDate: "", category: "", paymentMethod: "", notes: "" });
         }}
         className="space-y-4"
       >
