@@ -183,17 +183,17 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
   
   // Check if a date is booked (returns: 'full', 'partial', or 'available')
   const getDateStatus = (date: Date): { status: 'full' | 'partial' | 'available'; availableTime?: string } => {
-    const dateStr = date.toISOString().split("T")[0];
+    // Create fresh date copies without modifying originals
+    const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     
     const bookingsOnDate = bookings.filter((booking) => {
-      const checkIn = new Date(booking.checkIn);
-      const checkOut = new Date(booking.checkOut);
+      const checkInDate = new Date(booking.checkIn);
+      const checkOutDate = new Date(booking.checkOut);
       
-      checkIn.setHours(0, 0, 0, 0);
-      checkOut.setHours(0, 0, 0, 0);
-      date.setHours(0, 0, 0, 0);
+      checkInDate.setHours(0, 0, 0, 0);
+      checkOutDate.setHours(0, 0, 0, 0);
       
-      return date >= checkIn && date <= checkOut;
+      return checkDate >= checkInDate && checkDate <= checkOutDate;
     });
     
     if (bookingsOnDate.length === 0) return { status: 'available' };
@@ -205,10 +205,9 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
       
       checkInDate.setHours(0, 0, 0, 0);
       checkOutDate.setHours(0, 0, 0, 0);
-      date.setHours(0, 0, 0, 0);
       
       // If it's check-in day and has a late check-in time (after 12 PM)
-      if (date.getTime() === checkInDate.getTime() && booking.checkInTime) {
+      if (checkDate.getTime() === checkInDate.getTime() && booking.checkInTime) {
         const checkInHour = parseInt(booking.checkInTime.split(':')[0]);
         const isPM = booking.checkInTime.toUpperCase().includes('PM');
         const hour24 = isPM && checkInHour !== 12 ? checkInHour + 12 : checkInHour;
@@ -219,7 +218,7 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
       }
       
       // If it's check-out day and has an early check-out time (before 12 PM)
-      if (date.getTime() === checkOutDate.getTime() && booking.checkOutTime) {
+      if (checkDate.getTime() === checkOutDate.getTime() && booking.checkOutTime) {
         const checkOutHour = parseInt(booking.checkOutTime.split(':')[0]);
         const isPM = booking.checkOutTime.toUpperCase().includes('PM');
         const hour24 = isPM && checkOutHour !== 12 ? checkOutHour + 12 : checkOutHour;
@@ -235,17 +234,17 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
   
   // Get booking info for a date
   const getBookingInfo = (date: Date): Booking[] => {
-    const dateStr = date.toISOString().split("T")[0];
+    // Create fresh date copy without modifying original
+    const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     
     return bookings.filter((booking) => {
-      const checkIn = new Date(booking.checkIn);
-      const checkOut = new Date(booking.checkOut);
+      const checkInDate = new Date(booking.checkIn);
+      const checkOutDate = new Date(booking.checkOut);
       
-      checkIn.setHours(0, 0, 0, 0);
-      checkOut.setHours(0, 0, 0, 0);
-      date.setHours(0, 0, 0, 0);
+      checkInDate.setHours(0, 0, 0, 0);
+      checkOutDate.setHours(0, 0, 0, 0);
       
-      return date >= checkIn && date <= checkOut;
+      return checkDate >= checkInDate && checkDate <= checkOutDate;
     });
   };
   

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trash2, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, CheckCircle, ChevronLeft, ChevronRight, Edit2, TrendingUp, TrendingDown, DollarSign, Wallet, PieChart } from "lucide-react";
 import { formatPHP, formatDate, formatWeekRange, UNITS } from "@/lib/utils";
 
 const MONTHLY_NET_UNITS = new Set(["1116", "1118", "1558", "1845"]);
@@ -167,6 +167,36 @@ export default function FinancesPage() {
       }
     } catch (e) {
       console.error("Failed to mark paid:", e);
+    }
+  };
+
+  const handleToggleStatus = async (type: "bills" | "wages" | "incomes" | "expenses", item: any) => {
+    try {
+      const apiType = type === "incomes" ? "income" : type;
+      const newStatus = item.status === "paid" ? "pending" : "paid";
+      const updateData = { ...item, status: newStatus };
+      if (newStatus === "paid") {
+        updateData.paidDate = new Date().toISOString().split("T")[0];
+      }
+      
+      await fetch(`/api/${apiType}/${item.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+      
+      const updatedItem = { ...item, status: newStatus };
+      if (type === "bills") {
+        setBills(bills.map((b) => (b.id === item.id ? updatedItem : b)));
+      } else if (type === "wages") {
+        setWages(wages.map((w) => (w.id === item.id ? updatedItem : w)));
+      } else if (type === "incomes") {
+        setIncomes(incomes.map((i) => (i.id === item.id ? updatedItem : i)));
+      } else {
+        setExpenses(expenses.map((e) => (e.id === item.id ? updatedItem : e)));
+      }
+    } catch (e) {
+      console.error("Failed to toggle status:", e);
     }
   };
 
@@ -452,12 +482,12 @@ export default function FinancesPage() {
         </div>
       </details>
 
-      <details className="card p-4 sm:p-5">
-        <summary className="cursor-pointer list-none">
+      <details className="card p-0 overflow-hidden">
+        <summary className="cursor-pointer list-none bg-gradient-to-r from-slate-50 to-slate-100 p-4 sm:p-5 hover:from-slate-100 hover:to-slate-150 transition-all">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Monthly Totals</p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">📊 Monthly Totals</p>
+              <p className="text-lg font-bold text-gray-900 mt-1">
                 {monthStart.toLocaleDateString("en-PH", { month: "long", year: "numeric" })}
               </p>
             </div>
@@ -465,55 +495,130 @@ export default function FinancesPage() {
           </div>
         </summary>
 
-        <div className="mt-3">
-          <input
-            type="month"
-            className="input py-1.5 text-xs w-auto"
-            value={monthlyValue}
-            onChange={(e) => setMonthlyValue(e.target.value)}
-          />
-        </div>
+        <div className="p-4 sm:p-6 space-y-6 bg-gradient-to-b from-white to-gray-50">
+          {/* Month Selector */}
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Select Month:</label>
+            <input
+              type="month"
+              className="input py-2 text-sm w-auto border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+              value={monthlyValue}
+              onChange={(e) => setMonthlyValue(e.target.value)}
+            />
+          </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
-          <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-3 col-span-2 lg:col-span-1">
-            <p className="text-[11px] uppercase text-indigo-700">
-              Monthly Revenue (Units 1116, 1118, 1558, 1845 + External)
-            </p>
-            <p className="text-lg font-bold text-indigo-800 mt-0.5">{formatPHP(monthlyRevenue)}</p>
+          {/* Revenue Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-5 h-5 text-indigo-600" />
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Revenue</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="group rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-400 to-blue-500 p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="text-xs opacity-90 uppercase tracking-wide font-semibold">Monthly Revenue</p>
+                    <p className="text-sm opacity-75 mt-0.5">(Units 1116, 1118, 1558, 1845 + External)</p>
+                  </div>
+                  <DollarSign className="w-5 h-5 opacity-80" />
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold">{formatPHP(monthlyRevenue)}</p>
+              </div>
+              <div className="group rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-400 to-teal-500 p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="text-xs opacity-90 uppercase tracking-wide font-semibold">External Income</p>
+                    <p className="text-sm opacity-75 mt-0.5">This month</p>
+                  </div>
+                  <Wallet className="w-5 h-5 opacity-80" />
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold">{formatPHP(monthlyIncomeTotal)}</p>
+              </div>
+            </div>
           </div>
-          <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
-            <p className="text-[11px] uppercase text-emerald-700">External Income This Month</p>
-            <p className="text-lg font-bold text-emerald-800 mt-0.5">{formatPHP(monthlyIncomeTotal)}</p>
-          </div>
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-            <p className="text-[11px] uppercase text-gray-500">Bills This Month</p>
-            <p className="text-lg font-bold text-gray-900 mt-0.5">{formatPHP(monthlyBillsTotal)}</p>
-          </div>
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-            <p className="text-[11px] uppercase text-gray-500">Wages This Month</p>
-            <p className="text-lg font-bold text-gray-900 mt-0.5">{formatPHP(monthlyWagesTotal)}</p>
-          </div>
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-            <p className="text-[11px] uppercase text-gray-500">Expenses This Month</p>
-            <p className="text-lg font-bold text-gray-900 mt-0.5">{formatPHP(monthlyExpensesTotal)}</p>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-          <div className="rounded-lg bg-blue-50 border border-blue-100 p-3">
-            <p className="text-[11px] uppercase text-blue-700">Monthly Cost Total</p>
-            <p className="text-xl font-bold text-blue-800 mt-0.5">{formatPHP(monthlyCostsTotal)}</p>
+          {/* Costs Breakdown Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingDown className="w-5 h-5 text-red-600" />
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Cost Breakdown</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-xl bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 p-4 sm:p-5 hover:shadow-md transition-all">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="text-xs font-semibold text-red-700 uppercase tracking-wide">Bills</p>
+                  <span className="text-xl font-bold text-red-600">📋</span>
+                </div>
+                <p className="text-xl sm:text-2xl font-bold text-red-700">{formatPHP(monthlyBillsTotal)}</p>
+                <p className="text-[11px] text-red-600 mt-1 opacity-75">Monthly utilities & obligations</p>
+              </div>
+              <div className="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 p-4 sm:p-5 hover:shadow-md transition-all">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Wages</p>
+                  <span className="text-xl font-bold text-blue-600">👤</span>
+                </div>
+                <p className="text-xl sm:text-2xl font-bold text-blue-700">{formatPHP(monthlyWagesTotal)}</p>
+                <p className="text-[11px] text-blue-600 mt-1 opacity-75">Employee salaries</p>
+              </div>
+              <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 p-4 sm:p-5 hover:shadow-md transition-all">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Expenses</p>
+                  <span className="text-xl font-bold text-purple-600">💰</span>
+                </div>
+                <p className="text-xl sm:text-2xl font-bold text-purple-700">{formatPHP(monthlyExpensesTotal)}</p>
+                <p className="text-[11px] text-purple-600 mt-1 opacity-75">Operations & supplies</p>
+              </div>
+            </div>
           </div>
-          <div className="rounded-lg bg-white border p-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] uppercase text-gray-500">Monthly Net (Revenue - Costs)</p>
-              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${getNetBadgeClass(monthlyNetAfterCosts)}`}>
+
+          {/* Total Costs */}
+          <div className="rounded-xl bg-gradient-to-r from-slate-900 to-slate-800 p-4 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs opacity-80 uppercase tracking-wide font-semibold">Total Monthly Costs</p>
+                <p className="text-sm opacity-70 mt-0.5">Bills + Wages + Expenses</p>
+              </div>
+              <PieChart className="w-6 h-6 opacity-60" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold mt-3">{formatPHP(monthlyCostsTotal)}</p>
+          </div>
+
+          {/* Net Profit/Loss */}
+          <div className={`rounded-xl p-4 sm:p-5 border-2 shadow-lg transition-all ${
+            monthlyNetAfterCosts >= 0 
+              ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-300 hover:shadow-xl' 
+              : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-300 hover:shadow-xl'
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                {monthlyNetAfterCosts >= 0 ? (
+                  <TrendingUp className={`w-6 h-6 ${monthlyNetAfterCosts >= 0 ? 'text-emerald-600' : 'text-red-600'}`} />
+                ) : (
+                  <TrendingDown className="w-6 h-6 text-red-600" />
+                )}
+                <p className={`text-sm font-bold uppercase tracking-wide ${monthlyNetAfterCosts >= 0 ? 'text-emerald-900' : 'text-red-900'}`}>
+                  Monthly Net (Revenue - Costs)
+                </p>
+              </div>
+              <span className={`text-sm font-semibold px-3 py-1.5 rounded-lg ${
+                monthlyNetAfterCosts >= 0 
+                  ? 'bg-emerald-500 text-white' 
+                  : 'bg-red-500 text-white'
+              }`}>
                 {getNetLabel(monthlyNetAfterCosts)}
               </span>
             </div>
-            <p className={`text-xl font-bold mt-0.5 ${monthlyNetAfterCosts >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+            <p className={`text-3xl sm:text-4xl font-bold ${monthlyNetAfterCosts >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
               {formatPHP(monthlyNetAfterCosts)}
             </p>
+            <div className="mt-3 p-3 rounded-lg bg-white/50 backdrop-blur-sm">
+              <p className={`text-xs ${monthlyNetAfterCosts >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                {monthlyNetAfterCosts >= 0 
+                  ? `Great work! You have ₱${Math.abs(monthlyNetAfterCosts)} profit this month.`
+                  : `Alert: You have a loss of ₱${Math.abs(monthlyNetAfterCosts)} this month.`
+                }
+              </p>
+            </div>
           </div>
         </div>
       </details>
@@ -613,6 +718,7 @@ export default function FinancesPage() {
                 type="bills"
                 onDelete={() => handleDelete("bills", bill.id)}
                 onMarkPaid={() => handleMarkPaid("bills", bill)}
+                onToggleStatus={() => handleToggleStatus("bills", bill)}
                 fields={[bill.category, bill.paymentMethod ? `Method: ${bill.paymentMethod}` : "", formatDate(bill.billDate)]}
               />
             ))}
@@ -663,6 +769,7 @@ export default function FinancesPage() {
                 title={wage.employeeName}
                 onDelete={() => handleDelete("wages", wage.id)}
                 onMarkPaid={() => handleMarkPaid("wages", wage)}
+                onToggleStatus={() => handleToggleStatus("wages", wage)}
                 fields={[wage.paymentMethod ? `Method: ${wage.paymentMethod}` : "", formatDate(wage.payDate)]}
               />
             ))}
@@ -712,6 +819,7 @@ export default function FinancesPage() {
                 type="incomes"
                 onDelete={() => handleDelete("incomes", income.id)}
                 onMarkPaid={() => handleMarkPaid("incomes", income)}
+                onToggleStatus={() => handleToggleStatus("incomes", income)}
                 fields={[income.source ? `Source: ${income.source}` : "", income.paymentMethod ? `Method: ${income.paymentMethod}` : "", formatDate(income.incomeDate)]}
               />
             ))}
@@ -761,6 +869,7 @@ export default function FinancesPage() {
                 type="expenses"
                 onDelete={() => handleDelete("expenses", expense.id)}
                 onMarkPaid={() => handleMarkPaid("expenses", expense)}
+                onToggleStatus={() => handleToggleStatus("expenses", expense)}
                 fields={[expense.category, expense.paymentMethod ? `Method: ${expense.paymentMethod}` : "", formatDate(expense.expenseDate)]}
               />
             ))}
@@ -1471,6 +1580,7 @@ function ItemCard({
   title,
   onDelete,
   onMarkPaid,
+  onToggleStatus,
   fields,
 }: {
   item: any;
@@ -1478,6 +1588,7 @@ function ItemCard({
   title?: string;
   onDelete: () => void;
   onMarkPaid: () => void;
+  onToggleStatus: () => void;
   fields: string[];
 }) {
   const displayFields = fields.filter((f) => f && f.trim().length > 0);
@@ -1500,11 +1611,13 @@ function ItemCard({
       </div>
       <div className="flex items-center gap-2 ml-4">
         <p className="font-bold text-gray-900 text-lg">{formatPHP(item.amount)}</p>
-        {item.status === "pending" && (
-          <button onClick={onMarkPaid} className="btn-secondary text-xs py-1 px-2">
-            <CheckCircle className="w-4 h-4" />
-          </button>
-        )}
+        <button 
+          onClick={onToggleStatus} 
+          className="btn-secondary text-xs py-1 px-2 flex items-center gap-1 hover:bg-blue-50"
+          title={item.status === "paid" ? "Mark as unpaid" : "Mark as paid"}
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
         <button onClick={onDelete} className="btn-secondary text-xs py-1 px-2 text-red-600">
           <Trash2 className="w-4 h-4" />
         </button>

@@ -45,6 +45,26 @@ function BookingPlatformBadge({ platform }: { platform: string | null | undefine
   );
 }
 
+function UnitBadge({ unit }: { unit: string }) {
+  const unitNum = String(unit).trim();
+  
+  // Color mapping for units
+  const unitColors: Record<string, { bg: string; text: string; border: string }> = {
+    "1116": { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-300" },
+    "1118": { bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-300" },
+    "1558": { bg: "bg-green-100", text: "text-green-800", border: "border-green-300" },
+    "1845": { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-300" },
+  };
+  
+  const colors = unitColors[unitNum] || { bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-300" };
+  
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-lg border-2 ${colors.border} ${colors.bg} px-2.5 py-1 text-sm font-bold ${colors.text} shadow-sm`}>
+      🏠 {unitNum}
+    </span>
+  );
+}
+
 function BookingsContent() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [units, setUnits] = useState<string[]>(UNITS);
@@ -368,15 +388,18 @@ function BookingsContent() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                   {dayBookings.map((b) => (
                     <div key={b.id} className="card p-3 sm:p-4">
-                      <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-start justify-between gap-2 mb-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
                             <p className="font-semibold text-gray-900 truncate">{b.guestName}</p>
+                            <UnitBadge unit={b.unit} />
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
                             <BookingPlatformBadge platform={b.bookingPlatform} />
                             {getBookingCountBadge(b.guestName)}
                           </div>
                           {b.contactNo && (
-                            <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                            <p className="text-xs text-gray-400 flex items-center gap-1 mt-1.5">
                               <Phone className="w-3 h-3" />{b.contactNo}
                             </p>
                           )}
@@ -387,7 +410,6 @@ function BookingsContent() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-2">
-                        <span><span className="text-gray-400">Unit</span> {b.unit}</span>
                         <span><span className="text-gray-400">Fee</span> {formatPHP(b.totalFee)}</span>
                         <span><span className="text-gray-400">In</span> {formatDate(b.checkIn)} {b.checkInTime}</span>
                         <span><span className="text-gray-400">Balance</span> <span className={b.remainingBalance > 0 ? "text-red-600 font-semibold" : "text-green-600"}>{formatPHP(b.remainingBalance)}</span></span>
