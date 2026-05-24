@@ -27,7 +27,7 @@ export default function WagesPage() {
     }
   };
 
-  useEffect(() => { fetchWages(); }, [filter]);
+  useEffect(() => { fetchWages(); }, [filter, monthlyValue]);
 
   const handleAddWage = async (e: React.FormEvent) => {
     e.preventDefault();

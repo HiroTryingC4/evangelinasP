@@ -27,7 +27,7 @@ export default function BillsPage() {
     }
   };
 
-  useEffect(() => { fetchBills(); }, [filter]);
+  useEffect(() => { fetchBills(); }, [filter, monthlyValue]);
 
   const handleAddBill = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,7 +97,11 @@ export default function BillsPage() {
     return d >= monthStart && d <= monthEnd;
   };
 
-  const billsInMonth = bills.filter((b) => inSelectedMonth(b.billDate));
+  const billsInMonth = bills.filter((b) => {
+    const date = b.billDate ? new Date(b.billDate) : null;
+    if (!date || Number.isNaN(date.getTime())) return false;
+    return date >= monthStart && date <= monthEnd;
+  });
   const filteredBills = billsInMonth.filter((b) => filter === "all" ? true : b.status === filter);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;

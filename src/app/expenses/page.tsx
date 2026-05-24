@@ -27,7 +27,7 @@ export default function ExpensesPage() {
     }
   };
 
-  useEffect(() => { fetchExpenses(); }, [filter]);
+  useEffect(() => { fetchExpenses(); }, [filter, monthlyValue]);
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,7 +97,11 @@ export default function ExpensesPage() {
     return d >= monthStart && d <= monthEnd;
   };
 
-  const expensesInMonth = expenses.filter((e) => inSelectedMonth(e.expenseDate));
+  const expensesInMonth = expenses.filter((e) => {
+    const date = e.expenseDate ? new Date(e.expenseDate) : null;
+    if (!date || Number.isNaN(date.getTime())) return false;
+    return date >= monthStart && date <= monthEnd;
+  });
   const filteredExpenses = expensesInMonth.filter((e) => filter === "all" ? true : e.status === filter);
   const sortedExpenses = [...filteredExpenses].sort((a, b) => {
     const aDate = new Date(a.dueDate ?? a.expenseDate).getTime();
