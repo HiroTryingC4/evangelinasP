@@ -169,6 +169,16 @@ export default function WagesPage() {
         ))}
       </div>
 
+      {/* Month Display for Records */}
+      <div className="flex items-center justify-between mb-3 px-2">
+        <p className="text-sm font-semibold text-gray-700">
+          Records for {monthStart.toLocaleDateString("en-PH", { month: "long", year: "numeric" })}
+        </p>
+        <p className="text-xs text-gray-500">
+          {filteredWages.length} record{filteredWages.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+
       <div className="space-y-2">
         {filteredWages.map((wage) => (
           <div key={wage.id} className="card p-3 flex items-start justify-between">

@@ -171,6 +171,16 @@ export default function BillsPage() {
         ))}
       </div>
 
+      {/* Month Display for Records */}
+      <div className="flex items-center justify-between mb-3 px-2">
+        <p className="text-sm font-semibold text-gray-700">
+          Records for {monthStart.toLocaleDateString("en-PH", { month: "long", year: "numeric" })}
+        </p>
+        <p className="text-xs text-gray-500">
+          {filteredBills.length} record{filteredBills.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+
       <div className="space-y-2">
         {filteredBills.map((bill) => (
           <div key={bill.id} className="card p-3 flex items-start justify-between">
