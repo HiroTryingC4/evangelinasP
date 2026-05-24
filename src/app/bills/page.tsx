@@ -1,13 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Edit2, CheckCircle, Clock } from "lucide-react";
+import { Plus, Trash2, Edit2, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatPHP, formatDate } from "@/lib/utils";
 
 export default function BillsPage() {
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "paid">("all");
+  const [monthlyValue, setMonthlyValue] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [newBill, setNewBill] = useState({ description: "", amount: "", billDate: "", dueDate: "", category: "", notes: "" });
 
   const fetchBills = async () => {
@@ -74,10 +78,32 @@ export default function BillsPage() {
     }
   };
 
+  const shiftMonth = (months: number) => {
+    const d = new Date(`${monthlyValue}-01`);
+    d.setMonth(d.getMonth() + months);
+    setMonthlyValue(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const [monthYear, monthNumber] = monthlyValue.split("-").map(Number);
+  const monthStart = new Date(monthYear || new Date().getFullYear(), (monthNumber || 1) - 1, 1);
+  monthStart.setHours(0, 0, 0, 0);
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+  monthEnd.setHours(23, 59, 59, 999);
+
+  const inSelectedMonth = (value: string | Date | null | undefined) => {
+    if (!value) return false;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return false;
+    return d >= monthStart && d <= monthEnd;
+  };
+
+  const billsInMonth = bills.filter((b) => inSelectedMonth(b.billDate));
+  const filteredBills = billsInMonth.filter((b) => filter === "all" ? true : b.status === filter);
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
 
-  const totalPending = bills.filter((b) => b.status === "pending").reduce((s: number, b: any) => s + b.amount, 0);
-  const totalPaid = bills.filter((b) => b.status === "paid").reduce((s: number, b: any) => s + b.amount, 0);
+  const totalPending = filteredBills.filter((b) => b.status === "pending").reduce((s: number, b: any) => s + b.amount, 0);
+  const totalPaid = filteredBills.filter((b) => b.status === "paid").reduce((s: number, b: any) => s + b.amount, 0);
 
   return (
     <div className="space-y-4">
@@ -86,10 +112,31 @@ export default function BillsPage() {
         <Link href="/" className="text-xs text-blue-600 hover:underline">← Back to Dashboard</Link>
       </div>
 
+      {/* Month Picker */}
+      <div className="card p-4 bg-gradient-to-r from-slate-50 to-slate-100">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button type="button" onClick={() => shiftMonth(-1)} className="btn-secondary text-xs py-2 px-3">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <input
+            type="month"
+            className="input py-2 text-sm w-auto border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            value={monthlyValue}
+            onChange={(e) => setMonthlyValue(e.target.value)}
+          />
+          <button type="button" onClick={() => shiftMonth(1)} className="btn-secondary text-xs py-2 px-3">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-semibold text-gray-700 ml-auto">
+            {monthStart.toLocaleDateString("en-PH", { month: "long", year: "numeric" })}
+          </span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-4">
         <div className="card p-4">
-          <p className="text-xs text-gray-500 uppercase">Total Bills</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(bills.reduce((s: number, b: any) => s + b.amount, 0))}</p>
+          <p className="text-xs text-gray-500 uppercase">Total Bills (This Month)</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(filteredBills.reduce((s: number, b: any) => s + b.amount, 0))}</p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-gray-500 uppercase">Pending</p>
@@ -125,7 +172,7 @@ export default function BillsPage() {
       </div>
 
       <div className="space-y-2">
-        {bills.map((bill) => (
+        {filteredBills.map((bill) => (
           <div key={bill.id} className="card p-3 flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
