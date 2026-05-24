@@ -73,6 +73,7 @@ async function fixJayjayGcash() {
       (b) =>
         (b.fpMethod?.toLowerCase() === "gcash" ||
           b.fpMethod?.toLowerCase() === "g-cash") &&
+        b.checkInDateKey &&
         b.checkInDateKey >= "2026-05-17" &&
         b.checkInDateKey <= "2026-05-24"
     );
