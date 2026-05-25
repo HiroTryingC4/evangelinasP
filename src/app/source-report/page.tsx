@@ -96,12 +96,11 @@ function bookingMatchesReceiver(booking: Booking, selectedReceiver: string): boo
   
   const selected = selectedReceiver.toUpperCase();
   
-  // Match by who RECEIVED the money (dpReceivedBy or fpReceivedBy)
-  // NOT by who booked it (bookingSource)
-  const dpReceiver = String(booking.dpReceivedBy ?? "").trim().toUpperCase();
-  const fpReceiver = String(booking.fpReceivedBy ?? "").trim().toUpperCase();
+  // Match by who BOOKED it (bookingSource)
+  // Show all bookings that this person sourced/booked, regardless of who received payment
+  const bookedBy = String(booking.bookingSource ?? "").trim().toUpperCase();
   
-  return dpReceiver === selected || fpReceiver === selected;
+  return bookedBy === selected;
 }
 
 function getMethodAmountsForReceiver(
