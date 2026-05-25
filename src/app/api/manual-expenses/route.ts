@@ -150,3 +150,62 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+// PUT: Update a manual expense by ID
+export async function PUT(request: NextRequest) {
+  try {
+    console.log("✏️ PUT /api/manual-expenses - Ensuring table exists...");
+    await ensureManualExpensesTable();
+    console.log("✅ Table ensured");
+    
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    const body = await request.json();
+    const { amount, comment } = body;
+
+    console.log("🔍 Updating expense with ID:", id);
+
+    if (!id) {
+      console.error("❌ Missing expense ID");
+      return NextResponse.json(
+        { error: "Missing expense ID" },
+        { status: 400 }
+      );
+    }
+
+    if (amount === undefined || !comment) {
+      console.error("❌ Missing required fields:", { amount, comment });
+      return NextResponse.json(
+        { error: "Missing required fields: amount, comment" },
+        { status: 400 }
+      );
+    }
+
+    const result = await db
+      .update(manualExpenses)
+      .set({
+        amount: Number(amount),
+        comment: comment.trim(),
+      })
+      .where(eq(manualExpenses.id, Number(id)))
+      .returning();
+
+    if (result.length === 0) {
+      console.error("❌ Expense not found with ID:", id);
+      return NextResponse.json(
+        { error: "Expense not found" },
+        { status: 404 }
+      );
+    }
+
+    console.log("✅ Updated expense:", result[0]);
+
+    return NextResponse.json(result[0]);
+  } catch (error) {
+    console.error("❌ Error updating manual expense:", error);
+    return NextResponse.json(
+      { error: "Failed to update manual expense", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}

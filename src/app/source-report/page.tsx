@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Wallet, BarChart3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Wallet, BarChart3, Edit2 } from "lucide-react";
 import { formatPHP, getSundayToSaturdayWeek, normalizeBookingSource, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
@@ -277,6 +277,10 @@ export default function SourceReportPage() {
   const [addingExpense, setAddingExpense] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [configuredReceivers, setConfiguredReceivers] = useState<string[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingAmount, setEditingAmount] = useState("");
+  const [editingComment, setEditingComment] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   function showNotification(msg: string) {
     setNotification(msg);
@@ -675,7 +679,18 @@ export default function SourceReportPage() {
                       <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">{entry.receiver}</td>
                       <td className="px-2 py-1.5 text-amber-900">{entry.comment}</td>
                       <td className="px-2 py-1.5 text-right font-medium text-amber-900">-{formatPHP(entry.amount)}</td>
-                      <td className="px-2 py-1.5 text-right">
+                      <td className="px-2 py-1.5 text-right flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          className="text-[11px] text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                          onClick={() => {
+                            setEditingId(entry.id);
+                            setEditingAmount(String(entry.amount));
+                            setEditingComment(entry.comment);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3" /> Edit
+                        </button>
                         <button
                           type="button"
                           className="text-[11px] text-red-600 hover:text-red-700"
@@ -740,6 +755,122 @@ export default function SourceReportPage() {
           ) : null}
         </div>
       </div>
+
+      {/* Edit Manual Expense Modal */}
+      {editingId !== null ? (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 max-w-sm w-full">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Manual Expense</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Amount (₱)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="input w-full"
+                  value={editingAmount}
+                  onChange={(e) => setEditingAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Comment</label>
+                <input
+                  type="text"
+                  className="input w-full"
+                  value={editingComment}
+                  onChange={(e) => setEditingComment(e.target.value)}
+                  placeholder="e.g., electricity, water, snacks"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setEditingAmount("");
+                    setEditingComment("");
+                  }}
+                  className="flex-1 btn-secondary text-xs py-2"
+                  disabled={savingEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const amount = parseManualAmount(editingAmount);
+                    const comment = editingComment.trim();
+                    if (!amount || !comment) {
+                      showNotification("Please enter both amount and comment");
+                      return;
+                    }
+
+                    setSavingEdit(true);
+                    try {
+                      const response = await fetch(`/api/manual-expenses?id=${editingId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          amount,
+                          comment,
+                        }),
+                      });
+
+                      if (response.ok) {
+                        console.log("✅ Expense updated successfully");
+                        
+                        // Refetch from the stable debug endpoint
+                        const refetchUrl = `/api/manual-expenses/debug?_t=${Date.now()}`;
+                        const refetchResponse = await fetch(refetchUrl, { 
+                          cache: "no-store",
+                          headers: {
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache',
+                            'Expires': '0'
+                          }
+                        });
+                        
+                        if (refetchResponse.ok) {
+                          const freshData = await refetchResponse.json();
+                          const freshExpenses = Array.isArray(freshData?.expenses) ? freshData.expenses : [];
+                          setManualExpenses(freshExpenses);
+                        } else {
+                          // Fallback: update local state
+                          setManualExpenses((prev) =>
+                            prev.map((item) =>
+                              item.id === editingId
+                                ? { ...item, amount, comment }
+                                : item
+                            )
+                          );
+                        }
+                        
+                        setEditingId(null);
+                        setEditingAmount("");
+                        setEditingComment("");
+                        showNotification("✅ Expense updated successfully!");
+                      } else {
+                        const errorData = await response.json();
+                        showNotification(`Failed to update: ${errorData.error || 'Unknown error'}`);
+                      }
+                    } catch (error) {
+                      console.error("Error updating expense:", error);
+                      showNotification(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    } finally {
+                      setSavingEdit(false);
+                    }
+                  }}
+                  className="flex-1 btn-primary text-xs py-2"
+                  disabled={savingEdit}
+                >
+                  {savingEdit ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
