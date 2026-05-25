@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
-import { and, or, gte, lte } from "drizzle-orm";
+import { and, or, gte, lte, isNotNull } from "drizzle-orm";
 
 async function findRIEMARCash() {
   try {
@@ -36,31 +36,22 @@ async function findRIEMARCash() {
           or(
             // Cash DP received by RIEMAR during the week
             and(
-              or(
-                bookings.dpReceivedBy ? true : false,
-                bookings.dpReceivedBy !== null
-              ),
-              bookings.dpMethod ? true : false,
+              isNotNull(bookings.dpReceivedBy),
+              isNotNull(bookings.dpMethod),
               gte(bookings.dpDate, startDate),
               lte(bookings.dpDate, endDate)
             ),
             // Cash FP received by RIEMAR during the week
             and(
-              or(
-                bookings.fpReceivedBy ? true : false,
-                bookings.fpReceivedBy !== null
-              ),
-              bookings.fpMethod ? true : false,
+              isNotNull(bookings.fpReceivedBy),
+              isNotNull(bookings.fpMethod),
               gte(bookings.fpDate, startDate),
               lte(bookings.fpDate, endDate)
             ),
             // Cash AP received by RIEMAR during the week
             and(
-              or(
-                bookings.apReceivedBy ? true : false,
-                bookings.apReceivedBy !== null
-              ),
-              bookings.apMethod ? true : false,
+              isNotNull(bookings.apReceivedBy),
+              isNotNull(bookings.apMethod),
               gte(bookings.apDate, startDate),
               lte(bookings.apDate, endDate)
             )
