@@ -14,7 +14,8 @@
     "db:add:recurring-expenses": "npx tsx src/scripts/add-recurring-expenses.ts",
     "db:backfill:date-keys": "npx tsx src/scripts/backfill-booking-date-keys.ts",
     "db:import:xlsx": "npx tsx src/scripts/import-bookings-xlsx.ts",
-    "db:migrate:manual-expenses": "npx tsx src/scripts/migrate-manual-expenses-to-finances.ts"
+    "db:migrate:manual-expenses": "npx tsx src/scripts/migrate-manual-expenses-to-finances.ts",
+    "db:add:riemar": "npx tsx src/scripts/add-riemar.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.5",

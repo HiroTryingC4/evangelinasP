@@ -200,6 +200,30 @@ export default function FinancesPage() {
     }
   };
 
+  const handleAmountChange = async (type: "bills" | "wages" | "incomes" | "expenses", item: any, newAmount: number) => {
+    try {
+      const apiType = type === "incomes" ? "income" : type;
+      await fetch(`/api/${apiType}/${item.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...item, amount: newAmount }),
+      });
+      
+      const updatedItem = { ...item, amount: newAmount };
+      if (type === "bills") {
+        setBills(bills.map((b) => (b.id === item.id ? updatedItem : b)));
+      } else if (type === "wages") {
+        setWages(wages.map((w) => (w.id === item.id ? updatedItem : w)));
+      } else if (type === "incomes") {
+        setIncomes(incomes.map((i) => (i.id === item.id ? updatedItem : i)));
+      } else {
+        setExpenses(expenses.map((e) => (e.id === item.id ? updatedItem : e)));
+      }
+    } catch (e) {
+      console.error("Failed to update amount:", e);
+    }
+  };
+
   const getFilteredData = (data: any[]) => filter === "all" ? data : data.filter((d) => d.status === filter);
 
   const billsFiltered = getFilteredData(bills);
@@ -719,6 +743,7 @@ export default function FinancesPage() {
                 onDelete={() => handleDelete("bills", bill.id)}
                 onMarkPaid={() => handleMarkPaid("bills", bill)}
                 onToggleStatus={() => handleToggleStatus("bills", bill)}
+                onAmountChange={(newAmount) => handleAmountChange("bills", bill, newAmount)}
                 fields={[bill.category, bill.paymentMethod ? `Method: ${bill.paymentMethod}` : "", formatDate(bill.billDate)]}
               />
             ))}
@@ -770,6 +795,7 @@ export default function FinancesPage() {
                 onDelete={() => handleDelete("wages", wage.id)}
                 onMarkPaid={() => handleMarkPaid("wages", wage)}
                 onToggleStatus={() => handleToggleStatus("wages", wage)}
+                onAmountChange={(newAmount) => handleAmountChange("wages", wage, newAmount)}
                 fields={[wage.paymentMethod ? `Method: ${wage.paymentMethod}` : "", formatDate(wage.payDate)]}
               />
             ))}
@@ -820,6 +846,7 @@ export default function FinancesPage() {
                 onDelete={() => handleDelete("incomes", income.id)}
                 onMarkPaid={() => handleMarkPaid("incomes", income)}
                 onToggleStatus={() => handleToggleStatus("incomes", income)}
+                onAmountChange={(newAmount) => handleAmountChange("incomes", income, newAmount)}
                 fields={[income.source ? `Source: ${income.source}` : "", income.paymentMethod ? `Method: ${income.paymentMethod}` : "", formatDate(income.incomeDate)]}
               />
             ))}
@@ -870,6 +897,7 @@ export default function FinancesPage() {
                 onDelete={() => handleDelete("expenses", expense.id)}
                 onMarkPaid={() => handleMarkPaid("expenses", expense)}
                 onToggleStatus={() => handleToggleStatus("expenses", expense)}
+                onAmountChange={(newAmount) => handleAmountChange("expenses", expense, newAmount)}
                 fields={[expense.category, expense.paymentMethod ? `Method: ${expense.paymentMethod}` : "", formatDate(expense.expenseDate)]}
               />
             ))}
@@ -1582,6 +1610,7 @@ function ItemCard({
   onDelete,
   onMarkPaid,
   onToggleStatus,
+  onAmountChange,
   fields,
 }: {
   item: any;
@@ -1590,9 +1619,29 @@ function ItemCard({
   onDelete: () => void;
   onMarkPaid: () => void;
   onToggleStatus: () => void;
+  onAmountChange?: (newAmount: number) => void;
   fields: string[];
 }) {
+  const [isEditingAmount, setIsEditingAmount] = useState(false);
+  const [editAmount, setEditAmount] = useState(String(item.amount));
   const displayFields = fields.filter((f) => f && f.trim().length > 0);
+
+  const handleAmountSave = () => {
+    const newAmount = parseInt(editAmount) || item.amount;
+    if (newAmount !== item.amount && onAmountChange) {
+      onAmountChange(newAmount);
+    }
+    setIsEditingAmount(false);
+  };
+
+  const handleAmountKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleAmountSave();
+    } else if (e.key === "Escape") {
+      setEditAmount(String(item.amount));
+      setIsEditingAmount(false);
+    }
+  };
 
   return (
     <div className="card p-3 flex items-start justify-between">
@@ -1611,7 +1660,28 @@ function ItemCard({
         {item.notes && <p className="text-xs text-gray-600 mt-1">{item.notes}</p>}
       </div>
       <div className="flex items-center gap-2 ml-4">
-        <p className="font-bold text-gray-900 text-lg">{formatPHP(item.amount)}</p>
+        {isEditingAmount ? (
+          <div className="flex items-center gap-1">
+            <span className="text-gray-600 text-sm">₱</span>
+            <input
+              type="number"
+              value={editAmount}
+              onChange={(e) => setEditAmount(e.target.value)}
+              onKeyDown={handleAmountKeyDown}
+              onBlur={handleAmountSave}
+              autoFocus
+              className="w-20 px-2 py-1 border border-blue-400 rounded text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+          </div>
+        ) : (
+          <p 
+            onClick={() => setIsEditingAmount(true)}
+            className="font-bold text-gray-900 text-lg cursor-pointer hover:text-blue-600 transition-colors"
+            title="Click to edit amount"
+          >
+            {formatPHP(item.amount)}
+          </p>
+        )}
         <button 
           onClick={onToggleStatus} 
           className="btn-secondary text-xs py-1 px-2 flex items-center gap-1 hover:bg-blue-50"
