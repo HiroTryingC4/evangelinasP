@@ -20,6 +20,7 @@ type ManualExpenseEntry = {
   amount: number;
   comment: string;
   receiver: string;
+  type?: "expense" | "bill" | "wage";
 };
 
 type WeeklyRow = {
@@ -274,6 +275,7 @@ export default function SourceReportPage() {
   const [manualExpenses, setManualExpenses] = useState<ManualExpenseEntry[]>([]);
   const [newExpenseAmount, setNewExpenseAmount] = useState("");
   const [newExpenseComment, setNewExpenseComment] = useState("");
+  const [newExpenseType, setNewExpenseType] = useState<"expense" | "bill" | "wage">("expense");
   const [addingExpense, setAddingExpense] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [configuredReceivers, setConfiguredReceivers] = useState<string[]>([]);
@@ -533,20 +535,13 @@ export default function SourceReportPage() {
         </div>
 
         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div>
-              <p className="text-xs text-amber-800 font-semibold uppercase tracking-wide">Manual Weekly Expenses (direct minus)</p>
-              <p className="mt-0.5 text-[11px] text-amber-700">Deducted for week: {selectedWeekLabel}</p>
-            </div>
-            <a
-              href="/finances"
-              className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1 hover:bg-amber-100 transition-colors"
-            >
-              💰 Go to Finances
-            </a>
+          <div className="mb-3">
+            <p className="text-xs text-amber-800 font-semibold uppercase tracking-wide">Manual Weekly Expenses (direct minus)</p>
+            <p className="mt-0.5 text-[11px] text-amber-700">Deducted for week: {selectedWeekLabel}</p>
+            <p className="mt-1 text-[10px] text-amber-600 italic">✓ Automatically synced to Finances</p>
           </div>
 
-          <div className="mt-2 grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-2">
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-[140px_1fr_120px_auto] gap-2">
             <input
               type="text"
               inputMode="decimal"
@@ -562,6 +557,15 @@ export default function SourceReportPage() {
               value={newExpenseComment}
               onChange={(e) => setNewExpenseComment(e.target.value)}
             />
+            <select
+              className="input text-xs"
+              value={newExpenseType}
+              onChange={(e) => setNewExpenseType(e.target.value as "expense" | "bill" | "wage")}
+            >
+              <option value="expense">💰 Expense</option>
+              <option value="wage">👤 Wage</option>
+              <option value="bill">💳 Bill</option>
+            </select>
             <button
               type="button"
               className="btn-secondary text-xs py-1.5 px-3"
@@ -585,6 +589,7 @@ export default function SourceReportPage() {
                       receiver: selectedReceiver === "__all__" ? "__all__" : selectedReceiver,
                       amount,
                       comment,
+                      type: newExpenseType, // Add the type (expense or bill)
                     }),
                   });
 
@@ -613,23 +618,15 @@ export default function SourceReportPage() {
                       // Clear inputs and show success
                       setNewExpenseAmount("");
                       setNewExpenseComment("");
-                      showNotification(`✅ Expense added successfully! (${formatPHP(amount)}) Redirecting to Finances...`);
-                      
-                      // Redirect to finances after a short delay
-                      setTimeout(() => {
-                        router.push("/finances");
-                      }, 1500);
+                      setNewExpenseType("expense");
+                      showNotification(`✅ ${newExpenseType === "bill" ? "Bill" : newExpenseType === "wage" ? "Wage" : "Expense"} added successfully! (${formatPHP(amount)})`);
                     } else {
                       // Fallback to local state update
                       setManualExpenses((prev) => [...prev, newExpense]);
                       setNewExpenseAmount("");
                       setNewExpenseComment("");
-                      showNotification(`✅ Expense added! (${formatPHP(amount)}) Redirecting to Finances...`);
-                      
-                      // Redirect to finances after a short delay
-                      setTimeout(() => {
-                        router.push("/finances");
-                      }, 1500);
+                      setNewExpenseType("expense");
+                      showNotification(`✅ ${newExpenseType === "bill" ? "Bill" : newExpenseType === "wage" ? "Wage" : "Expense"} added! (${formatPHP(amount)})`);
                     }
                   } else {
                     const errorData = await response.json();
@@ -668,6 +665,7 @@ export default function SourceReportPage() {
                     <th className="text-left px-2 py-1.5 font-semibold">Week</th>
                     <th className="text-left px-2 py-1.5 font-semibold">Receiver</th>
                     <th className="text-left px-2 py-1.5 font-semibold">Comment</th>
+                    <th className="text-left px-2 py-1.5 font-semibold">Type</th>
                     <th className="text-right px-2 py-1.5 font-semibold">Amount</th>
                     <th className="text-right px-2 py-1.5 font-semibold">Action</th>
                   </tr>
@@ -678,6 +676,17 @@ export default function SourceReportPage() {
                       <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">{selectedWeekLabel}</td>
                       <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">{entry.receiver}</td>
                       <td className="px-2 py-1.5 text-amber-900">{entry.comment}</td>
+                      <td className="px-2 py-1.5 text-amber-900">
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
+                          entry.type === "bill" 
+                            ? "bg-red-100 text-red-700" 
+                            : entry.type === "wage"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-purple-100 text-purple-700"
+                        }`}>
+                          {entry.type === "bill" ? "💳 Bill" : entry.type === "wage" ? "👤 Wage" : "💰 Expense"}
+                        </span>
+                      </td>
                       <td className="px-2 py-1.5 text-right font-medium text-amber-900">-{formatPHP(entry.amount)}</td>
                       <td className="px-2 py-1.5 text-right flex items-center justify-end gap-2">
                         <button
@@ -761,6 +770,32 @@ export default function SourceReportPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 max-w-sm w-full">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Manual Expense</h2>
+            
+            {/* Info about where it goes */}
+            {(() => {
+              const expense = manualExpenses.find(e => e.id === editingId);
+              const expenseType = expense?.type || "expense";
+              return (
+                <div className={`mb-4 p-3 border-l-4 rounded ${
+                  expenseType === "bill" 
+                    ? "bg-red-50 border-red-400" 
+                    : expenseType === "wage"
+                    ? "bg-blue-50 border-blue-400"
+                    : "bg-purple-50 border-purple-400"
+                }`}>
+                  <p className={`text-xs font-semibold ${
+                    expenseType === "bill" 
+                      ? "text-red-900" 
+                      : expenseType === "wage"
+                      ? "text-blue-900"
+                      : "text-purple-900"
+                  }`}>
+                    📍 Synced to Finances → {expenseType === "bill" ? "💳 Bills" : expenseType === "wage" ? "👤 Wages" : "💰 Expenses"}
+                  </p>
+                </div>
+              );
+            })()}
+            
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-gray-700 block mb-1">Amount (₱)</label>

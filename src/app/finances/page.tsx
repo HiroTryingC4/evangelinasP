@@ -34,6 +34,10 @@ export default function FinancesPage() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationData, setConfirmationData] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteData, setDeleteData] = useState<any>(null);
 
   useEffect(() => {
     Promise.all([
@@ -70,6 +74,10 @@ export default function FinancesPage() {
       });
       const res = await fetch("/api/bills");
       setBills(toArray(await res.json()));
+      
+      // Show confirmation modal
+      setConfirmationData({ type: "Bill", ...data });
+      setShowConfirmation(true);
     } catch (e) {
       console.error("Failed to add bill:", e);
     }
@@ -85,6 +93,10 @@ export default function FinancesPage() {
       });
       const res = await fetch("/api/wages");
       setWages(toArray(await res.json()));
+      
+      // Show confirmation modal
+      setConfirmationData({ type: "Wage", ...data });
+      setShowConfirmation(true);
     } catch (e) {
       console.error("Failed to add wage:", e);
     }
@@ -99,6 +111,10 @@ export default function FinancesPage() {
       });
       const res = await fetch("/api/expenses");
       setExpenses(toArray(await res.json()));
+      
+      // Show confirmation modal
+      setConfirmationData({ type: "Expense", ...data });
+      setShowConfirmation(true);
     } catch (e) {
       console.error("Failed to add expense:", e);
     }
@@ -107,6 +123,10 @@ export default function FinancesPage() {
   const handleAddTransfer = (e: React.FormEvent, data: any) => {
     e.preventDefault();
     setTransfers([...transfers, { id: Date.now(), ...data }]);
+    
+    // Show confirmation modal
+    setConfirmationData({ type: "Transfer", ...data });
+    setShowConfirmation(true);
   };
 
   const handleAddIncome = async (e: React.FormEvent, data: any) => {
@@ -120,31 +140,64 @@ export default function FinancesPage() {
       const res = await fetch("/api/income");
       const nextIncomes = await res.json();
       setIncomes(toArray(nextIncomes));
+      
+      // Show confirmation modal
+      setConfirmationData({ type: "Income", ...data });
+      setShowConfirmation(true);
     } catch (e) {
       console.error("Failed to add income:", e);
     }
   };
 
   const handleDelete = async (type: "bills" | "wages" | "incomes" | "expenses" | "transfer", id: number) => {
-    if (!confirm("Delete this record?")) return;
+    // Find the item to show in confirmation
+    let itemToDelete: any = null;
+    if (type === "bills") itemToDelete = bills.find(b => b.id === id);
+    else if (type === "wages") itemToDelete = wages.find(w => w.id === id);
+    else if (type === "incomes") itemToDelete = incomes.find(i => i.id === id);
+    else if (type === "expenses") itemToDelete = expenses.find(e => e.id === id);
+    else if (type === "transfer") itemToDelete = transfers.find(t => t.id === id);
+
+    // Show delete confirmation modal
+    setDeleteData({ type, id, item: itemToDelete });
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteData) return;
+    
+    const { type, id, item } = deleteData;
+    
     try {
       if (type === "transfer") {
         setTransfers(transfers.filter((t) => t.id !== id));
-        return;
-      }
-      const apiType = type === "incomes" ? "income" : type;
-      await fetch(`/api/${apiType}/${id}`, { method: "DELETE" });
-      if (type === "bills") {
-        setBills(bills.filter((b) => b.id !== id));
-      } else if (type === "wages") {
-        setWages(wages.filter((w) => w.id !== id));
-      } else if (type === "incomes") {
-        setIncomes(incomes.filter((i) => i.id !== id));
       } else {
-        setExpenses(expenses.filter((e) => e.id !== id));
+        const apiType = type === "incomes" ? "income" : type;
+        await fetch(`/api/${apiType}/${id}`, { method: "DELETE" });
+        if (type === "bills") {
+          setBills(bills.filter((b) => b.id !== id));
+        } else if (type === "wages") {
+          setWages(wages.filter((w) => w.id !== id));
+        } else if (type === "incomes") {
+          setIncomes(incomes.filter((i) => i.id !== id));
+        } else {
+          setExpenses(expenses.filter((e) => e.id !== id));
+        }
       }
+      
+      // Close delete confirm and show success
+      setShowDeleteConfirm(false);
+      setConfirmationData({ 
+        type: type === "incomes" ? "Income" : type === "bills" ? "Bill" : type === "wages" ? "Wage" : type === "expenses" ? "Expense" : "Transfer",
+        action: "deleted",
+        ...item 
+      });
+      setShowConfirmation(true);
+      setDeleteData(null);
     } catch (e) {
       console.error("Failed to delete:", e);
+      setShowDeleteConfirm(false);
+      setDeleteData(null);
     }
   };
 
@@ -197,6 +250,29 @@ export default function FinancesPage() {
       }
     } catch (e) {
       console.error("Failed to toggle status:", e);
+    }
+  };
+
+  const handleEdit = async (type: "bills" | "wages" | "incomes" | "expenses", updatedItem: any) => {
+    try {
+      const apiType = type === "incomes" ? "income" : type;
+      await fetch(`/api/${apiType}/${updatedItem.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedItem),
+      });
+      
+      if (type === "bills") {
+        setBills(bills.map((b) => (b.id === updatedItem.id ? updatedItem : b)));
+      } else if (type === "wages") {
+        setWages(wages.map((w) => (w.id === updatedItem.id ? updatedItem : w)));
+      } else if (type === "incomes") {
+        setIncomes(incomes.map((i) => (i.id === updatedItem.id ? updatedItem : i)));
+      } else {
+        setExpenses(expenses.map((e) => (e.id === updatedItem.id ? updatedItem : e)));
+      }
+    } catch (e) {
+      console.error("Failed to update item:", e);
     }
   };
 
@@ -742,8 +818,7 @@ export default function FinancesPage() {
                 type="bills"
                 onDelete={() => handleDelete("bills", bill.id)}
                 onMarkPaid={() => handleMarkPaid("bills", bill)}
-                onToggleStatus={() => handleToggleStatus("bills", bill)}
-                onAmountChange={(newAmount) => handleAmountChange("bills", bill, newAmount)}
+                onEdit={(updatedBill) => handleEdit("bills", updatedBill)}
                 fields={[bill.category, bill.paymentMethod ? `Method: ${bill.paymentMethod}` : "", formatDate(bill.billDate)]}
               />
             ))}
@@ -794,8 +869,7 @@ export default function FinancesPage() {
                 title={wage.employeeName}
                 onDelete={() => handleDelete("wages", wage.id)}
                 onMarkPaid={() => handleMarkPaid("wages", wage)}
-                onToggleStatus={() => handleToggleStatus("wages", wage)}
-                onAmountChange={(newAmount) => handleAmountChange("wages", wage, newAmount)}
+                onEdit={(updatedWage) => handleEdit("wages", updatedWage)}
                 fields={[wage.paymentMethod ? `Method: ${wage.paymentMethod}` : "", formatDate(wage.payDate)]}
               />
             ))}
@@ -845,8 +919,7 @@ export default function FinancesPage() {
                 type="incomes"
                 onDelete={() => handleDelete("incomes", income.id)}
                 onMarkPaid={() => handleMarkPaid("incomes", income)}
-                onToggleStatus={() => handleToggleStatus("incomes", income)}
-                onAmountChange={(newAmount) => handleAmountChange("incomes", income, newAmount)}
+                onEdit={(updatedIncome) => handleEdit("incomes", updatedIncome)}
                 fields={[income.source ? `Source: ${income.source}` : "", income.paymentMethod ? `Method: ${income.paymentMethod}` : "", formatDate(income.incomeDate)]}
               />
             ))}
@@ -896,8 +969,7 @@ export default function FinancesPage() {
                 type="expenses"
                 onDelete={() => handleDelete("expenses", expense.id)}
                 onMarkPaid={() => handleMarkPaid("expenses", expense)}
-                onToggleStatus={() => handleToggleStatus("expenses", expense)}
-                onAmountChange={(newAmount) => handleAmountChange("expenses", expense, newAmount)}
+                onEdit={(updatedExpense) => handleEdit("expenses", updatedExpense)}
                 fields={[expense.category, expense.paymentMethod ? `Method: ${expense.paymentMethod}` : "", formatDate(expense.expenseDate)]}
               />
             ))}
@@ -927,6 +999,148 @@ export default function FinancesPage() {
             ) : (
               <p className="text-sm text-gray-500 text-center py-8">No transfers recorded yet</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmation && confirmationData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-slideIn">
+            {/* Header */}
+            <div className={`text-white px-6 py-4 rounded-t-xl ${
+              confirmationData.action === "deleted" 
+                ? "bg-gradient-to-r from-red-500 to-pink-500" 
+                : "bg-gradient-to-r from-green-500 to-emerald-500"
+            }`}>
+              <h2 className="text-lg font-bold">
+                {confirmationData.action === "deleted" ? "🗑️" : "✅"} {confirmationData.type} {confirmationData.action === "deleted" ? "Deleted" : "Added"} Successfully!
+              </h2>
+              <p className="text-xs opacity-90 mt-0.5">
+                Your {confirmationData.type.toLowerCase()} has been {confirmationData.action === "deleted" ? "removed" : "recorded"}
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-3">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-semibold text-gray-600 uppercase">
+                    {confirmationData.type === "Wage" ? "Employee" : "Description"}
+                  </span>
+                  <span className="text-sm font-bold text-gray-900">
+                    {confirmationData.description || confirmationData.employeeName}
+                  </span>
+                </div>
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-semibold text-gray-600 uppercase">Amount</span>
+                  <span className={`text-lg font-bold ${
+                    confirmationData.action === "deleted" ? "text-red-600" : "text-green-600"
+                  }`}>
+                    {formatPHP(confirmationData.amount)}
+                  </span>
+                </div>
+                {confirmationData.category && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-semibold text-gray-600 uppercase">Category</span>
+                    <span className="text-sm text-gray-900">{confirmationData.category}</span>
+                  </div>
+                )}
+                {confirmationData.source && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-semibold text-gray-600 uppercase">Source</span>
+                    <span className="text-sm text-gray-900">{confirmationData.source}</span>
+                  </div>
+                )}
+                {confirmationData.paymentMethod && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-semibold text-gray-600 uppercase">Payment Method</span>
+                    <span className="text-sm text-gray-900">{confirmationData.paymentMethod}</span>
+                  </div>
+                )}
+                {confirmationData.notes && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <span className="text-xs font-semibold text-gray-600 uppercase block mb-1">Notes</span>
+                    <span className="text-sm text-gray-700">{confirmationData.notes}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-xl flex items-center justify-end">
+              <button
+                onClick={() => {
+                  setShowConfirmation(false);
+                  setConfirmationData(null);
+                }}
+                className={`text-white font-bold py-2 px-6 rounded-lg transform hover:scale-[1.02] transition-all duration-200 shadow-md hover:shadow-lg ${
+                  confirmationData.action === "deleted"
+                    ? "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600"
+                    : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                }`}
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && deleteData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-slideIn">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-6 py-4 rounded-t-xl">
+              <h2 className="text-lg font-bold">⚠️ Confirm Deletion</h2>
+              <p className="text-xs opacity-90 mt-0.5">This action cannot be undone</p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-3">
+              <p className="text-gray-700">
+                Are you sure you want to delete this {deleteData.type === "incomes" ? "income" : deleteData.type === "bills" ? "bill" : deleteData.type === "wages" ? "wage" : deleteData.type === "expenses" ? "expense" : "transfer"}?
+              </p>
+              
+              {deleteData.item && (
+                <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-semibold text-red-700 uppercase">
+                      {deleteData.type === "wages" ? "Employee" : "Description"}
+                    </span>
+                    <span className="text-sm font-bold text-red-900">
+                      {deleteData.item.description || deleteData.item.employeeName}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-semibold text-red-700 uppercase">Amount</span>
+                    <span className="text-lg font-bold text-red-900">
+                      {formatPHP(deleteData.item.amount)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-xl flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteData(null);
+                }}
+                className="btn-secondary py-2 px-4"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold py-2 px-6 rounded-lg hover:from-red-600 hover:to-pink-600 transform hover:scale-[1.02] transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1609,8 +1823,7 @@ function ItemCard({
   title,
   onDelete,
   onMarkPaid,
-  onToggleStatus,
-  onAmountChange,
+  onEdit,
   fields,
 }: {
   item: any;
@@ -1618,81 +1831,267 @@ function ItemCard({
   title?: string;
   onDelete: () => void;
   onMarkPaid: () => void;
-  onToggleStatus: () => void;
-  onAmountChange?: (newAmount: number) => void;
+  onEdit: (updatedItem: any) => void;
   fields: string[];
 }) {
-  const [isEditingAmount, setIsEditingAmount] = useState(false);
-  const [editAmount, setEditAmount] = useState(String(item.amount));
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    description: item.description || item.employeeName || "",
+    amount: String(item.amount),
+    status: item.status || "pending",
+    category: item.category || "",
+    paymentMethod: item.paymentMethod || "",
+    notes: item.notes || "",
+    billDate: item.billDate ? new Date(item.billDate).toISOString().split("T")[0] : "",
+    dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split("T")[0] : "",
+    payDate: item.payDate ? new Date(item.payDate).toISOString().split("T")[0] : "",
+    expenseDate: item.expenseDate ? new Date(item.expenseDate).toISOString().split("T")[0] : "",
+    incomeDate: item.incomeDate ? new Date(item.incomeDate).toISOString().split("T")[0] : "",
+    source: item.source || "",
+  });
+
   const displayFields = fields.filter((f) => f && f.trim().length > 0);
 
-  const handleAmountSave = () => {
-    const newAmount = parseInt(editAmount) || item.amount;
-    if (newAmount !== item.amount && onAmountChange) {
-      onAmountChange(newAmount);
-    }
-    setIsEditingAmount(false);
-  };
-
-  const handleAmountKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAmountSave();
-    } else if (e.key === "Escape") {
-      setEditAmount(String(item.amount));
-      setIsEditingAmount(false);
-    }
+  const handleSave = () => {
+    const updatedItem = {
+      ...item,
+      description: editForm.description,
+      employeeName: editForm.description,
+      amount: parseFloat(editForm.amount) || 0,
+      status: editForm.status,
+      category: editForm.category || null,
+      paymentMethod: editForm.paymentMethod || null,
+      notes: editForm.notes || null,
+      billDate: editForm.billDate || null,
+      dueDate: editForm.dueDate || null,
+      payDate: editForm.payDate || null,
+      expenseDate: editForm.expenseDate || null,
+      incomeDate: editForm.incomeDate || null,
+      source: editForm.source || null,
+    };
+    onEdit(updatedItem);
+    setIsEditing(false);
   };
 
   return (
-    <div className="card p-3 flex items-start justify-between">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <p className="font-semibold text-gray-900">{title || item.description}</p>
-          <span
-            className={`text-xs px-2 py-0.5 rounded ${
-              item.status === "paid" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-            }`}
-          >
-            {item.status}
-          </span>
-        </div>
-        <p className="text-xs text-gray-500">{displayFields.join(" • ")}</p>
-        {item.notes && <p className="text-xs text-gray-600 mt-1">{item.notes}</p>}
-      </div>
-      <div className="flex items-center gap-2 ml-4">
-        {isEditingAmount ? (
-          <div className="flex items-center gap-1">
-            <span className="text-gray-600 text-sm">₱</span>
-            <input
-              type="number"
-              value={editAmount}
-              onChange={(e) => setEditAmount(e.target.value)}
-              onKeyDown={handleAmountKeyDown}
-              onBlur={handleAmountSave}
-              autoFocus
-              className="w-20 px-2 py-1 border border-blue-400 rounded text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-blue-300"
-            />
+    <>
+      <div className="card p-3 flex items-start justify-between hover:shadow-md transition-shadow">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <p className="font-semibold text-gray-900">{title || item.description || item.employeeName}</p>
+            <span
+              className={`text-xs px-2 py-0.5 rounded font-medium ${
+                item.status === "paid" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+              }`}
+            >
+              {item.status}
+            </span>
           </div>
-        ) : (
-          <p 
-            onClick={() => setIsEditingAmount(true)}
-            className="font-bold text-gray-900 text-lg cursor-pointer hover:text-blue-600 transition-colors"
-            title="Click to edit amount"
+          <p className="text-xs text-gray-500">{displayFields.join(" • ")}</p>
+          {item.notes && (
+            <div className="mt-2 p-2 bg-blue-50 border-l-2 border-blue-400 rounded">
+              <p className="text-xs text-blue-900">
+                <span className="font-semibold">Note:</span> {item.notes}
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-4">
+          <p className="font-bold text-gray-900 text-lg">{formatPHP(item.amount)}</p>
+          <button 
+            onClick={() => setIsEditing(true)} 
+            className="btn-secondary text-xs py-1.5 px-2 flex items-center gap-1 hover:bg-blue-50 transition-colors"
+            title="Edit"
           >
-            {formatPHP(item.amount)}
-          </p>
-        )}
-        <button 
-          onClick={onToggleStatus} 
-          className="btn-secondary text-xs py-1 px-2 flex items-center gap-1 hover:bg-blue-50"
-          title={item.status === "paid" ? "Mark as unpaid" : "Mark as paid"}
-        >
-          <Edit2 className="w-4 h-4" />
-        </button>
-        <button onClick={onDelete} className="btn-secondary text-xs py-1 px-2 text-red-600">
-          <Trash2 className="w-4 h-4" />
-        </button>
+            <Edit2 className="w-4 h-4" />
+          </button>
+          {item.status === "pending" && (
+            <button 
+              onClick={onMarkPaid} 
+              className="btn-secondary text-xs py-1.5 px-2 hover:bg-green-50 transition-colors"
+              title="Mark as paid"
+            >
+              <CheckCircle className="w-4 h-4" />
+            </button>
+          )}
+          <button 
+            onClick={onDelete} 
+            className="btn-secondary text-xs py-1.5 px-2 text-red-600 hover:bg-red-50 transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
-    </div>
+
+      {/* Edit Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slideIn">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-6 py-4 rounded-t-xl sticky top-0 z-10">
+              <h2 className="text-lg font-bold">✏️ Edit {type === "bills" ? "Bill" : type === "wages" ? "Wage" : type === "incomes" ? "Income" : "Expense"}</h2>
+              <p className="text-xs opacity-90 mt-0.5">Update the details below</p>
+            </div>
+
+            {/* Form */}
+            <div className="p-6 space-y-4">
+              {/* Description/Name */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                  {type === "wages" ? "Employee Name" : "Description"} <span className="text-blue-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  className="input w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  required
+                />
+              </div>
+
+              {/* Amount and Date */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                    Amount (₱) <span className="text-blue-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.amount}
+                    onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                    className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                    {type === "bills" ? "Bill Date" : type === "wages" ? "Pay Date" : type === "incomes" ? "Income Date" : "Expense Date"}
+                  </label>
+                  <input
+                    type="date"
+                    value={
+                      type === "bills" ? editForm.billDate :
+                      type === "wages" ? editForm.payDate :
+                      type === "incomes" ? editForm.incomeDate :
+                      editForm.expenseDate
+                    }
+                    onChange={(e) => {
+                      if (type === "bills") setEditForm({ ...editForm, billDate: e.target.value });
+                      else if (type === "wages") setEditForm({ ...editForm, payDate: e.target.value });
+                      else if (type === "incomes") setEditForm({ ...editForm, incomeDate: e.target.value });
+                      else setEditForm({ ...editForm, expenseDate: e.target.value });
+                    }}
+                    className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Status and Due Date */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                    Status
+                  </label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                </div>
+                {type !== "incomes" && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Due Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editForm.dueDate}
+                      onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
+                      className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Category and Payment Method */}
+              <div className="grid grid-cols-2 gap-3">
+                {(type === "bills" || type === "expenses") && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Category
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                      className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                    />
+                  </div>
+                )}
+                {type === "incomes" && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Source
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.source}
+                      onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}
+                      className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                    Payment Method
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.paymentMethod}
+                    onChange={(e) => setEditForm({ ...editForm, paymentMethod: e.target.value })}
+                    className="input focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                  Notes
+                </label>
+                <textarea
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="input w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  rows={3}
+                  placeholder="Additional details..."
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-xl flex items-center justify-end gap-3 sticky bottom-0">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="btn-secondary py-2 px-4"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold py-2 px-6 rounded-lg hover:from-blue-600 hover:to-indigo-600 transform hover:scale-[1.02] transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

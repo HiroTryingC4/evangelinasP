@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { receiverPersons } from "@/lib/schema";
+import { receiverPersons, persons } from "@/lib/schema";
 import { asc, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +60,54 @@ export async function DELETE(request: Request) {
     });
   } catch (error) {
     console.error("Error deleting receiver:", error);
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    }, { status: 500 });
+  }
+}
+
+// POST endpoint to manually add a receiver
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { name, role = "employee", sortOrder = 100 } = body;
+
+    if (!name) {
+      return NextResponse.json({
+        success: false,
+        error: "Missing 'name' parameter",
+      }, { status: 400 });
+    }
+
+    // Add to receiverPersons table
+    const insertedReceiver = await db
+      .insert(receiverPersons)
+      .values({
+        name,
+        role,
+        sortOrder,
+      })
+      .onConflictDoNothing()
+      .returning();
+
+    // Add to persons table
+    await db
+      .insert(persons)
+      .values({
+        name: name.toLowerCase(),
+        type: "recipient",
+        balance: "0",
+      })
+      .onConflictDoNothing();
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully added receiver '${name}'`,
+      receiver: insertedReceiver[0] || { name, role, sortOrder },
+    });
+  } catch (error) {
+    console.error("Error adding receiver:", error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : String(error),

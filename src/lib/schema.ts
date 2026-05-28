@@ -144,6 +144,7 @@ export const manualExpenses = pgTable("manual_expenses", {
   receiver: text("receiver").notNull(), // receiver name or "__all__"
   amount: integer("amount").notNull(),
   comment: text("comment").notNull(),
+  type: text("type").notNull().default("expense"), // "expense" or "bill"
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
