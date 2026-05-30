@@ -21,6 +21,7 @@ type ManualExpenseEntry = {
   comment: string;
   receiver: string;
   type?: "expense" | "bill" | "wage";
+  expenseDate?: string;
 };
 
 type WeeklyRow = {
@@ -276,6 +277,7 @@ export default function SourceReportPage() {
   const [newExpenseAmount, setNewExpenseAmount] = useState("");
   const [newExpenseComment, setNewExpenseComment] = useState("");
   const [newExpenseType, setNewExpenseType] = useState<"expense" | "bill" | "wage">("expense");
+  const [newExpenseDate, setNewExpenseDate] = useState("");
   const [addingExpense, setAddingExpense] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [configuredReceivers, setConfiguredReceivers] = useState<string[]>([]);
@@ -541,7 +543,7 @@ export default function SourceReportPage() {
             <p className="mt-1 text-[10px] text-amber-600 italic">✓ Automatically synced to Finances</p>
           </div>
 
-          <div className="mt-2 grid grid-cols-1 sm:grid-cols-[140px_1fr_120px_auto] gap-2">
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-[140px_1fr_120px_140px_auto] gap-2">
             <input
               type="text"
               inputMode="decimal"
@@ -566,6 +568,15 @@ export default function SourceReportPage() {
               <option value="wage">👤 Wage</option>
               <option value="bill">💳 Bill</option>
             </select>
+            <input
+              type="date"
+              className="input text-xs"
+              value={newExpenseDate}
+              onChange={(e) => setNewExpenseDate(e.target.value)}
+              min={week.startDate}
+              max={week.endDate}
+              placeholder="Date"
+            />
             <button
               type="button"
               className="btn-secondary text-xs py-1.5 px-3"
@@ -589,7 +600,8 @@ export default function SourceReportPage() {
                       receiver: selectedReceiver === "__all__" ? "__all__" : selectedReceiver,
                       amount,
                       comment,
-                      type: newExpenseType, // Add the type (expense or bill)
+                      type: newExpenseType,
+                      expenseDate: newExpenseDate || week.startDate, // Use selected date or default to week start
                     }),
                   });
 
@@ -619,6 +631,7 @@ export default function SourceReportPage() {
                       setNewExpenseAmount("");
                       setNewExpenseComment("");
                       setNewExpenseType("expense");
+                      setNewExpenseDate("");
                       showNotification(`✅ ${newExpenseType === "bill" ? "Bill" : newExpenseType === "wage" ? "Wage" : "Expense"} added successfully! (${formatPHP(amount)})`);
                     } else {
                       // Fallback to local state update
@@ -626,6 +639,7 @@ export default function SourceReportPage() {
                       setNewExpenseAmount("");
                       setNewExpenseComment("");
                       setNewExpenseType("expense");
+                      setNewExpenseDate("");
                       showNotification(`✅ ${newExpenseType === "bill" ? "Bill" : newExpenseType === "wage" ? "Wage" : "Expense"} added! (${formatPHP(amount)})`);
                     }
                   } else {
@@ -662,7 +676,7 @@ export default function SourceReportPage() {
               <table className="w-full text-xs">
                 <thead className="bg-amber-50 text-amber-900">
                   <tr>
-                    <th className="text-left px-2 py-1.5 font-semibold">Week</th>
+                    <th className="text-left px-2 py-1.5 font-semibold">Date</th>
                     <th className="text-left px-2 py-1.5 font-semibold">Receiver</th>
                     <th className="text-left px-2 py-1.5 font-semibold">Comment</th>
                     <th className="text-left px-2 py-1.5 font-semibold">Type</th>
@@ -673,7 +687,12 @@ export default function SourceReportPage() {
                 <tbody>
                   {visibleManualExpenses.map((entry) => (
                     <tr key={entry.id} className="border-t border-amber-100">
-                      <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">{selectedWeekLabel}</td>
+                      <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">
+                        {entry.expenseDate 
+                          ? new Date(`${entry.expenseDate}T12:00:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+                          : selectedWeekLabel
+                        }
+                      </td>
                       <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">{entry.receiver}</td>
                       <td className="px-2 py-1.5 text-amber-900">{entry.comment}</td>
                       <td className="px-2 py-1.5 text-amber-900">

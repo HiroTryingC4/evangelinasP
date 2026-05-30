@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     console.log("📦 Received body:", body);
-    const { weekStart, weekEnd, receiver, amount, comment, type = "expense" } = body;
+    const { weekStart, weekEnd, receiver, amount, comment, type = "expense", expenseDate } = body;
 
     if (!weekStart || !weekEnd || !receiver || !amount || !comment) {
       console.error("❌ Missing required fields:", { weekStart, weekEnd, receiver, amount, comment });
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("💾 Inserting manual expense:", { weekStart, weekEnd, receiver, amount: Number(amount), comment, type });
+    console.log("💾 Inserting manual expense:", { weekStart, weekEnd, receiver, amount: Number(amount), comment, type, expenseDate });
     const [newExpense] = await db
       .insert(manualExpenses)
       .values({
@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
         amount: Number(amount),
         comment,
         type: type || "expense",
+        expenseDate: expenseDate || weekStart, // Use provided date or default to week start
       })
       .returning();
 
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     // Create a corresponding entry in the Finances system (bill, wage, or expense)
     try {
       const financeAmount = Number(amount);
-      const financeDate = new Date(weekStart); // Use week start date
+      const financeDate = new Date(expenseDate || weekStart); // Use the specific date
 
       if (type === "bill") {
         console.log("💳 Creating corresponding Finances bill...");
