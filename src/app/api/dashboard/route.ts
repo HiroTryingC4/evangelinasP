@@ -167,16 +167,23 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Monthly revenue (filtered)
+    // Monthly revenue (filtered) - only for the selected year range
     const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const monthlyBase = selectedMonthlyUnits.length > 0
       ? filtered.filter((b) => selectedMonthlyUnits.includes(b.normalizedUnit))
       : filtered;
+    
+    // Extract year from the 'from' parameter to ensure we only show data for that year
+    const fromYear = from.slice(0, 4); // Get YYYY from YYYY-MM-DD
+    const toYear = to.slice(0, 4);
+    
     const monthlyRevenue = MONTHS.map((month, i) => {
       const mb = monthlyBase.filter((b) => {
         const key = b.checkInKey;
+        const bookingYear = key.slice(0, 4); // Get YYYY from YYYY-MM-DD
         const monthNumber = Number(key.slice(5, 7));
-        return monthNumber === i + 1;
+        // Only include bookings from the selected year range
+        return monthNumber === i + 1 && bookingYear >= fromYear && bookingYear <= toYear;
       });
       const totalRevenue = mb.reduce((s, b) => s + b.totalFee, 0);
       const incomingPayment = mb.reduce((s, b) => s + getCollectedForBooking(b), 0);
