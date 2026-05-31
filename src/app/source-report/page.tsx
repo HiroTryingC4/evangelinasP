@@ -119,7 +119,7 @@ function getMethodAmountsForReceiver(
   };
 
   if (selectedReceiver === "__all__") {
-    // Show all payments
+    // Show all payments including Additional Payment (AP)
     const addAmount = (method: string, amount: number) => {
       const safeAmount = Math.max(0, amount);
       if (!safeAmount) return;
@@ -132,11 +132,13 @@ function getMethodAmountsForReceiver(
 
     addAmount(String(booking.dpMethod ?? "").trim(), Number(booking.dpAmount ?? 0));
     addAmount(String(booking.fpMethod ?? "").trim(), Number(booking.fpAmount ?? 0));
+    addAmount(String(booking.apMethod ?? "").trim(), Number(booking.apAmount ?? 0)); // Include AP
   } else {
     // Only show payments received by selected receiver
     const selected = selectedReceiver.toUpperCase();
     const dpReceiver = String(booking.dpReceivedBy ?? "").trim().toUpperCase();
     const fpReceiver = String(booking.fpReceivedBy ?? "").trim().toUpperCase();
+    const apReceiver = String(booking.apReceivedBy ?? "").trim().toUpperCase(); // Include AP receiver
 
     const addAmount = (method: string, amount: number) => {
       const safeAmount = Math.max(0, amount);
@@ -154,6 +156,10 @@ function getMethodAmountsForReceiver(
 
     if (fpReceiver === selected) {
       addAmount(String(booking.fpMethod ?? "").trim(), Number(booking.fpAmount ?? 0));
+    }
+
+    if (apReceiver === selected) {
+      addAmount(String(booking.apMethod ?? "").trim(), Number(booking.apAmount ?? 0)); // Include AP
     }
   }
 
