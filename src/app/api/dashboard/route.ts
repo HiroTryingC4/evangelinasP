@@ -137,7 +137,8 @@ export async function GET(req: NextRequest) {
       const totalFee = Number(b.totalFee ?? 0);
       const dp = Number(b.dpAmount ?? 0);
       const fp = Number(b.fpAmount ?? 0);
-      const paid = Math.max(0, dp + fp);
+      const ap = Number(b.apAmount ?? 0); // Include Additional Payment
+      const paid = Math.max(0, dp + fp + ap);
       return Math.min(totalFee, paid);
     };
 
