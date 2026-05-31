@@ -394,6 +394,65 @@ export default function SourceReportPage() {
     [coreBookings, selectedReceiver, week.endDate, week.startDate]
   );
 
+  // Calculate monthly total (exact calendar month, excluding adjacent month days)
+  const monthlyTotal = useMemo(() => {
+    // Get the month and year from the selected week
+    const weekDate = new Date(`${weeklyDate}T12:00:00`);
+    const year = weekDate.getFullYear();
+    const month = weekDate.getMonth(); // 0-indexed
+    
+    // Calculate first and last day of the month
+    const firstDay = toYMD(new Date(year, month, 1));
+    const lastDay = toYMD(new Date(year, month + 1, 0)); // Day 0 of next month = last day of current month
+    
+    // Filter bookings to only those in the exact calendar month
+    const monthBookings = coreBookings.filter((b) => {
+      const checkIn = b.checkInDateKey || toYMD(b.checkIn);
+      return checkIn >= firstDay && checkIn <= lastDay;
+    });
+    
+    const monthRelevantBookings = monthBookings.filter((b) => bookingMatchesReceiver(b, selectedReceiver));
+    
+    // Calculate totals
+    const totals = SOURCE_ORDER.reduce((acc, source) => {
+      acc[source] = {
+        bookings: 0,
+        methods: {
+          Cash: 0,
+          GCash: 0,
+          "Bank Transfer": 0,
+        },
+      };
+      return acc;
+    }, {} as Record<SourceName, { bookings: number; methods: Record<MethodName, number> }>);
+    
+    const methodTotals = METHOD_ORDER.reduce((acc, method) => {
+      acc[method] = 0;
+      return acc;
+    }, {} as Record<MethodName, number>);
+    
+    monthRelevantBookings.forEach((b) => {
+      const source = String(b.bookingPlatform || "Direct").trim() as SourceName;
+      const amounts = getMethodAmountsForReceiver(b, selectedReceiver);
+      totals[source].bookings += 1;
+      METHOD_ORDER.forEach((method) => {
+        totals[source].methods[method] += amounts[method];
+        methodTotals[method] += amounts[method];
+      });
+    });
+    
+    const totalPaid = METHOD_ORDER.reduce((sum, method) => sum + methodTotals[method], 0);
+    
+    return {
+      monthLabel: new Date(year, month, 1).toLocaleDateString("en-PH", { month: "long", year: "numeric" }),
+      dateRange: `${firstDay} to ${lastDay}`,
+      totalBookings: monthRelevantBookings.length,
+      totals,
+      methodTotals,
+      totalPaid,
+    };
+  }, [coreBookings, weeklyDate, selectedReceiver]);
+
   const weeklyManualExpenseTotal = weeklyManualExpenses
     .filter((entry) => {
       // Filter expenses by selected receiver
@@ -925,6 +984,72 @@ export default function SourceReportPage() {
           </div>
         </div>
       ) : null}
+
+      {/* Monthly Total Section - Exact Calendar Month */}
+      <div className="card p-4 sm:p-5 bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div>
+            <p className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+              <span className="text-lg">📅</span>
+              Monthly Total - {monthlyTotal.monthLabel}
+            </p>
+            <p className="text-xs text-indigo-700 mt-0.5">
+              Exact calendar month only ({monthlyTotal.dateRange})
+            </p>
+            <p className="text-[10px] text-indigo-600 mt-1 italic">
+              ⚠️ Weekly totals may include days from adjacent months
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs px-3 py-1.5 rounded-full bg-indigo-600 text-white font-bold inline-flex items-center gap-1 shadow-sm">
+              <BarChart3 className="w-3.5 h-3.5" />
+              {monthlyTotal.totalBookings} bookings
+            </span>
+            <span className="text-xs px-3 py-1.5 rounded-full bg-purple-600 text-white font-bold inline-flex items-center gap-1 shadow-sm">
+              <Wallet className="w-3.5 h-3.5" />
+              {formatPHP(monthlyTotal.totalPaid)} Total
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+          {SOURCE_ORDER.map((source) => (
+            <div key={source} className="rounded-lg border-2 border-indigo-300 bg-white p-3 shadow-sm">
+              <p className="text-xs text-indigo-700 uppercase tracking-wide font-semibold">{source}</p>
+              <p className="text-lg font-bold text-indigo-900 mt-0.5">{monthlyTotal.totals[source].bookings}</p>
+              <div className="mt-1 space-y-0.5 text-[11px]">
+                <p className="text-gray-600">Cash {formatPHP(monthlyTotal.totals[source].methods.Cash)}</p>
+                <p className="text-green-700 font-medium">GCash {formatPHP(monthlyTotal.totals[source].methods.GCash)}</p>
+                <p className="text-blue-700">Bank {formatPHP(monthlyTotal.totals[source].methods["Bank Transfer"])}</p>
+              </div>
+            </div>
+          ))}
+          <div className="rounded-lg border-2 border-purple-300 bg-purple-600 p-3 shadow-md">
+            <p className="text-xs text-purple-100 uppercase tracking-wide font-semibold">Month Total</p>
+            <p className="text-2xl font-bold text-white mt-0.5">{formatPHP(monthlyTotal.totalPaid)}</p>
+            <p className="text-xs text-purple-200 mt-1">Exact month only</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
+          <div className="rounded-lg border-2 border-gray-300 bg-white p-3 shadow-sm">
+            <p className="text-xs text-gray-600 uppercase tracking-wide font-semibold">Cash</p>
+            <p className="text-lg font-bold text-gray-900 mt-0.5">{formatPHP(monthlyTotal.methodTotals.Cash)}</p>
+          </div>
+          <div className="rounded-lg border-2 border-green-300 bg-green-50 p-3 shadow-sm">
+            <p className="text-xs text-green-700 uppercase tracking-wide font-semibold">GCash</p>
+            <p className="text-lg font-bold text-green-800 mt-0.5">{formatPHP(monthlyTotal.methodTotals.GCash)}</p>
+          </div>
+          <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-3 shadow-sm">
+            <p className="text-xs text-blue-700 uppercase tracking-wide font-semibold">Bank Transfer</p>
+            <p className="text-lg font-bold text-blue-800 mt-0.5">{formatPHP(monthlyTotal.methodTotals["Bank Transfer"])}</p>
+          </div>
+          <div className="rounded-lg border-2 border-purple-300 bg-purple-600 p-3 shadow-md">
+            <p className="text-xs text-purple-100 uppercase tracking-wide font-semibold">Total Paid</p>
+            <p className="text-lg font-bold text-white mt-0.5">{formatPHP(monthlyTotal.totalPaid)}</p>
+          </div>
+        </div>
+      </div>
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
