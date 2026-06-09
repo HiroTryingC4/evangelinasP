@@ -1,5 +1,5 @@
-import { db } from "../lib/db.ts";
-import { receiverPersons } from "../lib/schema.ts";
+import { db } from "../lib/db";
+import { receiverPersons } from "../lib/schema";
 
 async function main() {
   try {
