@@ -126,9 +126,13 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
+    console.log("📥 [PUT] Raw body received:", JSON.stringify(body));
 
     const units = sanitizeUnits(body.units);
     const receivers = sanitizeReceivers(body.receivers);
+    
+    console.log("📤 [PUT] After sanitization - Units:", units);
+    console.log("📤 [PUT] After sanitization - Receivers:", receivers.map(r => ({name: r.name, role: r.role})));
 
     if (units.length === 0) {
       return NextResponse.json({ error: "At least one unit is required" }, { status: 400 });
@@ -158,13 +162,18 @@ export async function PUT(req: NextRequest) {
 
     for (let i = 0; i < receivers.length; i++) {
       const person = receivers[i];
-      await db
-        .insert(receiverPersons)
-        .values({ name: person.name, role: person.role, sortOrder: i })
-        .onConflictDoUpdate({
-          target: receiverPersons.name,
-          set: { role: person.role, sortOrder: i },
-        });
+      try {
+        await db
+          .insert(receiverPersons)
+          .values({ name: person.name, role: person.role, sortOrder: i })
+          .onConflictDoUpdate({
+            target: receiverPersons.name,
+            set: { role: person.role, sortOrder: i },
+          });
+        console.log(`✅ [INSERT] Saved receiver: "${person.name}" (role: ${person.role}, sortOrder: ${i})`);
+      } catch (e) {
+        console.error(`❌ [INSERT ERROR] Failed to save receiver "${person.name}":`, e);
+      }
     }
 
     const existingReceivers = await db.select({ name: receiverPersons.name }).from(receiverPersons);
@@ -208,8 +217,17 @@ export async function PUT(req: NextRequest) {
 
     const [savedUnits, savedReceivers] = await Promise.all([
       db.select({ code: unitConfigs.code }).from(unitConfigs).orderBy(asc(unitConfigs.sortOrder), asc(unitConfigs.id)),
-      db.select({ name: receiverPersons.name, role: receiverPersons.role }).from(receiverPersons).orderBy(asc(receiverPersons.sortOrder), asc(receiverPersons.id)),
+      db.select({ name: receiverPersons.name, role: receiverPersons.role }).from(receiverPersons).orderBy(asc(receiverPersons.id)),
     ]);
+    
+    // DEBUG: Get ALL receivers with sortOrder to see what's happening
+    const allReceivers = await db.select().from(receiverPersons);
+    console.log("📊 [ALL RECEIVERS] Complete data from receiverPersons table:");
+    allReceivers.forEach((r: any) => {
+      console.log(`  - "${r.name}" (sortOrder: ${r.sortOrder}, id: ${r.id})`);
+    });
+    
+    console.log("📊 [FINAL SELECT] Saved receivers from SELECT query:", savedReceivers.map(r => r.name));
 
     return NextResponse.json({
       units: savedUnits.map((u) => u.code),

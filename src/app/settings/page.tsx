@@ -81,21 +81,43 @@ export default function SettingsPage() {
 
   const addUnit = () => {
     const code = normalizeUnitCode(newUnit);
-    if (!code) return;
-    if (units.includes(code)) return;
+    if (!code) {
+      setError("Please enter a valid unit number");
+      return;
+    }
+    if (units.includes(code)) {
+      setError(`Unit ${code} already exists`);
+      return;
+    }
+    console.log(`✅ Adding unit: ${code}`);
     setUnits((prev) => [...prev, code]);
     setNewUnit("");
-    setMessage("");
+    setError("");
+    setMessage(`✨ Unit ${code} added! Click Save Changes to confirm.`);
   };
 
   const addReceiver = () => {
     const name = newReceiver.trim();
-    if (!name) return;
-    if (receivers.some((r) => r.name.toLowerCase() === name.toLowerCase())) return;
+    if (!name) {
+      setError("Please enter a receiver name");
+      return;
+    }
+    
+    const nameKey = name.toLowerCase();
+    const exists = receivers.some((r) => r.name.toLowerCase() === nameKey);
+    
+    if (exists) {
+      const existingName = receivers.find((r) => r.name.toLowerCase() === nameKey)?.name;
+      setError(`"${existingName}" already exists`);
+      return;
+    }
+    
+    console.log(`✅ Adding receiver: "${name}" with role: ${newReceiverRole}`);
     setReceivers((prev) => [...prev, { name, role: newReceiverRole }]);
     setNewReceiver("");
     setNewReceiverRole("employee");
-    setMessage("");
+    setError("");
+    setMessage(`✨ "${name}" added! Click Save Changes to confirm.`);
   };
 
   const updateReceiverRole = (idx: number, role: "employee" | "host") => {
@@ -104,9 +126,16 @@ export default function SettingsPage() {
   };
 
   const removeAt = (type: "unit" | "receiver", idx: number) => {
+    const item = type === "unit" ? units[idx] : receivers[idx]?.name;
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${type === "unit" ? `Unit ${item}` : `${item}`}?`
+    );
+    if (!confirmed) return;
+    
     if (type === "unit") setUnits((prev) => prev.filter((_, i) => i !== idx));
     else setReceivers((prev) => prev.filter((_, i) => i !== idx));
-    setMessage("");
+    setError("");
+    setMessage(`${item} removed! Click Save Changes to confirm.`);
   };
 
   async function save() {
@@ -147,13 +176,13 @@ export default function SettingsPage() {
       setUnits(savedUnits);
       setReceivers(savedReceivers);
       lastSavedSnapshotRef.current = snapshotSettings(savedUnits, savedReceivers);
-      setMessage("Saved. New units/receivers are now available in forms and filters.");
+      setMessage(`✅ Saved! ${savedUnits.length} units and ${savedReceivers.length} receivers updated.`);
       
-      // Reload settings from server to ensure sync
+      // Reload settings from server to ensure sync (but keep the message visible a bit longer)
       setTimeout(() => {
         // Force a complete page reload to ensure cache is cleared
         window.location.reload();
-      }, 500);
+      }, 2000);
     } catch (e: any) {
       setError(e?.message || "Failed to save settings.");
     } finally {
