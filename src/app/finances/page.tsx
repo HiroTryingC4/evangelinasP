@@ -302,10 +302,11 @@ export default function FinancesPage() {
 
   const getFilteredData = (data: any[]) => filter === "all" ? data : data.filter((d) => d.status === filter);
 
-  const billsFiltered = getFilteredData(bills);
-  const wagesFiltered = getFilteredData(wages);
-  const incomesFiltered = getFilteredData(incomes);
-  const expensesFiltered = getFilteredData(expenses);
+  // Temporary placeholders - will be defined after inSelectedMonth
+  let billsFiltered: any[] = [];
+  let wagesFiltered: any[] = [];
+  let incomesFiltered: any[] = [];
+  let expensesFiltered: any[] = [];
   const expensesSortedByUpcoming = [...expensesFiltered].sort((a, b) => {
     const aDate = new Date(a.dueDate ?? a.expenseDate).getTime();
     const bDate = new Date(b.dueDate ?? b.expenseDate).getTime();
@@ -391,6 +392,20 @@ export default function FinancesPage() {
     if (Number.isNaN(d.getTime())) return false;
     return d >= monthStart && d <= monthEnd;
   };
+
+  // Now apply both status filter and month filter
+  const getMonthFilteredData = (data: any[], dateField: "billDate" | "payDate" | "incomeDate" | "expenseDate") => {
+    return data.filter((item) => {
+      const statusMatch = filter === "all" ? true : item.status === filter;
+      const monthMatch = inSelectedMonth(item[dateField]);
+      return statusMatch && monthMatch;
+    });
+  };
+
+  billsFiltered = getMonthFilteredData(bills, "billDate");
+  wagesFiltered = getMonthFilteredData(wages, "payDate");
+  incomesFiltered = getMonthFilteredData(incomes, "incomeDate");
+  expensesFiltered = getMonthFilteredData(expenses, "expenseDate");
 
   const monthlyBillsTotal = bills
     .filter((b) => inSelectedMonth(b.billDate))
@@ -782,15 +797,15 @@ export default function FinancesPage() {
           <div className="grid grid-cols-3 gap-4">
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Total Bills</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(billsTotal)}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(billsFiltered.reduce((s, b) => s + b.amount, 0))}</p>
             </div>
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Pending</p>
-              <p className="text-2xl font-bold text-yellow-700 mt-1">{formatPHP(billsPending)}</p>
+              <p className="text-2xl font-bold text-yellow-700 mt-1">{formatPHP(billsFiltered.filter(b => b.status === "pending").reduce((s, b) => s + b.amount, 0))}</p>
             </div>
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Paid</p>
-              <p className="text-2xl font-bold text-green-700 mt-1">{formatPHP(billsPaid)}</p>
+              <p className="text-2xl font-bold text-green-700 mt-1">{formatPHP(billsFiltered.filter(b => b.status === "paid").reduce((s, b) => s + b.amount, 0))}</p>
             </div>
           </div>
 
@@ -832,15 +847,15 @@ export default function FinancesPage() {
           <div className="grid grid-cols-3 gap-4">
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Total Wages</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(wagesTotal)}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(wagesFiltered.reduce((s, w) => s + w.amount, 0))}</p>
             </div>
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Pending</p>
-              <p className="text-2xl font-bold text-yellow-700 mt-1">{formatPHP(wagesPending)}</p>
+              <p className="text-2xl font-bold text-yellow-700 mt-1">{formatPHP(wagesFiltered.filter(w => w.status === "pending").reduce((s, w) => s + w.amount, 0))}</p>
             </div>
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Paid</p>
-              <p className="text-2xl font-bold text-green-700 mt-1">{formatPHP(wagesPaid)}</p>
+              <p className="text-2xl font-bold text-green-700 mt-1">{formatPHP(wagesFiltered.filter(w => w.status === "paid").reduce((s, w) => s + w.amount, 0))}</p>
             </div>
           </div>
 
@@ -883,15 +898,15 @@ export default function FinancesPage() {
           <div className="grid grid-cols-3 gap-4">
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Total Income</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(incomesTotal)}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(incomesFiltered.reduce((s, i) => s + Number(i.amount || 0), 0))}</p>
             </div>
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Pending</p>
-              <p className="text-2xl font-bold text-yellow-700 mt-1">{formatPHP(incomesPending)}</p>
+              <p className="text-2xl font-bold text-yellow-700 mt-1">{formatPHP(incomesFiltered.filter(i => i.status === "pending").reduce((s, i) => s + Number(i.amount || 0), 0))}</p>
             </div>
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Received</p>
-              <p className="text-2xl font-bold text-green-700 mt-1">{formatPHP(incomesPaid)}</p>
+              <p className="text-2xl font-bold text-green-700 mt-1">{formatPHP(incomesFiltered.filter(i => i.status === "paid").reduce((s, i) => s + Number(i.amount || 0), 0))}</p>
             </div>
           </div>
 
@@ -933,15 +948,15 @@ export default function FinancesPage() {
           <div className="grid grid-cols-3 gap-4">
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Total Expenses</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(expensesTotal)}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{formatPHP(expensesFiltered.reduce((s, e) => s + Number(e.amount || 0), 0))}</p>
             </div>
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Pending</p>
-              <p className="text-2xl font-bold text-yellow-700 mt-1">{formatPHP(expensesPending)}</p>
+              <p className="text-2xl font-bold text-yellow-700 mt-1">{formatPHP(expensesFiltered.filter(e => e.status === "pending").reduce((s, e) => s + Number(e.amount || 0), 0))}</p>
             </div>
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Paid</p>
-              <p className="text-2xl font-bold text-green-700 mt-1">{formatPHP(expensesPaid)}</p>
+              <p className="text-2xl font-bold text-green-700 mt-1">{formatPHP(expensesFiltered.filter(e => e.status === "paid").reduce((s, e) => s + Number(e.amount || 0), 0))}</p>
             </div>
           </div>
 

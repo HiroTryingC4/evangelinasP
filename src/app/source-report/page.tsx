@@ -326,17 +326,27 @@ export default function SourceReportPage() {
     // Get all people who received money (dpReceivedBy or fpReceivedBy) from bookings
     const allReceivers = new Set<string>();
     
+    // List of names to exclude from the dropdown (case-insensitive)
+    const excludedNames = new Set([
+      "trial",
+      "sir mike",
+      "none",
+      "bussiness gcash account",
+      "business gcash account",
+      "riemar account"
+    ].map(name => name.toLowerCase()));
+    
     bookings.forEach((b) => {
       const dpReceiver = String(b.dpReceivedBy ?? "").trim();
       const fpReceiver = String(b.fpReceivedBy ?? "").trim();
       
-      if (dpReceiver) allReceivers.add(dpReceiver);
-      if (fpReceiver) allReceivers.add(fpReceiver);
+      if (dpReceiver && !excludedNames.has(dpReceiver.toLowerCase())) allReceivers.add(dpReceiver);
+      if (fpReceiver && !excludedNames.has(fpReceiver.toLowerCase())) allReceivers.add(fpReceiver);
     });
     
     // Also include configured receivers from settings
     configuredReceivers.forEach((receiver) => {
-      if (receiver) allReceivers.add(receiver);
+      if (receiver && !excludedNames.has(receiver.toLowerCase())) allReceivers.add(receiver);
     });
     
     return Array.from(allReceivers).sort((a, b) => a.localeCompare(b));

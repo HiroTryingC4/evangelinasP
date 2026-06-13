@@ -355,6 +355,16 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
                 title={tooltipText}
               >
                 <span className="text-sm">{day.date.getDate()}</span>
+                {/* Guest Count Badge */}
+                {day.isCurrentMonth && bookingInfos.length > 0 && (
+                  <div className="absolute top-0.5 right-0.5 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                    {bookingInfos.length}
+                  </div>
+                )}
+                {/* No Guests Indicator */}
+                {day.isCurrentMonth && bookingInfos.length === 0 && dateStatus === 'available' && (
+                  <div className="absolute top-0.5 right-0.5 text-gray-400 text-[8px] font-bold">✓</div>
+                )}
                 {isToday && (
                   <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                 )}
