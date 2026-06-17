@@ -20,8 +20,6 @@ type ManualExpenseEntry = {
   amount: number;
   comment: string;
   receiver: string;
-  type?: "expense" | "bill" | "wage";
-  expenseDate?: string;
 };
 
 type WeeklyRow = {
