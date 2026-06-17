@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     console.log("📦 Received body:", body);
-    const { weekStart, weekEnd, receiver, amount, comment } = body;
+    const { weekStart, weekEnd, receiver, amount, comment, type = "expense", expenseDate } = body;
 
     if (!weekStart || !weekEnd || !receiver || !amount || !comment) {
       console.error("❌ Missing required fields:", { weekStart, weekEnd, receiver, amount, comment });
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("💾 Inserting manual expense:", { weekStart, weekEnd, receiver, amount: Number(amount), comment });
+    console.log("💾 Inserting manual expense:", { weekStart, weekEnd, receiver, amount: Number(amount), comment, type, expenseDate });
     const [newExpense] = await db
       .insert(manualExpenses)
       .values({
@@ -72,6 +72,8 @@ export async function POST(request: NextRequest) {
         receiver,
         amount: Number(amount),
         comment,
+        type: type || "expense",
+        expenseDate: expenseDate || weekStart,
       })
       .returning();
 
@@ -152,7 +154,7 @@ export async function PUT(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const body = await request.json();
-    const { amount, comment } = body;
+    const { amount, comment, type, expenseDate } = body;
 
     console.log("🔍 Updating expense with ID:", id);
 
@@ -194,6 +196,8 @@ export async function PUT(request: NextRequest) {
       .set({
         amount: Number(amount),
         comment: comment.trim(),
+        type: type || oldManualExpense.type || "expense",
+        expenseDate: expenseDate || oldManualExpense.expenseDate,
       })
       .where(eq(manualExpenses.id, Number(id)))
       .returning();

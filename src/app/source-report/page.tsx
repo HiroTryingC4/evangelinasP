@@ -20,6 +20,8 @@ type ManualExpenseEntry = {
   amount: number;
   comment: string;
   receiver: string;
+  type?: "expense" | "bill" | "wage";
+  expenseDate?: string;
 };
 
 type WeeklyRow = {
@@ -745,9 +747,9 @@ export default function SourceReportPage() {
           </div>
 
           {visibleManualExpenses.length > 0 ? (
-            <div className="mt-2 rounded-md border border-amber-100 bg-white overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-amber-50 text-amber-900">
+            <div className="mt-2 rounded-md border border-amber-100 bg-white overflow-x-auto">
+              <table className="w-full text-xs whitespace-nowrap">
+                <thead className="bg-amber-50 text-amber-900 sticky top-0">
                   <tr>
                     <th className="text-left px-2 py-1.5 font-semibold">Date</th>
                     <th className="text-left px-2 py-1.5 font-semibold">Receiver</th>
@@ -863,6 +865,31 @@ export default function SourceReportPage() {
           <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 max-w-sm w-full">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Manual Expense</h2>
             
+            {/* Info about where it goes */}
+            {(() => {
+              const expense = manualExpenses.find(e => e.id === editingId);
+              const expenseType = expense?.type || "expense";
+              return (
+                <div className={`mb-4 p-3 border-l-4 rounded ${
+                  expenseType === "bill" 
+                    ? "bg-red-50 border-red-400" 
+                    : expenseType === "wage"
+                    ? "bg-blue-50 border-blue-400"
+                    : "bg-purple-50 border-purple-400"
+                }`}>
+                  <p className={`text-xs font-semibold ${
+                    expenseType === "bill" 
+                      ? "text-red-900" 
+                      : expenseType === "wage"
+                      ? "text-blue-900"
+                      : "text-purple-900"
+                  }`}>
+                    📍 Synced to Finances → {expenseType === "bill" ? "💳 Bills" : expenseType === "wage" ? "👤 Wages" : "💰 Expenses"}
+                  </p>
+                </div>
+              );
+            })()}
+            
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-gray-700 block mb-1">Amount (₱)</label>
@@ -883,6 +910,27 @@ export default function SourceReportPage() {
                   value={editingComment}
                   onChange={(e) => setEditingComment(e.target.value)}
                   placeholder="e.g., electricity, water, snacks"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Type</label>
+                <select
+                  className="input w-full"
+                  value={editingType}
+                  onChange={(e) => setEditingType(e.target.value as "expense" | "bill" | "wage")}
+                >
+                  <option value="expense">💰 Expense</option>
+                  <option value="bill">💳 Bill</option>
+                  <option value="wage">👤 Wage</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Date</label>
+                <input
+                  type="date"
+                  className="input w-full"
+                  value={editingDate}
+                  onChange={(e) => setEditingDate(e.target.value)}
                 />
               </div>
               <div className="flex gap-2 pt-2">
@@ -916,6 +964,8 @@ export default function SourceReportPage() {
                         body: JSON.stringify({
                           amount,
                           comment,
+                          type: editingType,
+                          expenseDate: editingDate,
                         }),
                       });
 
@@ -942,7 +992,7 @@ export default function SourceReportPage() {
                           setManualExpenses((prev) =>
                             prev.map((item) =>
                               item.id === editingId
-                                ? { ...item, amount, comment }
+                                ? { ...item, amount, comment, type: editingType, expenseDate: editingDate }
                                 : item
                             )
                           );
@@ -951,6 +1001,8 @@ export default function SourceReportPage() {
                         setEditingId(null);
                         setEditingAmount("");
                         setEditingComment("");
+                        setEditingType("expense");
+                        setEditingDate("");
                         showNotification("✅ Expense updated successfully!");
                       } else {
                         const errorData = await response.json();
