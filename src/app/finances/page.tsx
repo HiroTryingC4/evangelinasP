@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trash2, CheckCircle, ChevronLeft, ChevronRight, Edit2, TrendingUp, TrendingDown, DollarSign, Wallet, PieChart } from "lucide-react";
 import { formatPHP, formatDate, formatWeekRange, UNITS } from "@/lib/utils";
+import BillsChecklist from "@/components/BillsChecklist";
 
 const MONTHLY_NET_UNITS = new Set(["1116", "1118", "1558", "1845"]);
 
@@ -794,6 +795,7 @@ export default function FinancesPage() {
       {/* BILLS TAB */}
       {tab === "bills" && (
         <div className="space-y-4">
+          <BillsChecklist />
           <div className="grid grid-cols-3 gap-4">
             <div className="card p-4">
               <p className="text-xs text-gray-500 uppercase">Total Bills</p>

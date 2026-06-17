@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     console.log("📦 Received body:", body);
-    const { weekStart, weekEnd, receiver, amount, comment, type = "expense", expenseDate } = body;
+    const { weekStart, weekEnd, receiver, amount, comment } = body;
 
     if (!weekStart || !weekEnd || !receiver || !amount || !comment) {
       console.error("❌ Missing required fields:", { weekStart, weekEnd, receiver, amount, comment });
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("💾 Inserting manual expense:", { weekStart, weekEnd, receiver, amount: Number(amount), comment, type, expenseDate });
+    console.log("💾 Inserting manual expense:", { weekStart, weekEnd, receiver, amount: Number(amount), comment });
     const [newExpense] = await db
       .insert(manualExpenses)
       .values({
@@ -72,77 +72,10 @@ export async function POST(request: NextRequest) {
         receiver,
         amount: Number(amount),
         comment,
-        type: type || "expense",
-        expenseDate: expenseDate || weekStart, // Use provided date or default to week start
       })
       .returning();
 
     console.log("✅ Manual expense created:", newExpense);
-
-    // Create a corresponding entry in the Finances system (bill, wage, or expense)
-    try {
-      const financeAmount = Number(amount);
-      const financeDate = new Date(expenseDate || weekStart); // Use the specific date
-
-      if (type === "bill") {
-        console.log("💳 Creating corresponding Finances bill...");
-        
-        const [financeBill] = await db
-          .insert(bills)
-          .values({
-            description: comment, // Use comment directly as description
-            amount: financeAmount,
-            billDate: financeDate,
-            dueDate: null,
-            category: null,
-            paymentMethod: null,
-            notes: null,
-            status: "paid",
-          })
-          .returning();
-
-        console.log("✅ Finances bill created:", financeBill);
-      } else if (type === "wage") {
-        console.log("👤 Creating corresponding Finances wage...");
-        const { wages } = await import("@/lib/schema");
-        
-        const [financeWage] = await db
-          .insert(wages)
-          .values({
-            employeeName: comment, // Use comment directly as employee name
-            amount: financeAmount,
-            payDate: financeDate,
-            dueDate: null,
-            paymentMethod: null,
-            notes: null,
-            status: "paid",
-          })
-          .returning();
-
-        console.log("✅ Finances wage created:", financeWage);
-      } else {
-        console.log("💰 Creating corresponding Finances expense...");
-        
-        const [financeExpense] = await db
-          .insert(expenses)
-          .values({
-            description: comment, // Use comment directly as description
-            amount: financeAmount.toFixed(2),
-            expenseDate: financeDate,
-            dueDate: null,
-            category: null,
-            paymentMethod: null,
-            notes: null,
-            status: "paid",
-          })
-          .returning();
-
-        console.log("✅ Finances expense created:", financeExpense);
-      }
-    } catch (financeError) {
-      console.error(`⚠️ Failed to create Finances ${type} (manual expense still created):`, financeError);
-      // Don't fail the whole request if finance entry creation fails
-    }
 
     return NextResponse.json(newExpense, { status: 201 });
   } catch (error) {

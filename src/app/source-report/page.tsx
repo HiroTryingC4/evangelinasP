@@ -931,7 +931,7 @@ export default function SourceReportPage() {
                     const amount = parseManualAmount(editingAmount);
                     const comment = editingComment.trim();
                     if (!amount || !comment) {
-                      showNotification("Please enter both amount and comment");
+                      showNotification("Please enter both amount and description");
                       return;
                     }
 
