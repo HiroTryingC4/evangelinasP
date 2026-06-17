@@ -863,31 +863,6 @@ export default function SourceReportPage() {
           <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 max-w-sm w-full">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Manual Expense</h2>
             
-            {/* Info about where it goes */}
-            {(() => {
-              const expense = manualExpenses.find(e => e.id === editingId);
-              const expenseType = expense?.type || "expense";
-              return (
-                <div className={`mb-4 p-3 border-l-4 rounded ${
-                  expenseType === "bill" 
-                    ? "bg-red-50 border-red-400" 
-                    : expenseType === "wage"
-                    ? "bg-blue-50 border-blue-400"
-                    : "bg-purple-50 border-purple-400"
-                }`}>
-                  <p className={`text-xs font-semibold ${
-                    expenseType === "bill" 
-                      ? "text-red-900" 
-                      : expenseType === "wage"
-                      ? "text-blue-900"
-                      : "text-purple-900"
-                  }`}>
-                    📍 Synced to Finances → {expenseType === "bill" ? "💳 Bills" : expenseType === "wage" ? "👤 Wages" : "💰 Expenses"}
-                  </p>
-                </div>
-              );
-            })()}
-            
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-gray-700 block mb-1">Amount (₱)</label>
