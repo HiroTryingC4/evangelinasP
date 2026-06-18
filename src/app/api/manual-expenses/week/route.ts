@@ -26,20 +26,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use Drizzle ORM select to ensure reads come from the primary connection
+    // Use Drizzle ORM select with explicit columns
     const expenses = await db
-      .select()
+      .select({
+        id: manualExpenses.id,
+        weekStart: manualExpenses.weekStart,
+        weekEnd: manualExpenses.weekEnd,
+        receiver: manualExpenses.receiver,
+        amount: manualExpenses.amount,
+        comment: manualExpenses.comment,
+        type: manualExpenses.type,
+        expenseDate: manualExpenses.expenseDate,
+        createdAt: manualExpenses.createdAt,
+      })
       .from(manualExpenses)
       .where(and(eq(manualExpenses.weekStart, weekStart), eq(manualExpenses.weekEnd, weekEnd)));
 
     // Map to API-friendly shape
-    const mapped = expenses.map((row: any) => ({
+    const mapped = expenses.map((row) => ({
       id: row.id,
       weekStart: row.weekStart,
       weekEnd: row.weekEnd,
       receiver: row.receiver,
       amount: row.amount,
       comment: row.comment,
+      type: row.type,
+      expenseDate: row.expenseDate,
       createdAt: row.createdAt,
     }));
 

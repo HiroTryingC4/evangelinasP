@@ -10,8 +10,20 @@ export async function GET() {
   try {
     await ensureManualExpensesTable();
     
-    // Get all records using Drizzle ORM
-    const allExpenses = await db.select().from(manualExpenses);
+    // Get all records using Drizzle ORM with explicit columns
+    const allExpenses = await db
+      .select({
+        id: manualExpenses.id,
+        weekStart: manualExpenses.weekStart,
+        weekEnd: manualExpenses.weekEnd,
+        receiver: manualExpenses.receiver,
+        amount: manualExpenses.amount,
+        comment: manualExpenses.comment,
+        type: manualExpenses.type,
+        expenseDate: manualExpenses.expenseDate,
+        createdAt: manualExpenses.createdAt,
+      })
+      .from(manualExpenses);
     
     return NextResponse.json({
       total: allExpenses.length,

@@ -23,8 +23,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const expenses = await db
-      .select()
+    const manualExpensesResult = await db
+      .select({
+        id: manualExpenses.id,
+        weekStart: manualExpenses.weekStart,
+        weekEnd: manualExpenses.weekEnd,
+        receiver: manualExpenses.receiver,
+        amount: manualExpenses.amount,
+        comment: manualExpenses.comment,
+        type: manualExpenses.type,
+        expenseDate: manualExpenses.expenseDate,
+        createdAt: manualExpenses.createdAt,
+      })
       .from(manualExpenses)
       .where(
         and(
@@ -34,7 +44,7 @@ export async function GET(request: NextRequest) {
         )
       );
 
-    return NextResponse.json(expenses);
+    return NextResponse.json(manualExpensesResult);
   } catch (error) {
     console.error("Error fetching manual expenses:", error);
     return NextResponse.json(
@@ -111,7 +121,17 @@ export async function DELETE(request: NextRequest) {
 
     // First, get the manual expense details to find matching Finances entry
     const manualExpensesToDelete = await db
-      .select()
+      .select({
+        id: manualExpenses.id,
+        weekStart: manualExpenses.weekStart,
+        weekEnd: manualExpenses.weekEnd,
+        receiver: manualExpenses.receiver,
+        amount: manualExpenses.amount,
+        comment: manualExpenses.comment,
+        type: manualExpenses.type,
+        expenseDate: manualExpenses.expenseDate,
+        createdAt: manualExpenses.createdAt,
+      })
       .from(manualExpenses)
       .where(eq(manualExpenses.id, Number(id)));
 
@@ -176,7 +196,17 @@ export async function PUT(request: NextRequest) {
 
     // First, get the old manual expense to find the old Finances entry
     const oldManualExpenses = await db
-      .select()
+      .select({
+        id: manualExpenses.id,
+        weekStart: manualExpenses.weekStart,
+        weekEnd: manualExpenses.weekEnd,
+        receiver: manualExpenses.receiver,
+        amount: manualExpenses.amount,
+        comment: manualExpenses.comment,
+        type: manualExpenses.type,
+        expenseDate: manualExpenses.expenseDate,
+        createdAt: manualExpenses.createdAt,
+      })
       .from(manualExpenses)
       .where(eq(manualExpenses.id, Number(id)));
 
