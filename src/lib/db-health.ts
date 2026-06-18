@@ -43,10 +43,24 @@ export async function ensureManualExpensesTable() {
             receiver TEXT NOT NULL,
             amount INTEGER NOT NULL,
             comment TEXT NOT NULL,
+            type TEXT NOT NULL DEFAULT 'expense',
+            expense_date TEXT,
             created_at TIMESTAMP DEFAULT NOW()
           )
         `);
         console.log("✅ manual_expenses table created/verified");
+
+        // Add columns if they don't exist
+        await db.execute(sql`
+          ALTER TABLE manual_expenses 
+          ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'expense'
+        `);
+        
+        await db.execute(sql`
+          ALTER TABLE manual_expenses 
+          ADD COLUMN IF NOT EXISTS expense_date TEXT
+        `);
+        console.log("✅ Columns added/verified");
 
         // Create index for faster queries
         await db.execute(sql`
