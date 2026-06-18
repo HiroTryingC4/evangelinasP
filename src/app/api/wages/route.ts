@@ -10,12 +10,23 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const status = searchParams.get("status");
 
-    let query: any = db.select().from(wages);
-    if (status) {
-      query = query.where(eq(wages.status, status));
-    }
+    let baseQuery = db.select({
+      id: wages.id,
+      employeeName: wages.employeeName,
+      amount: wages.amount,
+      payDate: wages.payDate,
+      dueDate: wages.dueDate,
+      paymentMethod: wages.paymentMethod,
+      status: wages.status,
+      notes: wages.notes,
+      createdAt: wages.createdAt,
+      updatedAt: wages.updatedAt,
+    }).from(wages);
 
-    const allWages = await query.orderBy(desc(wages.payDate), desc(wages.id));
+    const allWages = await (status
+      ? baseQuery.where(eq(wages.status, status)).orderBy(desc(wages.payDate), desc(wages.id))
+      : baseQuery.orderBy(desc(wages.payDate), desc(wages.id))
+    );
 
     return NextResponse.json(allWages);
   } catch (e) {

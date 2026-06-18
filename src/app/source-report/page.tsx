@@ -290,6 +290,8 @@ export default function SourceReportPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingAmount, setEditingAmount] = useState("");
   const [editingComment, setEditingComment] = useState("");
+  const [editingType, setEditingType] = useState<"expense" | "bill" | "wage">("expense");
+  const [editingDate, setEditingDate] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   function showNotification(msg: string) {
@@ -790,6 +792,8 @@ export default function SourceReportPage() {
                             setEditingId(entry.id);
                             setEditingAmount(String(entry.amount));
                             setEditingComment(entry.comment);
+                            setEditingType(entry.type as "expense" | "bill" | "wage");
+                            setEditingDate(entry.expenseDate || "");
                           }}
                         >
                           <Edit2 className="w-3 h-3" /> Edit
@@ -940,6 +944,8 @@ export default function SourceReportPage() {
                     setEditingId(null);
                     setEditingAmount("");
                     setEditingComment("");
+                    setEditingType("expense");
+                    setEditingDate("");
                   }}
                   className="flex-1 btn-secondary text-xs py-2"
                   disabled={savingEdit}

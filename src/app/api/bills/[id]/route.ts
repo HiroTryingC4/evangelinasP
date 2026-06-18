@@ -9,7 +9,20 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const bill = await db.select().from(bills).where(eq(bills.id, parseInt(id)));
+    const bill = await db.select({
+      id: bills.id,
+      description: bills.description,
+      amount: bills.amount,
+      billDate: bills.billDate,
+      dueDate: bills.dueDate,
+      paidDate: bills.paidDate,
+      paymentMethod: bills.paymentMethod,
+      status: bills.status,
+      category: bills.category,
+      notes: bills.notes,
+      createdAt: bills.createdAt,
+      updatedAt: bills.updatedAt,
+    }).from(bills).where(eq(bills.id, parseInt(id)));
     if (!bill.length) {
       return NextResponse.json({ error: "Bill not found" }, { status: 404 });
     }

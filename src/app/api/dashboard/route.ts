@@ -31,7 +31,39 @@ export async function GET(req: NextRequest) {
     const mergedConfiguredUnits = [...configuredUnitCodes, ...DEFAULT_UNITS.filter((code) => !configuredUnitCodes.includes(code))];
 
     // All bookings ever; normalize keys in-memory so legacy/stale fields do not affect totals.
-    const allRaw = await db.select().from(bookings);
+    const allRaw = await db.select({
+      id: bookings.id,
+      guestName: bookings.guestName,
+      contactNo: bookings.contactNo,
+      bookingSource: bookings.bookingSource,
+      bookingPlatform: bookings.bookingPlatform,
+      unit: bookings.unit,
+      checkIn: bookings.checkIn,
+      checkInDateKey: bookings.checkInDateKey,
+      checkInTime: bookings.checkInTime,
+      checkOut: bookings.checkOut,
+      checkOutDateKey: bookings.checkOutDateKey,
+      checkOutTime: bookings.checkOutTime,
+      hoursStayed: bookings.hoursStayed,
+      totalFee: bookings.totalFee,
+      dpAmount: bookings.dpAmount,
+      dpDate: bookings.dpDate,
+      dpMethod: bookings.dpMethod,
+      dpReceivedBy: bookings.dpReceivedBy,
+      fpAmount: bookings.fpAmount,
+      fpDate: bookings.fpDate,
+      fpMethod: bookings.fpMethod,
+      fpReceivedBy: bookings.fpReceivedBy,
+      apAmount: bookings.apAmount,
+      apDate: bookings.apDate,
+      apMethod: bookings.apMethod,
+      apReceivedBy: bookings.apReceivedBy,
+      remainingBalance: bookings.remainingBalance,
+      paymentStatus: bookings.paymentStatus,
+      hasConflict: bookings.hasConflict,
+      createdAt: bookings.createdAt,
+      updatedAt: bookings.updatedAt,
+    }).from(bookings);
     const all = allRaw.map((b) => ({
       ...b,
       normalizedUnit: String(b.unit || "").replace(/^Unit\s*/i, "").trim(),

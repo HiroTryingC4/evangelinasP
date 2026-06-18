@@ -9,7 +9,18 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const wage = await db.select().from(wages).where(eq(wages.id, parseInt(id)));
+    const wage = await db.select({
+      id: wages.id,
+      employeeName: wages.employeeName,
+      amount: wages.amount,
+      payDate: wages.payDate,
+      dueDate: wages.dueDate,
+      paymentMethod: wages.paymentMethod,
+      status: wages.status,
+      notes: wages.notes,
+      createdAt: wages.createdAt,
+      updatedAt: wages.updatedAt,
+    }).from(wages).where(eq(wages.id, parseInt(id)));
     if (!wage.length) {
       return NextResponse.json({ error: "Wage record not found" }, { status: 404 });
     }

@@ -10,12 +10,23 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const status = searchParams.get("status");
 
-    let query: any = db.select().from(incomes);
-    if (status) {
-      query = query.where(eq(incomes.status, status));
-    }
+    let baseQuery = db.select({
+      id: incomes.id,
+      description: incomes.description,
+      source: incomes.source,
+      amount: incomes.amount,
+      incomeDate: incomes.incomeDate,
+      paymentMethod: incomes.paymentMethod,
+      status: incomes.status,
+      notes: incomes.notes,
+      createdAt: incomes.createdAt,
+      updatedAt: incomes.updatedAt,
+    }).from(incomes);
 
-    const allIncome = await query.orderBy(desc(incomes.incomeDate), desc(incomes.id));
+    const allIncome = await (status
+      ? baseQuery.where(eq(incomes.status, status)).orderBy(desc(incomes.incomeDate), desc(incomes.id))
+      : baseQuery.orderBy(desc(incomes.incomeDate), desc(incomes.id))
+    );
     return NextResponse.json(allIncome);
   } catch (e) {
     console.error("[GET /api/income]", e);

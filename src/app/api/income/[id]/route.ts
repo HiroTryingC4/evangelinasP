@@ -9,7 +9,18 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const income = await db.select().from(incomes).where(eq(incomes.id, parseInt(id)));
+    const income = await db.select({
+      id: incomes.id,
+      description: incomes.description,
+      source: incomes.source,
+      amount: incomes.amount,
+      incomeDate: incomes.incomeDate,
+      paymentMethod: incomes.paymentMethod,
+      status: incomes.status,
+      notes: incomes.notes,
+      createdAt: incomes.createdAt,
+      updatedAt: incomes.updatedAt,
+    }).from(incomes).where(eq(incomes.id, parseInt(id)));
     if (!income.length) {
       return NextResponse.json({ error: "Income not found" }, { status: 404 });
     }

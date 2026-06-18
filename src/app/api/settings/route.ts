@@ -221,7 +221,13 @@ export async function PUT(req: NextRequest) {
     ]);
     
     // DEBUG: Get ALL receivers with sortOrder to see what's happening
-    const allReceivers = await db.select().from(receiverPersons);
+    const allReceivers = await db.select({
+      id: receiverPersons.id,
+      name: receiverPersons.name,
+      role: receiverPersons.role,
+      sortOrder: receiverPersons.sortOrder,
+      createdAt: receiverPersons.createdAt,
+    }).from(receiverPersons);
     console.log("📊 [ALL RECEIVERS] Complete data from receiverPersons table:");
     allReceivers.forEach((r: any) => {
       console.log(`  - "${r.name}" (sortOrder: ${r.sortOrder}, id: ${r.id})`);

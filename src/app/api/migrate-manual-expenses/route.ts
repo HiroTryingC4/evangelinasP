@@ -11,7 +11,17 @@ export async function GET() {
     console.log("🔄 Starting migration of manual expenses to Finances...");
 
     // Fetch all manual expenses
-    const allManualExpenses = await db.select().from(manualExpenses);
+    const allManualExpenses = await db.select({
+      id: manualExpenses.id,
+      weekStart: manualExpenses.weekStart,
+      weekEnd: manualExpenses.weekEnd,
+      receiver: manualExpenses.receiver,
+      amount: manualExpenses.amount,
+      comment: manualExpenses.comment,
+      type: manualExpenses.type,
+      expenseDate: manualExpenses.expenseDate,
+      createdAt: manualExpenses.createdAt,
+    }).from(manualExpenses);
     
     console.log(`📊 Found ${allManualExpenses.length} manual expenses to migrate`);
 

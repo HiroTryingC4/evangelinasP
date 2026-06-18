@@ -10,12 +10,24 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const status = searchParams.get("status");
 
-    let query: any = db.select().from(expenses);
-    if (status) {
-      query = query.where(eq(expenses.status, status));
-    }
+    let baseQuery = db.select({
+      id: expenses.id,
+      description: expenses.description,
+      amount: expenses.amount,
+      expenseDate: expenses.expenseDate,
+      dueDate: expenses.dueDate,
+      category: expenses.category,
+      paymentMethod: expenses.paymentMethod,
+      status: expenses.status,
+      notes: expenses.notes,
+      createdAt: expenses.createdAt,
+      updatedAt: expenses.updatedAt,
+    }).from(expenses);
 
-    const allExpenses = await query.orderBy(desc(expenses.expenseDate), desc(expenses.id));
+    const allExpenses = await (status
+      ? baseQuery.where(eq(expenses.status, status)).orderBy(desc(expenses.expenseDate), desc(expenses.id))
+      : baseQuery.orderBy(desc(expenses.expenseDate), desc(expenses.id))
+    );
 
     return NextResponse.json(allExpenses);
   } catch (e) {
