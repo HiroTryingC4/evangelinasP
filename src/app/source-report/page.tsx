@@ -11,7 +11,7 @@ type MethodName = "Cash" | "GCash" | "Bank Transfer";
 
 const SOURCE_ORDER: SourceName[] = ["Direct", "TikTok", "Facebook", "Airbnb"];
 const METHOD_ORDER: MethodName[] = ["Cash", "GCash", "Bank Transfer"];
-const CORE_UNITS = new Set(["1116", "1118", "1558", "1845"]);
+const CORE_UNITS = new Set(["1116", "1118", "1558", "1845", "2045"]);
 
 type ManualExpenseEntry = {
   id: number;
