@@ -555,7 +555,7 @@ export default function SourceReportPage() {
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
           <div>
             <p className="text-sm font-semibold text-gray-900">
-              Core units (1116, 1118, 1558, 1845)
+              Core units (1116, 1118, 1558, 1845, 2045)
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
             {new Date(`${week.startDate}T12:00:00`).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}
