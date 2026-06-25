@@ -745,7 +745,7 @@ export default function SourceReportPage() {
           <div className="mt-2 text-xs sm:text-sm text-amber-900 space-y-0.5">
             <p>Manual expenses total: <span className="font-semibold">{formatPHP(weeklyManualExpenseTotal)}</span></p>
             <p>Adjusted total paid: <span className="font-semibold">{formatPHP(adjustedCoreTotalPaid)}</span></p>
-            <p className="text-[11px] text-amber-700">Local report-only minus. This does not sync to Finances.</p>
+            <p className="text-[11px] text-amber-700">Manual entries are now synced into the Finances pages for bills, wages, and expenses.</p>
           </div>
 
           {visibleManualExpenses.length > 0 ? (

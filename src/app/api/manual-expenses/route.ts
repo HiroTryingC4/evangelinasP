@@ -1,10 +1,132 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { manualExpenses, expenses, bills } from "@/lib/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { manualExpenses, expenses, bills, wages } from "@/lib/schema";
+import { eq, and, like } from "drizzle-orm";
 import { ensureManualExpensesTable } from "@/lib/db-health";
 
 export const dynamic = "force-dynamic";
+
+function buildManualSyncMarker(id: number, receiver: string, weekStart: string, weekEnd: string) {
+  return `source-report-manual:${id}|receiver:${receiver}|week:${weekStart}:${weekEnd}`;
+}
+
+async function deleteLinkedFinanceEntry(manualExpenseId: number, receiver: string, weekStart: string, weekEnd: string) {
+  const marker = buildManualSyncMarker(manualExpenseId, receiver, weekStart, weekEnd);
+
+  const billMatches = await db
+    .select({ id: bills.id })
+    .from(bills)
+    .where(like(bills.notes ?? "", `%${marker}%`));
+
+  if (billMatches.length > 0) {
+    await db.delete(bills).where(eq(bills.id, billMatches[0].id));
+  }
+
+  const wageMatches = await db
+    .select({ id: wages.id })
+    .from(wages)
+    .where(like(wages.notes ?? "", `%${marker}%`));
+
+  if (wageMatches.length > 0) {
+    await db.delete(wages).where(eq(wages.id, wageMatches[0].id));
+  }
+
+  const expenseMatches = await db
+    .select({ id: expenses.id })
+    .from(expenses)
+    .where(like(expenses.notes ?? "", `%${marker}%`));
+
+  if (expenseMatches.length > 0) {
+    await db.delete(expenses).where(eq(expenses.id, expenseMatches[0].id));
+  }
+}
+
+async function upsertLinkedFinanceEntry(manualExpense: {
+  id: number;
+  receiver: string;
+  amount: number;
+  comment: string;
+  type: string | null;
+  expenseDate?: string | null;
+  weekStart: string;
+  weekEnd: string;
+}) {
+  const marker = buildManualSyncMarker(manualExpense.id, manualExpense.receiver, manualExpense.weekStart, manualExpense.weekEnd);
+  const entryDate = manualExpense.expenseDate || manualExpense.weekStart;
+  const entryDateValue = new Date(`${entryDate}T12:00:00`);
+  const notes = `${marker} | source report manual entry`;
+
+  if (manualExpense.type === "bill") {
+    const existing = await db
+      .select({ id: bills.id })
+      .from(bills)
+      .where(like(bills.notes ?? "", `%${marker}%`));
+
+    const payload = {
+      description: manualExpense.comment.trim(),
+      amount: Math.round(Number(manualExpense.amount)),
+      billDate: entryDateValue,
+      dueDate: entryDateValue,
+      paymentMethod: "manual",
+      category: "source-report",
+      notes,
+      status: "pending" as const,
+    };
+
+    if (existing.length > 0) {
+      await db.update(bills).set(payload).where(eq(bills.id, existing[0].id));
+    } else {
+      await db.insert(bills).values(payload);
+    }
+    return;
+  }
+
+  if (manualExpense.type === "wage") {
+    const existing = await db
+      .select({ id: wages.id })
+      .from(wages)
+      .where(like(wages.notes ?? "", `%${marker}%`));
+
+    const payload = {
+      employeeName: manualExpense.comment.trim(),
+      amount: Math.round(Number(manualExpense.amount)),
+      payDate: entryDateValue,
+      dueDate: entryDateValue,
+      paymentMethod: "manual",
+      notes,
+      status: "pending" as const,
+    };
+
+    if (existing.length > 0) {
+      await db.update(wages).set(payload).where(eq(wages.id, existing[0].id));
+    } else {
+      await db.insert(wages).values(payload);
+    }
+    return;
+  }
+
+  const existing = await db
+    .select({ id: expenses.id })
+    .from(expenses)
+    .where(like(expenses.notes ?? "", `%${marker}%`));
+
+  const payload = {
+    description: manualExpense.comment.trim(),
+    amount: Number(manualExpense.amount).toFixed(2),
+    expenseDate: entryDateValue,
+    dueDate: entryDateValue,
+    category: "source-report",
+    paymentMethod: "manual",
+    notes,
+    status: "pending" as const,
+  };
+
+  if (existing.length > 0) {
+    await db.update(expenses).set(payload).where(eq(expenses.id, existing[0].id));
+  } else {
+    await db.insert(expenses).values(payload);
+  }
+}
 
 // GET: Fetch manual expenses for a specific week and receiver
 export async function GET(request: NextRequest) {
@@ -89,6 +211,17 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ Manual expense created:", newExpense);
 
+    await upsertLinkedFinanceEntry({
+      id: newExpense.id,
+      receiver,
+      amount: Number(amount),
+      comment,
+      type: type || "expense",
+      expenseDate: expenseDate || weekStart,
+      weekStart,
+      weekEnd,
+    });
+
     return NextResponse.json(newExpense, { status: 201 });
   } catch (error) {
     console.error("❌ Error creating manual expense:", error);
@@ -145,6 +278,13 @@ export async function DELETE(request: NextRequest) {
 
     const manualExpense = manualExpensesToDelete[0];
     console.log("🔍 Found manual expense:", manualExpense);
+
+    await deleteLinkedFinanceEntry(
+      manualExpense.id,
+      manualExpense.receiver,
+      manualExpense.weekStart,
+      manualExpense.weekEnd
+    );
 
     // Delete from manual_expenses table
     const result = await db
@@ -220,6 +360,13 @@ export async function PUT(request: NextRequest) {
 
     const oldManualExpense = oldManualExpenses[0];
 
+    await deleteLinkedFinanceEntry(
+      oldManualExpense.id,
+      oldManualExpense.receiver,
+      oldManualExpense.weekStart,
+      oldManualExpense.weekEnd
+    );
+
     // Update the manual_expenses table
     const result = await db
       .update(manualExpenses)
@@ -233,6 +380,17 @@ export async function PUT(request: NextRequest) {
       .returning();
 
     console.log("✅ Updated manual expense:", result[0]);
+
+    await upsertLinkedFinanceEntry({
+      id: result[0].id,
+      receiver: oldManualExpense.receiver,
+      amount: Number(amount),
+      comment,
+      type: type || oldManualExpense.type || "expense",
+      expenseDate: expenseDate || oldManualExpense.expenseDate,
+      weekStart: oldManualExpense.weekStart,
+      weekEnd: oldManualExpense.weekEnd,
+    });
 
     return NextResponse.json(result[0]);
   } catch (error) {
