@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trash2, CheckCircle, ChevronLeft, ChevronRight, Edit2, TrendingUp, TrendingDown, DollarSign, Wallet, PieChart } from "lucide-react";
+import { Trash2, CheckCircle, ChevronLeft, ChevronRight, Edit2, TrendingUp, TrendingDown, DollarSign, Wallet, PieChart, MessageSquareText } from "lucide-react";
 import { formatPHP, formatDate, formatWeekRange, UNITS } from "@/lib/utils";
 import BillsChecklist from "@/components/BillsChecklist";
 
@@ -1906,10 +1906,14 @@ function ItemCard({
           </div>
           <p className="text-xs text-gray-500">{displayFields.join(" • ")}</p>
           {item.notes && (
-            <div className="mt-2 p-2 bg-blue-50 border-l-2 border-blue-400 rounded">
-              <p className="text-xs text-blue-900">
-                <span className="font-semibold">Note:</span> {item.notes}
-              </p>
+            <div className="mt-2 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50/80 p-2.5">
+              <div className="mt-0.5 rounded-full bg-blue-100 p-1 text-blue-700">
+                <MessageSquareText className="h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Note</p>
+                <p className="text-xs leading-5 text-blue-900">{item.notes}</p>
+              </div>
             </div>
           )}
         </div>

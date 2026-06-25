@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Edit2, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Edit2, CheckCircle, Clock, ChevronLeft, ChevronRight, MessageSquareText } from "lucide-react";
 import { formatPHP, formatDate } from "@/lib/utils";
 
 export default function BillsPage() {
@@ -162,7 +162,7 @@ export default function BillsPage() {
             <input type="date" placeholder="Due Date" value={newBill.dueDate} onChange={(e) => setNewBill({ ...newBill, dueDate: e.target.value })} className="input" />
             <input type="text" placeholder="Category" value={newBill.category} onChange={(e) => setNewBill({ ...newBill, category: e.target.value })} className="input" />
           </div>
-          <textarea placeholder="Notes" value={newBill.notes} onChange={(e) => setNewBill({ ...newBill, notes: e.target.value })} className="input w-full" rows={2} />
+          <textarea placeholder="Notes" value={newBill.notes} onChange={(e) => setNewBill({ ...newBill, notes: e.target.value })} className="input w-full min-h-[88px] resize-y border-amber-200 bg-amber-50/60 focus:border-amber-400 focus:ring-amber-200" rows={2} />
           <button type="submit" className="btn-primary">Add Bill</button>
         </form>
       </div>
@@ -195,7 +195,17 @@ export default function BillsPage() {
               </div>
               <p className="text-xs text-gray-500">{bill.category} • {formatDate(bill.billDate)}</p>
               {bill.dueDate && <p className="text-xs text-gray-400">Due: {formatDate(bill.dueDate)}</p>}
-              {bill.notes && <p className="text-xs text-gray-600 mt-1">{bill.notes}</p>}
+              {bill.notes && (
+                <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/80 p-2.5">
+                  <div className="mt-0.5 rounded-full bg-amber-100 p-1 text-amber-700">
+                    <MessageSquareText className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Note</p>
+                    <p className="text-xs leading-5 text-amber-900">{bill.notes}</p>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 ml-4">
               <p className="font-bold text-gray-900 text-lg">{formatPHP(bill.amount)}</p>

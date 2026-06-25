@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trash2, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, CheckCircle, ChevronLeft, ChevronRight, MessageSquareText } from "lucide-react";
 import { formatPHP, formatDate } from "@/lib/utils";
 
 export default function WagesPage() {
@@ -156,7 +156,7 @@ export default function WagesPage() {
             <input type="date" value={newWage.payDate} onChange={(e) => setNewWage({ ...newWage, payDate: e.target.value })} className="input" />
             <input type="text" placeholder="Period (e.g., April 2026)" value={newWage.period} onChange={(e) => setNewWage({ ...newWage, period: e.target.value })} className="input" />
           </div>
-          <textarea placeholder="Notes" value={newWage.notes} onChange={(e) => setNewWage({ ...newWage, notes: e.target.value })} className="input w-full" rows={2} />
+          <textarea placeholder="Notes" value={newWage.notes} onChange={(e) => setNewWage({ ...newWage, notes: e.target.value })} className="input w-full min-h-[88px] resize-y border-amber-200 bg-amber-50/60 focus:border-amber-400 focus:ring-amber-200" rows={2} />
           <button type="submit" className="btn-primary">Add Wage</button>
         </form>
       </div>
@@ -188,7 +188,17 @@ export default function WagesPage() {
                 <span className={`text-xs px-2 py-0.5 rounded ${wage.status === "paid" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{wage.status}</span>
               </div>
               <p className="text-xs text-gray-500">{wage.period} • Pay Date: {formatDate(wage.payDate)}</p>
-              {wage.notes && <p className="text-xs text-gray-600 mt-1">{wage.notes}</p>}
+              {wage.notes && (
+                <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/80 p-2.5">
+                  <div className="mt-0.5 rounded-full bg-amber-100 p-1 text-amber-700">
+                    <MessageSquareText className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Note</p>
+                    <p className="text-xs leading-5 text-amber-900">{wage.notes}</p>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 ml-4">
               <p className="font-bold text-gray-900 text-lg">{formatPHP(wage.amount)}</p>

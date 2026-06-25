@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trash2, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, CheckCircle, ChevronLeft, ChevronRight, MessageSquareText } from "lucide-react";
 import { formatPHP, formatDate } from "@/lib/utils";
 
 export default function ExpensesPage() {
@@ -168,7 +168,7 @@ export default function ExpensesPage() {
             <input type="text" placeholder="Category" value={newExpense.category} onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })} className="input" />
             <input type="text" placeholder="Payment Method" value={newExpense.paymentMethod} onChange={(e) => setNewExpense({ ...newExpense, paymentMethod: e.target.value })} className="input" />
           </div>
-          <textarea placeholder="Notes" value={newExpense.notes} onChange={(e) => setNewExpense({ ...newExpense, notes: e.target.value })} className="input w-full" rows={2} />
+          <textarea placeholder="Notes" value={newExpense.notes} onChange={(e) => setNewExpense({ ...newExpense, notes: e.target.value })} className="input w-full min-h-[88px] resize-y border-amber-200 bg-amber-50/60 focus:border-amber-400 focus:ring-amber-200" rows={2} />
           <button type="submit" className="btn-primary">Add Expense</button>
         </form>
       </div>
@@ -201,7 +201,17 @@ export default function ExpensesPage() {
               </div>
               <p className="text-xs text-gray-500">{expense.category} • {formatDate(expense.expenseDate)}</p>
               {expense.paymentMethod && <p className="text-xs text-gray-400">Method: {expense.paymentMethod}</p>}
-              {expense.notes && <p className="text-xs text-gray-600 mt-1">{expense.notes}</p>}
+              {expense.notes && (
+                <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/80 p-2.5">
+                  <div className="mt-0.5 rounded-full bg-amber-100 p-1 text-amber-700">
+                    <MessageSquareText className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Note</p>
+                    <p className="text-xs leading-5 text-amber-900">{expense.notes}</p>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 ml-4">
               <p className="font-bold text-gray-900 text-lg">{formatPHP(expense.amount)}</p>
