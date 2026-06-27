@@ -10,6 +10,7 @@ import {
   toYMD,
   hasUnitTimeConflict,
   normalizeBookingSource,
+  normalizeUnitCode,
 } from "@/lib/utils";
 
 function normalizeDateKey(value: unknown): string {
@@ -67,8 +68,10 @@ export async function GET(req: NextRequest) {
       .from(bookings)
       .orderBy(asc(bookings.checkIn), asc(bookings.checkInTime), asc(bookings.id));
 
-    if (unit)   all = all.filter((b) => b.unit === unit);
+    if (unit)   all = all.filter((b) => normalizeUnitCode(b.unit) === normalizeUnitCode(unit));
     if (status) all = all.filter((b) => b.paymentStatus === status);
+
+    all = all.map((b) => ({ ...b, unit: normalizeUnitCode(b.unit) }));
 
     if (view === "upcoming") {
       // Keep all of today's records visible, even after their check-out time.
@@ -109,7 +112,7 @@ export async function POST(req: NextRequest) {
     const total = Number(body.totalFee)  || 0;
 
     // Strip "Unit " prefix if frontend sent "Unit 1558" instead of "1558"
-    const unitCode = String(body.unit).replace(/^Unit\s*/i, "");
+    const unitCode = normalizeUnitCode(body.unit);
 
     const checkIn  = parseYMDToPHDate(body.checkIn);
     const checkOut = parseYMDToPHDate(body.checkOut);

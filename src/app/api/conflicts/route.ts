@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { and, eq, lt, gt, ne } from "drizzle-orm";
-import { hasUnitTimeConflict, parseYMDToPHDate } from "@/lib/utils";
+import { hasUnitTimeConflict, parseYMDToPHDate, normalizeUnitCode } from "@/lib/utils";
 
 // POST /api/conflicts
 // Body: { unit, checkIn, checkOut, excludeId? }
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const { checkIn, checkInTime, checkOut, checkOutTime, excludeId } = body;
 
     // Normalise unit — strip "Unit " prefix
-    const unit = String(body.unit).replace(/^Unit\s*/i, "");
+    const unit = normalizeUnitCode(body.unit);
 
     if (!unit || !checkIn || !checkOut) {
       return NextResponse.json({ hasConflict: false, conflicts: [] });

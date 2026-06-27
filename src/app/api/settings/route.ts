@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { persons, receiverPersons, unitConfigs } from "@/lib/schema";
-import { STAFF, UNITS } from "@/lib/utils";
+import { STAFF, UNITS, normalizeUnitCode } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function normalizeUnitCode(value: string): string {
-  return value.trim().replace(/^Unit\s*/i, "");
-}
 
 function sanitizeUnits(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
@@ -67,7 +63,7 @@ export async function GET() {
         .orderBy(asc(receiverPersons.sortOrder), asc(receiverPersons.id)),
     ]);
 
-    const configuredUnits = units.map((u) => u.code);
+    const configuredUnits = Array.from(new Set(units.map((u) => normalizeUnitCode(u.code)).filter(Boolean)));
     const mergedUnits = [...configuredUnits, ...UNITS.filter((code) => !configuredUnits.includes(code))];
 
     // If no receivers in database, initialize with STAFF defaults
@@ -236,7 +232,7 @@ export async function PUT(req: NextRequest) {
     console.log("📊 [FINAL SELECT] Saved receivers from SELECT query:", savedReceivers.map(r => r.name));
 
     return NextResponse.json({
-      units: savedUnits.map((u) => u.code),
+      units: Array.from(new Set(savedUnits.map((u) => normalizeUnitCode(u.code)).filter(Boolean))),
       receivers: savedReceivers.map((r) => r.name),
       receiverPersons: savedReceivers,
     });

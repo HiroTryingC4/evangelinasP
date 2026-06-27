@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ensureBookingSourceColumn } from "@/lib/db-health";
 import { bookings } from "@/lib/schema";
 import { and, eq, gt, lt, ne } from "drizzle-orm";
-import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToPHDate, toYMD, normalizeBookingSource } from "@/lib/utils";
+import { calcPaymentStatus, calcRemaining, hasUnitTimeConflict, parseYMDToPHDate, toYMD, normalizeBookingSource, normalizeUnitCode } from "@/lib/utils";
 
 function normalizeDateKey(value: unknown): string {
   const raw = String(value ?? "").trim();
@@ -59,7 +59,7 @@ export async function GET(
     if (!booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
-    return NextResponse.json(booking);
+    return NextResponse.json({ ...booking, unit: normalizeUnitCode(booking.unit) });
   } catch (e) {
     console.error("[GET /api/bookings/id]", e);
     return NextResponse.json({ error: "Failed to fetch booking" }, { status: 500 });
@@ -133,7 +133,7 @@ export async function PUT(
     const total = Number(body.totalFee)  || 0;
 
     // Strip "Unit " prefix if sent
-    const unitCode = String(body.unit).replace(/^Unit\s*/i, "");
+    const unitCode = normalizeUnitCode(body.unit);
     const checkInDate = parseYMDToPHDate(body.checkIn);
     const checkOutDate = parseYMDToPHDate(body.checkOut);
     const checkInDateKey = normalizeDateKey(body.checkIn);

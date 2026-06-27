@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ensureBookingSourceColumn } from "@/lib/db-health";
 import { bookings, unitConfigs } from "@/lib/schema";
 import { asc } from "drizzle-orm";
-import { UNITS as DEFAULT_UNITS, getSundayToSaturdayWeek, toYMD } from "@/lib/utils";
+import { UNITS as DEFAULT_UNITS, getSundayToSaturdayWeek, normalizeUnitCode, toYMD } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     }).from(bookings);
     const all = allRaw.map((b) => ({
       ...b,
-      normalizedUnit: String(b.unit || "").replace(/^Unit\s*/i, "").trim(),
+      normalizedUnit: normalizeUnitCode(b.unit),
       // Prefer canonical date keys written from user input to avoid timestamp timezone drift.
       checkInKey: b.checkInDateKey || toYMD(b.checkIn),
       checkOutKey: b.checkOutDateKey || toYMD(b.checkOut),
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
       ? Array.from(new Set(
           weeklyUnitsParam
             .split(",")
-            .map((u) => u.trim().replace(/^Unit\s*/i, ""))
+            .map((u) => normalizeUnitCode(u))
             .filter((u) => unitCodes.includes(u))
         ))
       : [];
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
       ? Array.from(new Set(
           monthlyUnitsParam
             .split(",")
-            .map((u) => u.trim().replace(/^Unit\s*/i, ""))
+            .map((u) => normalizeUnitCode(u))
             .filter((u) => unitCodes.includes(u))
         ))
       : [];

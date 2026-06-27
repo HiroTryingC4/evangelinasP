@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { X, AlertTriangle, CheckCircle, Loader2, CalendarDays, Clock } from "lucide-react";
 import { emitBookingsChanged } from "@/lib/bookings-sync";
-import { UNITS, PAYMENT_METHODS, STAFF, BOOKING_SOURCES, BOOKING_PLATFORMS, calcPaymentStatus, calcRemaining, formatPHP, toYMD } from "@/lib/utils";
+import { UNITS, PAYMENT_METHODS, STAFF, BOOKING_SOURCES, BOOKING_PLATFORMS, calcPaymentStatus, calcRemaining, formatPHP, getSundayToSaturdayWeek, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
 interface Props {
@@ -32,6 +32,13 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
   const [unitBookings, setUnitBookings] = useState<Booking[]>([]);
   const [unitBookingsLoading, setUnitBookingsLoading] = useState(false);
   const [nightCleaning, setNightCleaning] = useState(false);
+  const [nightCleaningTouched, setNightCleaningTouched] = useState(false);
+  const [existingNightCleaningExpense, setExistingNightCleaningExpense] = useState<{
+    id: number;
+    weekStart: string;
+    weekEnd: string;
+    expenseDate: string;
+  } | null>(null);
 
   useEffect(() => {
     fetch(`/api/settings?_t=${Date.now()}`, { cache: "no-store" })
@@ -96,11 +103,105 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
       apReceivedBy: (booking as any).apReceivedBy  ?? "SIR JAMES",
     });
     setNightCleaning(false);
+    setNightCleaningTouched(false);
+    setExistingNightCleaningExpense(null);
+  }, [booking]);
+
+  async function loadExistingNightCleaningExpense(weekStart: string, weekEnd: string, expectedExpenseDate?: string) {
+    try {
+      const response = await fetch(
+        `/api/manual-expenses/week?weekStart=${encodeURIComponent(weekStart)}&weekEnd=${encodeURIComponent(weekEnd)}`,
+        { cache: "no-store" }
+      );
+      if (!response.ok) return null;
+      const expenses = await response.json();
+      if (!Array.isArray(expenses)) return null;
+
+      const exactMatch = expenses.find((entry: any) =>
+        String(entry.receiver).toUpperCase() === "JAYJAY" &&
+        String(entry.comment).toLowerCase().includes("night booking") &&
+        Number(entry.amount) === 300 &&
+        String(entry.type).toLowerCase() === "expense" &&
+        expectedExpenseDate && String(entry.expenseDate) === expectedExpenseDate
+      );
+      if (exactMatch) return exactMatch;
+
+      return expenses.find((entry: any) =>
+        String(entry.receiver).toUpperCase() === "JAYJAY" &&
+        String(entry.comment).toLowerCase().includes("night booking") &&
+        Number(entry.amount) === 300 &&
+        String(entry.type).toLowerCase() === "expense"
+      ) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  useEffect(() => {
+    if (!booking) return;
+    const checkIn = booking.checkInDateKey || (booking.checkIn ? toYMD(booking.checkIn) : "");
+    const checkOut = booking.checkOutDateKey || (booking.checkOut ? toYMD(booking.checkOut) : "");
+    const dateSource = checkIn || checkOut;
+    if (!dateSource) return;
+
+    const week = getSundayToSaturdayWeek(dateSource);
+    loadExistingNightCleaningExpense(week.startDate, week.endDate, checkIn || undefined).then((existing) => {
+      if (existing) {
+        setExistingNightCleaningExpense({
+          id: existing.id,
+          weekStart: existing.weekStart,
+          weekEnd: existing.weekEnd,
+          expenseDate: existing.expenseDate,
+        });
+        setNightCleaning(true);
+      } else {
+        setExistingNightCleaningExpense(null);
+        setNightCleaning(false);
+      }
+    });
   }, [booking]);
 
   const set = (key: string) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  function parseClockTime(value: string): number | null {
+    const normalized = String(value || "").trim().toLowerCase();
+    const ampmMatch = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
+    if (ampmMatch) {
+      let hour = Number(ampmMatch[1]);
+      const minute = Number(ampmMatch[2] || "0");
+      const ampm = ampmMatch[3];
+      if (hour === 12) hour = ampm === "am" ? 0 : 12;
+      else if (ampm === "pm") hour += 12;
+      return hour * 60 + minute;
+    }
+
+    const twentyFourMatch = normalized.match(/^(\d{1,2})(?::(\d{2}))?$/);
+    if (twentyFourMatch) {
+      const hour = Number(twentyFourMatch[1]);
+      const minute = Number(twentyFourMatch[2] || "0");
+      if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+        return hour * 60 + minute;
+      }
+    }
+
+    return null;
+  }
+
+  function bookingLooksLikeNightShift(checkInTime: string, checkOutTime: string) {
+    const checkIn = parseClockTime(checkInTime);
+    const checkOut = parseClockTime(checkOutTime);
+    const isNight = (minutes: number | null) => minutes !== null && (minutes >= 20 * 60 || minutes < 6 * 60);
+    return isNight(checkIn) || isNight(checkOut);
+  }
+
+  useEffect(() => {
+    if (booking) return;
+    if (nightCleaningTouched) return;
+    const isNight = bookingLooksLikeNightShift(form.checkInTime, form.checkOutTime);
+    setNightCleaning(isNight);
+  }, [form.checkInTime, form.checkOutTime, booking, nightCleaningTouched]);
 
   // Auto-calculate hours when dates change
   useEffect(() => {
@@ -201,21 +302,107 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
         throw new Error(errorText || `HTTP ${res.status}`);
       }
 
-      if (nightCleaning) {
-        await fetch("/api/expenses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            description: "Clean Night",
-            amount: 300,
-            expenseDate: new Date().toISOString().split("T")[0],
-            category: "",
-            paymentMethod: "",
-            notes: "",
-          }),
-        }).catch((error) => {
-          console.error("Failed to create night cleaning expense:", error);
-        });
+      const week = getSundayToSaturdayWeek(form.checkIn || form.checkOut || new Date());
+      const expenseDate = form.checkIn || week.startDate;
+      const existingExpenseId = existingNightCleaningExpense?.id;
+
+      if (nightCleaning && !existingExpenseId) {
+        try {
+          const response = await fetch("/api/manual-expenses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              weekStart: week.startDate,
+              weekEnd: week.endDate,
+              receiver: "JAYJAY",
+              amount: 300,
+              comment: "Night Booking",
+              type: "expense",
+              expenseDate,
+            }),
+          });
+          if (response.ok) {
+            const created = await response.json();
+            setExistingNightCleaningExpense({
+              id: created.id,
+              weekStart: week.startDate,
+              weekEnd: week.endDate,
+              expenseDate,
+            });
+          }
+        } catch (error) {
+          console.error("Failed to create Jayjay night booking expense:", error);
+        }
+      }
+
+      if (nightCleaning && existingExpenseId) {
+        const shouldRecreate =
+          existingNightCleaningExpense?.weekStart !== week.startDate ||
+          existingNightCleaningExpense?.weekEnd !== week.endDate;
+        const shouldUpdateDate = existingNightCleaningExpense?.expenseDate !== expenseDate;
+
+        if (shouldRecreate) {
+          try {
+            await fetch(`/api/manual-expenses?id=${existingExpenseId}`, {
+              method: "DELETE",
+            });
+          } catch (error) {
+            console.error("Failed to delete stale Jayjay night booking expense:", error);
+          }
+          try {
+            const response = await fetch("/api/manual-expenses", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                weekStart: week.startDate,
+                weekEnd: week.endDate,
+                receiver: "JAYJAY",
+                amount: 300,
+                comment: "Night Booking",
+                type: "expense",
+                expenseDate,
+              }),
+            });
+            if (response.ok) {
+              const created = await response.json();
+              setExistingNightCleaningExpense({
+                id: created.id,
+                weekStart: week.startDate,
+                weekEnd: week.endDate,
+                expenseDate,
+              });
+            }
+          } catch (error) {
+            console.error("Failed to recreate Jayjay night booking expense:", error);
+          }
+        } else if (shouldUpdateDate) {
+          try {
+            await fetch(`/api/manual-expenses?id=${existingExpenseId}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                amount: 300,
+                comment: "Night Booking",
+                type: "expense",
+                expenseDate,
+              }),
+            });
+            setExistingNightCleaningExpense((prev) => prev ? { ...prev, expenseDate } : prev);
+          } catch (error) {
+            console.error("Failed to update Jayjay night booking expense date:", error);
+          }
+        }
+      }
+
+      if (!nightCleaning && existingExpenseId) {
+        try {
+          await fetch(`/api/manual-expenses?id=${existingExpenseId}`, {
+            method: "DELETE",
+          });
+          setExistingNightCleaningExpense(null);
+        } catch (error) {
+          console.error("Failed to remove Jayjay night booking expense:", error);
+        }
       }
 
       emitBookingsChanged();
@@ -506,12 +693,16 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
             <input
               type="checkbox"
               checked={nightCleaning}
-              onChange={(e) => setNightCleaning(e.target.checked)}
+              onChange={(e) => {
+                setNightCleaningTouched(true);
+                setNightCleaning(e.target.checked);
+              }}
               className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
             />
             <div>
               <p className="text-sm font-semibold text-gray-900">Night Cleaning</p>
               <p className="text-xs text-gray-500">Adds a ₱300 Clean Night expense to Finances after saving.</p>
+              <p className="text-xs text-gray-500">This expense is linked to this booking’s week/date and will update or remove on save.</p>
             </div>
           </label>
         </div>

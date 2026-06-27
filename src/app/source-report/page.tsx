@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Wallet, BarChart3, Edit2 } from "lucide-react";
-import { formatPHP, getSundayToSaturdayWeek, normalizeBookingSource, toYMD } from "@/lib/utils";
+import { formatPHP, getSundayToSaturdayWeek, normalizeBookingSource, normalizeUnitCode, toYMD } from "@/lib/utils";
 import type { Booking } from "@/lib/schema";
 
 type SourceName = "Direct" | "TikTok" | "Facebook" | "Airbnb";
@@ -299,13 +299,34 @@ export default function SourceReportPage() {
     window.setTimeout(() => setNotification(null), 4000);
   }
 
-  useEffect(() => {
+  const fetchBookings = () => {
     fetch("/api/bookings?view=all", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setBookings(data);
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchBookings();
+
+    // Refetch bookings when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchBookings();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Also refetch every 10 seconds to catch new bookings
+    const interval = setInterval(fetchBookings, 10000);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(interval);
+    };
   }, []);
 
   // Fetch configured receivers from settings
@@ -393,17 +414,26 @@ export default function SourceReportPage() {
     [manualExpenses, week.endDate, week.startDate]
   );
 
-  const visibleManualExpenses = useMemo(
-    () =>
-      weeklyManualExpenses.filter((entry) => {
-        if (selectedReceiver === "__all__") return true;
-        return entry.receiver === selectedReceiver || entry.receiver === "__all__";
-      }),
-    [selectedReceiver, weeklyManualExpenses]
-  );
+  const visibleManualExpenses = useMemo(() => {
+    const filtered = weeklyManualExpenses.filter((entry) => {
+      if (selectedReceiver === "__all__") return true;
+      return entry.receiver === selectedReceiver || entry.receiver === "__all__";
+    });
+
+    return filtered.slice().sort((a, b) => {
+      const aNight = /night booking/i.test(a.comment);
+      const bNight = /night booking/i.test(b.comment);
+      if (aNight !== bNight) return aNight ? -1 : 1;
+      if (a.receiver === "JAYJAY" && b.receiver !== "JAYJAY") return -1;
+      if (b.receiver === "JAYJAY" && a.receiver !== "JAYJAY") return 1;
+      const aTime = new Date(a.expenseDate || "1970-01-01").getTime();
+      const bTime = new Date(b.expenseDate || "1970-01-01").getTime();
+      return bTime - aTime;
+    });
+  }, [selectedReceiver, weeklyManualExpenses]);
 
   const coreBookings = useMemo(
-    () => bookings.filter((b) => CORE_UNITS.has(String(b.unit ?? "").replace(/^Unit\s*/i, "").trim())),
+    () => bookings.filter((b) => CORE_UNITS.has(normalizeUnitCode(b.unit))),
     [bookings]
   );
 
@@ -771,7 +801,16 @@ export default function SourceReportPage() {
                         }
                       </td>
                       <td className="px-2 py-1.5 text-amber-800 whitespace-nowrap">{entry.receiver}</td>
-                      <td className="px-2 py-1.5 text-amber-900">{entry.comment}</td>
+                      <td className="px-2 py-1.5 text-amber-900">
+                        <div className="space-y-1">
+                          <div>{entry.comment}</div>
+                          {(/night booking/i.test(entry.comment) || (entry.receiver === "JAYJAY" && entry.amount === 300 && entry.type === "expense")) && (
+                            <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-800">
+                              Jayjay night booking
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 py-1.5 text-amber-900">
                         <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
                           entry.type === "bill" 

@@ -2,10 +2,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trash2, CheckCircle, ChevronLeft, ChevronRight, Edit2, TrendingUp, TrendingDown, DollarSign, Wallet, PieChart, MessageSquareText } from "lucide-react";
-import { formatPHP, formatDate, formatWeekRange, UNITS } from "@/lib/utils";
+import { formatPHP, formatDate, formatWeekRange, normalizeUnitCode, UNITS } from "@/lib/utils";
 import BillsChecklist from "@/components/BillsChecklist";
 
-const MONTHLY_NET_UNITS = new Set(["1116", "1118", "1558", "1845"]);
+const MONTHLY_NET_UNITS = new Set(["1116", "1118", "1558", "1845", "2045"]);
 
 function toYMD(date: Date): string {
   const y = date.getFullYear();
@@ -355,7 +355,7 @@ export default function FinancesPage() {
   const weeklyExpenses = expenses.filter((e) => inSelectedWeek(e.expenseDate));
 
   const bookingsByRevenueScope = selectedRevenueUnits.length > 0
-    ? bookings.filter((b) => selectedRevenueUnits.includes(String(b.unit).replace(/^Unit\s*/i, "")))
+    ? bookings.filter((b) => selectedRevenueUnits.includes(normalizeUnitCode(b.unit)))
     : bookings;
 
   const weeklyBookingRevenue = bookingsByRevenueScope
@@ -422,7 +422,7 @@ export default function FinancesPage() {
     .reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const monthlyBookingRevenue = bookings
-    .filter((b) => MONTHLY_NET_UNITS.has(String(b.unit).replace(/^Unit\s*/i, "")))
+    .filter((b) => MONTHLY_NET_UNITS.has(normalizeUnitCode(b.unit)))
     .filter((b) => inSelectedMonth(b.checkIn))
     .reduce((s, b) => s + (Number(b.totalFee) || 0), 0);
   const monthlyRevenue = monthlyBookingRevenue + monthlyIncomeTotal;

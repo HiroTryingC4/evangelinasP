@@ -102,6 +102,23 @@ export function parseYMDToPHDate(value: string | Date): Date {
   return new Date(`${value}T00:00:00+08:00`);
 }
 
+const LEGACY_UNIT_ALIASES: Record<string, string> = {
+  "2245": "2045",
+  "unit 2245": "2045",
+  "uit 2245": "2045",
+  "unit 2045": "2045",
+  "uit 2045": "2045",
+};
+
+export function normalizeUnitCode(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  const compact = raw.replace(/^\s*(unit|uit)\s*/i, "").trim();
+  const normalized = LEGACY_UNIT_ALIASES[compact.toLowerCase()] ?? LEGACY_UNIT_ALIASES[raw.toLowerCase()] ?? compact;
+  return normalized;
+}
+
 function toPhNoonDate(date: string | Date): Date {
   return parseYMDToPHDate(date);
 }
@@ -146,8 +163,8 @@ export function getSundayToSaturdayWeek(date: string | Date) {
   };
 }
 
-// Core units only: 1116, 1118, 1558, 1845, 2245
-export const UNITS = ["1116", "1118", "1558", "1845", "2245"];
+// Core units only: 1116, 1118, 1558, 1845, 2045
+export const UNITS = ["1116", "1118", "1558", "1845", "2045"];
 export const PAYMENT_METHODS = ["Cash", "GCash", "Bank Transfer"];
 export const STAFF = ["SIR JAMES", "SIR MIKE", "RIEMAR", "JEFF", "JAYJAY"];
 // Booking source now tracks who sourced/got the booking
@@ -175,4 +192,5 @@ export const UNIT_COLORS: Record<string, string> = {
   "1118": "#10b981",
   "1558": "#ef4444",
   "1845": "#8b5cf6",
+  "2045": "#f59e0b",
 };
