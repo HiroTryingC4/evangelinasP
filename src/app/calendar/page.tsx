@@ -233,6 +233,12 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
   };
   
   // Get booking info for a date
+  const isSameDay = (dateA: Date, dateB: Date) => {
+    return dateA.getFullYear() === dateB.getFullYear()
+      && dateA.getMonth() === dateB.getMonth()
+      && dateA.getDate() === dateB.getDate();
+  };
+
   const getBookingInfo = (date: Date): Booking[] => {
     // Create fresh date copy without modifying original
     const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -246,6 +252,23 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
       
       return checkDate >= checkInDate && checkDate <= checkOutDate;
     });
+  };
+
+  const getBookingLabel = (date: Date, booking: Booking) => {
+    const checkInDate = new Date(booking.checkIn);
+    const checkOutDate = new Date(booking.checkOut);
+    checkInDate.setHours(0, 0, 0, 0);
+    checkOutDate.setHours(0, 0, 0, 0);
+
+    if (isSameDay(date, checkInDate)) {
+      return `Check-in: ${booking.guestName} ${booking.unit}`;
+    }
+
+    if (isSameDay(date, checkOutDate)) {
+      return `Check-out: ${booking.guestName} ${booking.unit}`;
+    }
+
+    return `Occupied by ${booking.guestName} ${booking.unit}`;
   };
   
   // Build calendar days
@@ -332,7 +355,8 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
             }
             
             const tooltipText = bookingInfos.length > 0
-              ? bookingInfos.map(b => 
+              ? bookingInfos.map((b) =>
+                  `${getBookingLabel(day.date, b)}\n` +
                   `${b.guestName}\n` +
                   `In: ${new Date(b.checkIn).toLocaleDateString()}${b.checkInTime ? ' ' + b.checkInTime : ''}\n` +
                   `Out: ${new Date(b.checkOut).toLocaleDateString()}${b.checkOutTime ? ' ' + b.checkOutTime : ''}`
@@ -340,6 +364,9 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
               : day.isCurrentMonth
               ? "Available"
               : "";
+            
+            const bookingLabel = bookingInfos.length > 0 ? getBookingLabel(day.date, bookingInfos[0]) : null;
+            const showOccupiedLabel = day.isCurrentMonth && bookingInfos.length > 0 && dateStatus === 'full';
             
             return (
               <div
@@ -355,6 +382,11 @@ function UnitCalendar({ unit, bookings, currentMonth }: UnitCalendarProps) {
                 title={tooltipText}
               >
                 <span className="text-sm">{day.date.getDate()}</span>
+                {showOccupiedLabel && (
+                  <div className="absolute inset-x-1 bottom-1 rounded-full bg-black/75 text-[8px] text-white text-center px-1 py-0.5 leading-tight">
+                    {bookingLabel}
+                  </div>
+                )}
                 {/* Guest Count Badge */}
                 {day.isCurrentMonth && bookingInfos.length > 0 && (
                   <div className="absolute top-0.5 right-0.5 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">

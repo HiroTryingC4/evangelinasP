@@ -36,6 +36,10 @@ function timeToMinutes(time: string) {
   return hours * 60 + minutes;
 }
 
+function dateBetween(target: string, start: string, end: string) {
+  return target >= start && target <= end;
+}
+
 export default function TomorrowPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +62,7 @@ export default function TomorrowPage() {
       if (b.paymentStatus === "Canceled") return false;
       const ci = toYMD(b.checkIn);
       const co = toYMD(b.checkOut);
-      return ci === ds || co === ds;
+      return dateBetween(ds, ci, co);
     });
     return { dateStr: ds, label: getDayLabel(ds, todayStr), bookings: dayBookings, index: i };
   }).filter((d) => d.bookings.length > 0 || d.index <= 1);
@@ -138,6 +142,7 @@ export default function TomorrowPage() {
                 const co = toYMD(b.checkOut);
                 const isIn = ci === dateStr;
                 const isOut = co === dateStr;
+                const isOccupiedDay = !isIn && !isOut;
                 return (
                   <div key={b.id} className={`rounded-lg border-2 ${UNIT_COLORS[b.unit] ?? "border-gray-300"} shadow-md hover:shadow-lg transition-shadow p-4 sm:p-5 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
                     <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -152,19 +157,25 @@ export default function TomorrowPage() {
                             <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="w-3.5 h-3.5 flex-shrink-0" />{formatDate(b.checkIn)} – {formatDate(b.checkOut)}</span>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">
-                            <span className="font-bold text-gray-900 text-base sm:text-lg">{formatPHP(b.totalFee)}</span>
-                            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${STATUS_COLOR[b.paymentStatus] ?? ""}`}>
-                              {b.paymentStatus}
-                            </span>
-                            {b.remainingBalance > 0 && (
-                              <span className="text-xs px-2.5 py-1 bg-red-100 text-red-700 rounded-full font-semibold flex items-center gap-1">
-                                <AlertCircle className="w-3.5 h-3.5" />{formatPHP(b.remainingBalance)} due
-                              </span>
-                            )}
-                            {b.remainingBalance === 0 && (
-                              <span className="text-xs px-2.5 py-1 bg-green-100 text-green-700 rounded-full font-semibold flex items-center gap-1">
-                                <CheckCircle className="w-3.5 h-3.5" />Settled
-                              </span>
+                            {isOccupiedDay ? (
+                              <span className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full font-semibold">Occupied by {b.guestName} {b.unit}</span>
+                            ) : (
+                              <>
+                                <span className="font-bold text-gray-900 text-base sm:text-lg">{formatPHP(b.totalFee)}</span>
+                                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${STATUS_COLOR[b.paymentStatus] ?? ""}`}>
+                                  {b.paymentStatus}
+                                </span>
+                                {b.remainingBalance > 0 && (
+                                  <span className="text-xs px-2.5 py-1 bg-red-100 text-red-700 rounded-full font-semibold flex items-center gap-1">
+                                    <AlertCircle className="w-3.5 h-3.5" />{formatPHP(b.remainingBalance)} due
+                                  </span>
+                                )}
+                                {b.remainingBalance === 0 && (
+                                  <span className="text-xs px-2.5 py-1 bg-green-100 text-green-700 rounded-full font-semibold flex items-center gap-1">
+                                    <CheckCircle className="w-3.5 h-3.5" />Settled
+                                  </span>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -174,6 +185,7 @@ export default function TomorrowPage() {
                       <div className="flex gap-1.5 flex-col sm:flex-row">
                         {isIn && <span className="text-xs sm:text-sm px-3 py-1.5 bg-green-100 text-green-800 rounded-lg font-bold text-center whitespace-nowrap">Check-in {b.checkInTime}</span>}
                         {isOut && <span className="text-xs sm:text-sm px-3 py-1.5 bg-orange-100 text-orange-800 rounded-lg font-bold text-center whitespace-nowrap">Check-out {b.checkOutTime}</span>}
+                        {isOccupiedDay && <span className="text-xs sm:text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold text-center whitespace-nowrap">Occupied</span>}
                       </div>
                       <Link
                         href={`/bookings?edit=${b.id}`}

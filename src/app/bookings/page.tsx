@@ -253,18 +253,56 @@ function BookingsContent() {
     return hours * 60 + minutes;
   };
 
+  type BookingOccurrence = {
+    dateKey: string;
+    booking: Booking;
+    occurrenceType: "checkIn" | "checkOut" | "occupied";
+  };
+
+  const buildBookingOccurrences = (booking: Booking): BookingOccurrence[] => {
+    const startKey = booking.checkInDateKey || toYMD(booking.checkIn);
+    const endKey = booking.checkOutDateKey || toYMD(booking.checkOut);
+    const occurrences: BookingOccurrence[] = [];
+
+    let current = new Date(`${startKey}T12:00:00`);
+    const end = new Date(`${endKey}T12:00:00`);
+
+    while (current <= end) {
+      const currentKey = toYMD(current);
+      const occurrenceType = currentKey === startKey
+        ? "checkIn"
+        : currentKey === endKey
+        ? "checkOut"
+        : "occupied";
+
+      occurrences.push({ dateKey: currentKey, booking, occurrenceType });
+      current.setDate(current.getDate() + 1);
+    }
+
+    return occurrences;
+  };
+
+  const getOccurrenceOrder = (type: BookingOccurrence["occurrenceType"]) => {
+    if (type === "checkOut") return 0;
+    if (type === "checkIn") return 1;
+    return 2;
+  };
+
   const groupedBookings = [...filtered]
+    .flatMap((booking) => buildBookingOccurrences(booking))
     .sort((a, b) => {
-      const dateDiff = new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime();
+      const dateDiff = new Date(a.dateKey).getTime() - new Date(b.dateKey).getTime();
       if (dateDiff !== 0) return dateDiff;
-      return timeToMinutes(a.checkInTime) - timeToMinutes(b.checkInTime);
+      const aOrder = getOccurrenceOrder(a.occurrenceType);
+      const bOrder = getOccurrenceOrder(b.occurrenceType);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return timeToMinutes(a.booking.checkInTime) - timeToMinutes(b.booking.checkInTime);
     })
-    .reduce((groups, booking) => {
-      const dateKey = booking.checkInDateKey || toYMD(booking.checkIn);
-      if (!groups[dateKey]) groups[dateKey] = [];
-      groups[dateKey].push(booking);
+    .reduce((groups, occurrence) => {
+      if (!groups[occurrence.dateKey]) groups[occurrence.dateKey] = [];
+      groups[occurrence.dateKey].push(occurrence);
       return groups;
-    }, {} as Record<string, Booking[]>);
+    }, {} as Record<string, BookingOccurrence[]>);
 
   const groupedDates = Object.keys(groupedBookings).sort(
     (a, b) => new Date(a).getTime() - new Date(b).getTime()
@@ -288,6 +326,105 @@ function BookingsContent() {
     } else {
       return <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">Returning ({count}x)</span>;
     }
+  };
+
+  const renderBookingCard = (b: Booking, occurrenceType: BookingOccurrence["occurrenceType"]) => {
+    const isOccupiedDay = occurrenceType === "occupied";
+    const isCheckIn = occurrenceType === "checkIn";
+    const isCheckOut = occurrenceType === "checkOut";
+
+    return (
+      <div key={`${b.id}-${occurrenceType}`} className="card p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <p className="font-semibold text-gray-900 truncate">{b.guestName}</p>
+              <UnitBadge unit={b.unit} />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <BookingPlatformBadge platform={b.bookingPlatform} />
+              {getBookingCountBadge(b.guestName)}
+            </div>
+            <p className="text-xs text-gray-500 mt-1.5">From {formatDate(b.checkIn)}</p>
+            {b.contactNo && (
+              <p className="text-xs text-gray-400 flex items-center gap-1 mt-1.5">
+                <Phone className="w-3 h-3" />{b.contactNo}
+              </p>
+            )}
+          </div>
+          {!isOccupiedDay && (
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_COLOR[b.paymentStatus] ?? ""}`}>
+              {b.paymentStatus}
+            </span>
+          )}
+        </div>
+
+        {isOccupiedDay ? (
+          <div className="space-y-2">
+            <div className="text-xs uppercase tracking-wide text-gray-500">OCCUPIED only</div>
+            <div className="rounded-lg bg-gray-100 text-gray-700 px-3 py-2 text-xs font-semibold">
+              Occupied by {b.guestName} {b.unit}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-2">
+              <span><span className="text-gray-400">Fee</span> {formatPHP(b.totalFee)}</span>
+              <span><span className="text-gray-400">In</span> {formatDate(b.checkIn)} {b.checkInTime}</span>
+              <span><span className="text-gray-400">Balance</span> <span className={b.remainingBalance > 0 ? "text-red-600 font-semibold" : "text-green-600"}>{formatPHP(b.remainingBalance)}</span></span>
+              <span><span className="text-gray-400">Out</span> {formatDate(b.checkOut)} {b.checkOutTime}</span>
+              <span>
+                {b.hasConflict === "✅ OK"
+                  ? <span className="text-green-600 flex items-center gap-0.5"><CheckCircle className="w-3 h-3" /> OK</span>
+                  : <span className="text-red-600 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> Conflict</span>
+                }
+              </span>
+              {b.dpReceivedBy && (
+                <span><span className="text-gray-400">DP To</span> <span className="font-medium text-blue-600">{b.dpReceivedBy}</span></span>
+              )}
+              {b.fpReceivedBy && (
+                <span><span className="text-gray-400">FP To</span> <span className="font-medium text-purple-600">{b.fpReceivedBy}</span></span>
+              )}
+            </div>
+          </>
+        )}
+
+        <div className="flex gap-2 border-t border-gray-100 pt-2">
+          <button
+            onClick={() => { 
+              setSavedScrollPosition(window.scrollY);
+              setEditBooking(b); 
+              setShowForm(true); 
+            }}
+            className="flex-1 btn-secondary text-xs py-1.5 justify-center"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </button>
+          <button
+            onClick={() => handleDelete(b.id)}
+            className="flex-1 btn-danger text-xs py-1.5 justify-center"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
+          {b.paymentStatus !== "Canceled" && (
+            <button
+              onClick={() => handleCancelBooking(b.id)}
+              className="flex-1 btn-secondary text-xs py-1.5 justify-center text-gray-700"
+            >
+              <Ban className="w-3.5 h-3.5" /> Canceled
+            </button>
+          )}
+          {b.paymentStatus === "Canceled" && (
+            <button
+              onClick={() => handleRestoreBooking(b.id)}
+              className="flex-1 btn-secondary text-xs py-1.5 justify-center text-blue-700"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Undo Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -375,95 +512,60 @@ function BookingsContent() {
         <div className="space-y-4">
           {groupedDates.map((dateKey) => {
             const dayBookings = groupedBookings[dateKey];
+            const checkOutCount = dayBookings.filter((o) => o.occurrenceType === "checkOut").length;
+            const checkInCount = dayBookings.filter((o) => o.occurrenceType === "checkIn").length;
+            const occupiedCount = dayBookings.filter((o) => o.occurrenceType === "occupied").length;
+            const activeCount = checkInCount + occupiedCount;
             return (
               <div key={dateKey} className="space-y-2">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                   <div className="text-sm sm:text-base font-semibold text-gray-900">
                     {new Date(dateKey).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}
                   </div>
                   <div className="flex-1 h-px bg-gray-200" />
-                  <span className="text-xs text-gray-400">{dayBookings.length} booking{dayBookings.length > 1 ? "s" : ""}</span>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                    <span>{activeCount} booking{activeCount > 1 ? "s" : ""}</span>
+                    <span>Out: {checkOutCount}</span>
+                    <span>In+Occupied: +{activeCount}</span>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                  {dayBookings.map((b) => (
-                    <div key={b.id} className="card p-3 sm:p-4">
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-2">
-                            <p className="font-semibold text-gray-900 truncate">{b.guestName}</p>
-                            <UnitBadge unit={b.unit} />
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <BookingPlatformBadge platform={b.bookingPlatform} />
-                            {getBookingCountBadge(b.guestName)}
-                          </div>
-                          {b.contactNo && (
-                            <p className="text-xs text-gray-400 flex items-center gap-1 mt-1.5">
-                              <Phone className="w-3 h-3" />{b.contactNo}
-                            </p>
-                          )}
-                        </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_COLOR[b.paymentStatus] ?? ""}`}>
-                          {b.paymentStatus}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-2">
-                        <span><span className="text-gray-400">Fee</span> {formatPHP(b.totalFee)}</span>
-                        <span><span className="text-gray-400">In</span> {formatDate(b.checkIn)} {b.checkInTime}</span>
-                        <span><span className="text-gray-400">Balance</span> <span className={b.remainingBalance > 0 ? "text-red-600 font-semibold" : "text-green-600"}>{formatPHP(b.remainingBalance)}</span></span>
-                        <span><span className="text-gray-400">Out</span> {formatDate(b.checkOut)} {b.checkOutTime}</span>
-                        <span>
-                          {b.hasConflict === "✅ OK"
-                            ? <span className="text-green-600 flex items-center gap-0.5"><CheckCircle className="w-3 h-3" /> OK</span>
-                            : <span className="text-red-600 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> Conflict</span>
-                          }
-                        </span>
-                        {b.dpReceivedBy && (
-                          <span><span className="text-gray-400">DP To</span> <span className="font-medium text-blue-600">{b.dpReceivedBy}</span></span>
-                        )}
-                        {b.fpReceivedBy && (
-                          <span><span className="text-gray-400">FP To</span> <span className="font-medium text-purple-600">{b.fpReceivedBy}</span></span>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 border-t border-gray-100 pt-2">
-                        <button
-                          onClick={() => { 
-                            setSavedScrollPosition(window.scrollY);
-                            setEditBooking(b); 
-                            setShowForm(true); 
-                          }}
-                          className="flex-1 btn-secondary text-xs py-1.5 justify-center"
-                        >
-                          <Pencil className="w-3.5 h-3.5" /> Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(b.id)}
-                          className="flex-1 btn-danger text-xs py-1.5 justify-center"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
-                        {b.paymentStatus !== "Canceled" && (
-                          <button
-                            onClick={() => handleCancelBooking(b.id)}
-                            className="flex-1 btn-secondary text-xs py-1.5 justify-center text-gray-700"
-                          >
-                            <Ban className="w-3.5 h-3.5" /> Canceled
-                          </button>
-                        )}
-                        {b.paymentStatus === "Canceled" && (
-                          <button
-                            onClick={() => handleRestoreBooking(b.id)}
-                            className="flex-1 btn-secondary text-xs py-1.5 justify-center text-blue-700"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" /> Undo Cancel
-                          </button>
-                        )}
+                  <div className="space-y-4">
+                  {dayBookings.filter((o) => o.occurrenceType === "checkOut").length > 0 && (
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-3">Check out list ({checkOutCount})</div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                        {dayBookings.filter((o) => o.occurrenceType === "checkOut").map((occurrence) => {
+                          const b = occurrence.booking;
+                          return renderBookingCard(b, occurrence.occurrenceType);
+                        })}
                       </div>
                     </div>
-                  ))}
+                  )}
+
+                  {dayBookings.filter((o) => o.occurrenceType === "checkIn").length > 0 && (
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-3">Check in list ({checkInCount})</div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                        {dayBookings.filter((o) => o.occurrenceType === "checkIn").map((occurrence) => {
+                          const b = occurrence.booking;
+                          return renderBookingCard(b, occurrence.occurrenceType);
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {dayBookings.filter((o) => o.occurrenceType === "occupied").length > 0 && (
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-3">Occupied ({occupiedCount})</div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                        {dayBookings.filter((o) => o.occurrenceType === "occupied").map((occurrence) => {
+                          const b = occurrence.booking;
+                          return renderBookingCard(b, occurrence.occurrenceType);
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -93,19 +93,24 @@ function getMethodAmounts(booking: Booking): Record<MethodName, number> {
   return amounts;
 }
 
+function normalizeReceiver(value: unknown): string {
+  return String(value ?? "").trim().toUpperCase();
+}
+
 function bookingMatchesReceiver(booking: Booking, selectedReceiver: string): boolean {
   if (selectedReceiver === "__all__") return true;
   
-  const selected = selectedReceiver.toUpperCase();
+  const selected = normalizeReceiver(selectedReceiver);
   
   // Show booking if this person either:
   // 1. Booked it (bookingSource), OR
-  // 2. Received payment on it (dpReceivedBy or fpReceivedBy)
-  const bookedBy = String(booking.bookingSource ?? "").trim().toUpperCase();
-  const dpReceiver = String(booking.dpReceivedBy ?? "").trim().toUpperCase();
-  const fpReceiver = String(booking.fpReceivedBy ?? "").trim().toUpperCase();
+  // 2. Received payment on it (dpReceivedBy, fpReceivedBy, or apReceivedBy)
+  const bookedBy = normalizeReceiver(booking.bookingSource);
+  const dpReceiver = normalizeReceiver(booking.dpReceivedBy);
+  const fpReceiver = normalizeReceiver(booking.fpReceivedBy);
+  const apReceiver = normalizeReceiver(booking.apReceivedBy);
   
-  return bookedBy === selected || dpReceiver === selected || fpReceiver === selected;
+  return bookedBy === selected || dpReceiver === selected || fpReceiver === selected || apReceiver === selected;
 }
 
 function getMethodAmountsForReceiver(
