@@ -32,7 +32,6 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
   const [unitBookings, setUnitBookings] = useState<Booking[]>([]);
   const [unitBookingsLoading, setUnitBookingsLoading] = useState(false);
   const [nightCleaning, setNightCleaning] = useState(false);
-  const [nightCleaningTouched, setNightCleaningTouched] = useState(false);
   const [existingNightCleaningExpense, setExistingNightCleaningExpense] = useState<{
     id: number;
     weekStart: string;
@@ -103,7 +102,6 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
       apReceivedBy: (booking as any).apReceivedBy  ?? "SIR JAMES",
     });
     setNightCleaning(false);
-    setNightCleaningTouched(false);
     setExistingNightCleaningExpense(null);
   }, [booking]);
 
@@ -164,44 +162,6 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
   const set = (key: string) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
-
-  function parseClockTime(value: string): number | null {
-    const normalized = String(value || "").trim().toLowerCase();
-    const ampmMatch = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
-    if (ampmMatch) {
-      let hour = Number(ampmMatch[1]);
-      const minute = Number(ampmMatch[2] || "0");
-      const ampm = ampmMatch[3];
-      if (hour === 12) hour = ampm === "am" ? 0 : 12;
-      else if (ampm === "pm") hour += 12;
-      return hour * 60 + minute;
-    }
-
-    const twentyFourMatch = normalized.match(/^(\d{1,2})(?::(\d{2}))?$/);
-    if (twentyFourMatch) {
-      const hour = Number(twentyFourMatch[1]);
-      const minute = Number(twentyFourMatch[2] || "0");
-      if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
-        return hour * 60 + minute;
-      }
-    }
-
-    return null;
-  }
-
-  function bookingLooksLikeNightShift(checkInTime: string, checkOutTime: string) {
-    const checkIn = parseClockTime(checkInTime);
-    const checkOut = parseClockTime(checkOutTime);
-    const isNight = (minutes: number | null) => minutes !== null && (minutes >= 20 * 60 || minutes < 6 * 60);
-    return isNight(checkIn) || isNight(checkOut);
-  }
-
-  useEffect(() => {
-    if (booking) return;
-    if (nightCleaningTouched) return;
-    const isNight = bookingLooksLikeNightShift(form.checkInTime, form.checkOutTime);
-    setNightCleaning(isNight);
-  }, [form.checkInTime, form.checkOutTime, booking, nightCleaningTouched]);
 
   // Auto-calculate hours when dates change
   useEffect(() => {
@@ -693,10 +653,7 @@ export default function BookingForm({ booking, onClose, onSaved }: Props) {
             <input
               type="checkbox"
               checked={nightCleaning}
-              onChange={(e) => {
-                setNightCleaningTouched(true);
-                setNightCleaning(e.target.checked);
-              }}
+              onChange={(e) => setNightCleaning(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
             />
             <div>

@@ -65,6 +65,36 @@ function UnitBadge({ unit }: { unit: string }) {
   );
 }
 
+const OCCURRENCE_STYLE = {
+  checkIn: {
+    label: "Check-in",
+    icon: "🟢",
+    border: "border-l-emerald-400",
+    badgeBg: "bg-emerald-50",
+    badgeText: "text-emerald-700",
+    headerText: "text-emerald-700",
+    dot: "bg-emerald-500",
+  },
+  checkOut: {
+    label: "Check-out",
+    icon: "🔴",
+    border: "border-l-rose-400",
+    badgeBg: "bg-rose-50",
+    badgeText: "text-rose-700",
+    headerText: "text-rose-700",
+    dot: "bg-rose-500",
+  },
+  occupied: {
+    label: "Occupied",
+    icon: "🔵",
+    border: "border-l-sky-400",
+    badgeBg: "bg-sky-50",
+    badgeText: "text-sky-700",
+    headerText: "text-sky-700",
+    dot: "bg-sky-500",
+  },
+} as const;
+
 function BookingsContent() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [units, setUnits] = useState<string[]>(UNITS);
@@ -264,7 +294,13 @@ function BookingsContent() {
     const endKey = booking.checkOutDateKey || toYMD(booking.checkOut);
     const occurrences: BookingOccurrence[] = [];
 
-    let current = new Date(`${startKey}T12:00:00`);
+    // In the Upcoming/current view, don't resurface days that already passed
+    // for a booking that checked in before today — start from today instead.
+    const todayKey = toYMD(new Date());
+    const effectiveStartKey =
+      filterDateScope === "upcoming" && startKey < todayKey ? todayKey : startKey;
+
+    let current = new Date(`${effectiveStartKey}T12:00:00`);
     const end = new Date(`${endKey}T12:00:00`);
 
     while (current <= end) {
@@ -332,14 +368,18 @@ function BookingsContent() {
     const isOccupiedDay = occurrenceType === "occupied";
     const isCheckIn = occurrenceType === "checkIn";
     const isCheckOut = occurrenceType === "checkOut";
+    const style = OCCURRENCE_STYLE[occurrenceType];
 
     return (
-      <div key={`${b.id}-${occurrenceType}`} className="card p-3 sm:p-4">
+      <div key={`${b.id}-${occurrenceType}`} className={`card p-3 sm:p-4 border-l-4 ${style.border}`}>
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-2">
               <p className="font-semibold text-gray-900 truncate">{b.guestName}</p>
               <UnitBadge unit={b.unit} />
+              <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold ${style.badgeBg} ${style.badgeText}`}>
+                {style.icon} {style.label}
+              </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <BookingPlatformBadge platform={b.bookingPlatform} />
@@ -361,8 +401,7 @@ function BookingsContent() {
 
         {isOccupiedDay ? (
           <div className="space-y-2">
-            <div className="text-xs uppercase tracking-wide text-gray-500">OCCUPIED only</div>
-            <div className="rounded-lg bg-gray-100 text-gray-700 px-3 py-2 text-xs font-semibold">
+            <div className={`rounded-lg ${style.badgeBg} ${style.badgeText} px-3 py-2 text-xs font-semibold`}>
               Occupied by {b.guestName} {b.unit}
             </div>
           </div>
@@ -533,7 +572,10 @@ function BookingsContent() {
                   <div className="space-y-4">
                   {dayBookings.filter((o) => o.occurrenceType === "checkOut").length > 0 && (
                     <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-3">Check out list ({checkOutCount})</div>
+                      <div className={`flex items-center gap-1.5 text-sm font-semibold mb-3 ${OCCURRENCE_STYLE.checkOut.headerText}`}>
+                        <span className={`w-2 h-2 rounded-full ${OCCURRENCE_STYLE.checkOut.dot}`} />
+                        Check out list ({checkOutCount})
+                      </div>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                         {dayBookings.filter((o) => o.occurrenceType === "checkOut").map((occurrence) => {
                           const b = occurrence.booking;
@@ -545,7 +587,10 @@ function BookingsContent() {
 
                   {dayBookings.filter((o) => o.occurrenceType === "checkIn").length > 0 && (
                     <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-3">Check in list ({checkInCount})</div>
+                      <div className={`flex items-center gap-1.5 text-sm font-semibold mb-3 ${OCCURRENCE_STYLE.checkIn.headerText}`}>
+                        <span className={`w-2 h-2 rounded-full ${OCCURRENCE_STYLE.checkIn.dot}`} />
+                        Check in list ({checkInCount})
+                      </div>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                         {dayBookings.filter((o) => o.occurrenceType === "checkIn").map((occurrence) => {
                           const b = occurrence.booking;
@@ -557,7 +602,10 @@ function BookingsContent() {
 
                   {dayBookings.filter((o) => o.occurrenceType === "occupied").length > 0 && (
                     <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-3">Occupied ({occupiedCount})</div>
+                      <div className={`flex items-center gap-1.5 text-sm font-semibold mb-3 ${OCCURRENCE_STYLE.occupied.headerText}`}>
+                        <span className={`w-2 h-2 rounded-full ${OCCURRENCE_STYLE.occupied.dot}`} />
+                        Occupied ({occupiedCount})
+                      </div>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                         {dayBookings.filter((o) => o.occurrenceType === "occupied").map((occurrence) => {
                           const b = occurrence.booking;
